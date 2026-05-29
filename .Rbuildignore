@@ -1,0 +1,17 @@
+^.*\.Rproj$
+^\.Rproj\.user$
+^\.github$
+^\.gitignore$
+^\.git$
+^CLAUDE\.md$
+^CONTRIBUTING\.md$
+^CODE_OF_CONDUCT\.md$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^cran-comments\.md$
+^revdep$
+^README\.Rmd$
+^\.pre-commit-config\.yaml$
+^\.Rhistory$
+^nba_stats$
