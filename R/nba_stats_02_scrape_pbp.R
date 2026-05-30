@@ -89,18 +89,23 @@ nba_stats_pbp_season <- function(season) {
     cli::cli_progress_step(msg = "Downloading {season} NBA Stats pbps ({length(games_to_scrape_list)} games)",
                            msg_done = "Downloaded {season} NBA Stats pbps!")
 
-    future::plan("multisession")
-    nba_stats_df <- furrr::future_map_dfr(seq_along(games_to_scrape_list), function(x) {
+    # Sequential ONLY -- never furrr/future_map. stats.nba.com shares a request
+    # budget (~200-300 reqs/10min of any type) and each nba_pbp() call hits
+    # several endpoints; parallel workers fire simultaneous requests that blow
+    # that budget. rate_limit() (R/utils.R) throttles to the shared budget
+    # before each game (one game = several hits); next_proxy() rotates IPs
+    # round-robin over a randomly-shuffled pool.
+    nba_stats_df <- purrr::map_dfr(seq_along(games_to_scrape_list), function(x) {
 
+      rate_limit()
       df <- hoopR::nba_pbp(game_id = hoopR:::pad_id(games_to_scrape_list[x]),
-                           proxy = select_proxy(proxies = proxies_df)) # nolint
+                           proxy = next_proxy(proxies = proxies_df)) # nolint
       df <-  df %>%
         dplyr::mutate(season = season)
       jsonlite::write_json(df, path = paste0("nba_stats/json/pbp/", hoopR:::pad_id(games_to_scrape_list[x]), ".json"))
-      Sys.sleep(1)
 
       return(df)
-    }, .options = furrr::furrr_options(seed = TRUE))
+    })
 
   } else {
 
