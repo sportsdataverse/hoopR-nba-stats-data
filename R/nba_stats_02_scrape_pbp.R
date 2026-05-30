@@ -158,6 +158,7 @@ nba_stats_pbp_season <- function(season) {
       file_name =  glue::glue("play_by_play_{season}"),
       sportsdataverse_type = "play-by-play data",
       release_tag = "nba_stats_pbp",
+      pkg_function = "hoopR::load_nba_pbp()",
       file_types = c("rds", "csv", "parquet"),
       .token = Sys.getenv("GITHUB_PAT")
     )

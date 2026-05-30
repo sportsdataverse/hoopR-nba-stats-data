@@ -74,6 +74,7 @@ schedules_df <- purrr::map_dfr(seq_along(seasons_vec), function(x) {
     file_name = glue::glue("schedule_{seasons_vec[[x]]}"),
     sportsdataverse_type = "schedule data",
     release_tag = "nba_stats_schedules",
+    pkg_function = "hoopR::load_nba_schedule()",
     file_types = c("rds", "csv", "parquet"),
     .token = Sys.getenv("GITHUB_PAT")
   )
