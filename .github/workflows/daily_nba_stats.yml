@@ -38,6 +38,12 @@ jobs:
       START_YEAR: ${{ inputs.start_year }}
       END_YEAR: ${{ inputs.end_year }}
       RESCRAPE: ${{ inputs.rescrape }}
+      # Shared stats.nba.com rate budget (R/utils.R rate_limit()). Tune here
+      # without code changes. STATS_RATE_MAX requests per STATS_RATE_WINDOW
+      # seconds; each pbp game is budgeted as STATS_RATE_HITS endpoint hits.
+      STATS_RATE_MAX: "250"
+      STATS_RATE_WINDOW: "600"
+      STATS_RATE_HITS: "3"
 
     steps:
       - name: Checkout repo
