@@ -19,6 +19,9 @@ on:
         default: true
         type: boolean
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   update_nba_stats_data:
     runs-on: ${{ matrix.config.os }}
