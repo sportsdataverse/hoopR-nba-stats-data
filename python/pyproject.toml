@@ -1,0 +1,23 @@
+[project]
+name = "hoopr-nba-stats-data-build"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "sportsdataverse @ git+https://github.com/sportsdataverse/sportsdataverse-py@main",
+    "polars>=1.0",
+    "pyarrow>=15.0",
+    "scikit-learn>=1.0",
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "tqdm>=4.66",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[tool.setuptools.packages.find]
+include = ["nba_data_build*"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
