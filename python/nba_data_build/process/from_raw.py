@@ -11,17 +11,25 @@ Quarter-box lineup seam
 ------------------------
 The on-court reconstruction is meant to use sdv-py's quarter-box lineup
 engine (``players_on_court_from_quarter_boxscores``, built from the
-``boxv3_periods`` raw capture), matching the ``lineup_source="quarter_box"``
-label this module stamps onto every possession. That function is a **Tasks
-1-3 sdv-py-side deliverable that has not landed on the pinned rev yet** (grepped
-clean against the installed ``sportsdataverse.nba.nba_lineups`` at the time
-this module was written). Rather than block on it, :func:`_quarter_box_oncourt`
+``boxv3_periods`` raw capture). That function is a **Tasks 1-3 sdv-py-side
+deliverable that has not landed on the pinned rev yet** (grepped clean
+against the installed ``sportsdataverse.nba.nba_lineups`` at the time this
+module was written). Rather than block on it, :func:`_quarter_box_oncourt`
 is a seam: it imports the upstream function opportunistically and falls back
 to the already-shipped, gamerotation-free ``players_on_court_from_pbp``
 (boxscore starters + play-by-play substitutions only -- no ``boxv3_periods``
 needed) when the upstream symbol is absent. The ``boxv3_periods`` payload is
 still read from disk and threaded through the seam so the swap-over at the
-next pin bump is a one-line change, not a rewrite. See
+next pin bump is a one-line change, not a rewrite.
+
+**Provenance**: :func:`_quarter_box_oncourt` returns ``(oncourt_frame, used)``
+and :func:`process_game` stamps ``lineup_source`` from the threaded *used*
+value -- ``"quarter_box"`` when the upstream import resolved and ran,
+``"pbp_fallback"`` when the ``ImportError`` fallback path ran (mirrors the
+``used`` pattern in sdv-py's ``nba_possessions.nba_possessions``). On the
+current pinned rev the upstream symbol is absent, so every possession is
+currently stamped ``"pbp_fallback"`` -- an honest label, not a hardcoded
+``"quarter_box"`` constant. See
 ``.superpowers/sdd/pipeline/task-7-report.md`` for the full writeup.
 """
 
@@ -71,14 +79,18 @@ def _quarter_box_oncourt(
     *,
     home_team_id: int,
     away_team_id: int,
-) -> pl.DataFrame:
+) -> "tuple[pl.DataFrame, str]":
     """Reconstruct the on-court 10 for the ``quarter_box`` lineup source.
 
     Seam: prefers sdv-py's ``players_on_court_from_quarter_boxscores`` (built
     from *periods*, the ``boxv3_periods`` capture) when it exists upstream;
     falls back to the shipped gamerotation-free ``players_on_court_from_pbp``
     (boxscore starters + pbp substitutions, needs only *box_raw*) otherwise.
-    See the module docstring for why the fallback exists.
+    See the module docstring for why the fallback exists. Mirrors the
+    ``used`` pattern in sdv-py's ``nba_possessions.nba_possessions``
+    (``_from_pbp``/``_from_rotation``, nba_possessions.py:948-980): the
+    caller must stamp ``lineup_source`` from the returned label, never a
+    hardcoded constant, so the label always reflects which path actually ran.
 
     Args:
         enh: Output of ``enhanced_pbp_from_payload``.
@@ -89,7 +101,10 @@ def _quarter_box_oncourt(
         away_team_id: Away team id (from ``boxscore_home_away``).
 
     Returns:
-        Polars DataFrame with schema ``LINEUPS_SCHEMA``.
+        A ``(oncourt_frame, used)`` tuple: *oncourt_frame* has schema
+        ``LINEUPS_SCHEMA``; *used* is ``"quarter_box"`` when the upstream
+        ``players_on_court_from_quarter_boxscores`` import resolved and ran,
+        or ``"pbp_fallback"`` when the ``ImportError`` fallback path ran.
     """
     try:
         from sportsdataverse.nba.nba_lineups import (  # type: ignore[attr-defined]
@@ -98,8 +113,10 @@ def _quarter_box_oncourt(
     except ImportError:
         from sportsdataverse.nba.nba_lineups import players_on_court_from_pbp
 
-        return players_on_court_from_pbp(enh, box_raw, home_team_id=home_team_id, away_team_id=away_team_id)
-    return players_on_court_from_quarter_boxscores(enh, periods, home_team_id=home_team_id, away_team_id=away_team_id)
+        oc = players_on_court_from_pbp(enh, box_raw, home_team_id=home_team_id, away_team_id=away_team_id)
+        return oc, "pbp_fallback"
+    oc = players_on_court_from_quarter_boxscores(enh, periods, home_team_id=home_team_id, away_team_id=away_team_id)
+    return oc, "quarter_box"
 
 
 def _attach_running_possession(enh: pl.DataFrame, poss: pl.DataFrame) -> pl.DataFrame:
@@ -177,10 +194,10 @@ def process_game(root: Union[str, Path], game_id: str) -> ProcessedGame:
 
     enh = enhanced_pbp_from_payload(pbpv3)
     home, away = boxscore_home_away(boxv3)
-    oc = _quarter_box_oncourt(enh, periods, boxv3, home_team_id=home, away_team_id=away)
+    oc, used = _quarter_box_oncourt(enh, periods, boxv3, home_team_id=home, away_team_id=away)
 
     poss = attach_possession_lineups(build_possessions(enh), oc, enh, home_team_id=home).with_columns(
-        pl.lit("quarter_box").alias("lineup_source")
+        pl.lit(used).alias("lineup_source")
     )
 
     enriched_pbp = _attach_running_possession(enh, poss)
