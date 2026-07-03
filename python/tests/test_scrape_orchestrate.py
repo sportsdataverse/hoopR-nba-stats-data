@@ -23,3 +23,27 @@ def test_finished_game_filter(tmp_path):
     ]
     written = scrape_finished_games(_client(), tmp_path, rows)
     assert written == ["0022300001"]
+
+
+def test_transient_failure_retries_and_permanent_failure_skips(tmp_path, caplog):
+    calls = {"0022300010": 0, "0022300011": 0}
+
+    def transport(kind, game_id, **p):
+        if game_id == "0022300010":  # fails once, then succeeds
+            calls[game_id] += 1
+            if calls[game_id] == 1:
+                raise TimeoutError("curl: (28) simulated connect timeout")
+        if game_id == "0022300011":  # always fails
+            calls[game_id] += 1
+            raise TimeoutError("curl: (28) simulated connect timeout")
+        return {"kind": kind, "game_id": game_id}
+
+    rows = [
+        {"game_id": "0022300010", "game_status": 3, "home_team_id": 1, "n_periods": 4},
+        {"game_id": "0022300011", "game_status": 3, "home_team_id": 1, "n_periods": 4},
+        {"game_id": "0022300012", "game_status": 3, "home_team_id": 1, "n_periods": 4},
+    ]
+    written = scrape_finished_games(V3Client(transport=transport), tmp_path, rows)
+    assert written == ["0022300010", "0022300012"]  # run survives the permanent failure
+    assert calls["0022300011"] == 3  # 3 attempts then skip
+    assert "failed after retries" in caplog.text
