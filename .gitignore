@@ -14,3 +14,4 @@ __pycache__
 */*.pyc
 *.pyc
 daily_basketball_scraper.sh
+.nba_pipeline_cache/
