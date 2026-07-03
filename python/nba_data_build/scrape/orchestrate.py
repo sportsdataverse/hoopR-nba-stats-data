@@ -90,11 +90,30 @@ def scrape_finished_games(
         omitted).
     """
     written: list[str] = []
+    failed: list[str] = []
     for row in game_rows:
         if int(row["game_status"]) != _FINISHED_STATUS or int(row["home_team_id"]) == 0:
             continue
         game_id = row["game_id"]
         n_periods = int(row.get("n_periods", 4))
-        if scrape_game(client, root, game_id, n_periods, rescrape=rescrape):
-            written.append(game_id)
+        # ponytail: retry-then-skip -- a transient transport failure (proxy
+        # connect timeout etc.) must not kill a 1,400-game season run; the raw
+        # store is resumable, so a skipped game is picked up by the next run.
+        for attempt in (1, 2, 3):
+            try:
+                if scrape_game(client, root, game_id, n_periods, rescrape=rescrape):
+                    written.append(game_id)
+                break
+            except Exception as exc:  # noqa: BLE001 -- transport errors vary by backend
+                logger.warning(
+                    "scrape_game %s attempt %d/3 failed: %s", game_id, attempt, str(exc)[:200]
+                )
+        else:
+            failed.append(game_id)
+    if failed:
+        logger.warning(
+            "scrape_finished_games: %d game(s) failed after retries: %s",
+            len(failed),
+            failed[:20],
+        )
     return written
