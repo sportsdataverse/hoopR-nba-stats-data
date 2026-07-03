@@ -1,7 +1,7 @@
 """Verbatim raw JSON store for stats.nba.com v3 captures.
 
 SDV `-raw` convention: raw per-game payloads are committed to the repo
-byte-verbatim (no reshape, no reparse) so scraping is incremental/resumable
+value-verbatim (parsed payload re-serialized; JSON-equal, not byte-identical to the wire) so scraping is incremental/resumable
 and any downstream reprocess can rebuild from disk without re-hitting
 stats.nba.com. Layout: ``{root}/nba_stats/json/{kind}/{game_id}.json`` for
 ``kind`` in ``pbpv3`` / ``boxv3`` / ``boxv3_periods``.

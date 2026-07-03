@@ -83,3 +83,13 @@ as a deliberate action, not a default. `--cache-dir` controls the local, gitigno
 per-game resumability cache (default `{root}/.nba_pipeline_cache/`) — safe to delete
 between runs; it only ever speeds up a resumed `rollup_season`, never holds
 authoritative data.
+
+## Known gap: overtime period-box capture
+
+`scrape_finished_games` currently defaults `n_periods=4` (the schedule loader carries no
+period count), so `boxv3_periods` raw payloads capture regulation periods only — OT games'
+period 5+ boxes are not fetched, and the `BOX_PERIODS` availability flag reflects file
+presence, not period completeness. This cannot mislead today's outputs (the active lineup
+path is `pbp_fallback`, which never reads `boxv3_periods`, and pbp/possessions/lineups are
+complete for OT games), but it must be closed — real per-game period counts threaded into
+discovery — before the `quarter_box` seam activates at the next sportsdataverse pin bump.
