@@ -19,12 +19,15 @@ untouched -- this module only *adds* columns.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Iterable, Optional, Union
 
 import polars as pl
 
 from ..scrape.raw_store import raw_path
+
+logger = logging.getLogger(__name__)
 
 # out_col -> raw_store kind
 _RAW_FLAGS = (
@@ -48,14 +51,24 @@ def _dataset_game_ids(root: Union[str, Path], dataset_dir: str) -> set[str]:
 
     Returns:
         The set of ``game_id`` strings present across all parquet files
-        found, or an empty set if none exist.
+        found, or an empty set if none exist. A file that fails to read
+        (partially written / corrupt parquet) is skipped with a logged
+        warning rather than raising -- one bad file must not take down
+        the whole flags computation.
     """
     parquet_dir = Path(root) / "nba_stats" / dataset_dir / "parquet"
     if not parquet_dir.exists():
         return set()
     game_ids: set[str] = set()
     for path in sorted(parquet_dir.glob("*.parquet")):
-        game_ids.update(pl.read_parquet(path, columns=["game_id"])["game_id"].cast(pl.Utf8).to_list())
+        try:
+            game_ids.update(pl.read_parquet(path, columns=["game_id"])["game_id"].cast(pl.Utf8).to_list())
+        except Exception:
+            # Deliberately broad: a truncated/corrupt parquet file can surface as a polars
+            # ComputeError, a pyarrow error, or an underlying Rust-panic-wrapped exception --
+            # the failure mode isn't worth pinning to one type. Scoped to a single file inside
+            # the loop (never swallows the whole computation) and always logged, never silent.
+            logger.warning("availability: unreadable parquet %s -- treating as not-available", path)
     return game_ids
 
 
