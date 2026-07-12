@@ -148,6 +148,29 @@ def test_build_mega_lineups_joins_on_group_quantity() -> None:
     assert two["adv_pace"].to_list() == [99.0]
 
 
+def test_build_megas_assemble_from_disk_state(tmp_path) -> None:
+    # a re-run whose scrapes ALL fail must still rebuild full-width megas
+    # from the prior run's on-disk granular files (convergent, no downgrade)
+    from nba_data_build.leaguedash_cli import build
+
+    tag_dir = tmp_path / "wnba_stats_leaguedash"
+    tag_dir.mkdir(parents=True)
+    _tagged(pl.DataFrame({"player_id": [1], "pts": [30]})).write_parquet(
+        tag_dir / "player_stats_base_2024.parquet"
+    )
+    _tagged(pl.DataFrame({"player_id": [1], "off_rating": [118.0]})).write_parquet(
+        tag_dir / "player_stats_advanced_2024.parquet"
+    )
+
+    def always_fail(module: str, fn: str, kwargs: dict):
+        raise TimeoutError("down")
+
+    written = build([2024], ["wnba"], tmp_path, client=_client(always_fail))
+    assert written == {"wnba_stats_leaguedash/player_master": 1}
+    mega = pl.read_parquet(tag_dir / "player_master_2024.parquet")
+    assert {"pts", "adv_off_rating"} <= set(mega.columns)
+
+
 def test_fetch_variant_dict_payload_and_empty() -> None:
     v = Variant(table="x", slug="leaguedashplayerbiostats", entity_key="player_id")
     out = _client(

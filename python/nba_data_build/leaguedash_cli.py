@@ -90,8 +90,23 @@ def build(
                     continue
                 frames[v.table] = df
                 _write(out, tag, v.table, season, df)
-                written[f"{tag}/{v.table}"] = written.get(f"{tag}/{v.table}", 0) + df.height
-                logger.info("leaguedash_write table=%s season=%s rows=%s", v.table, season, df.height)
+                written[f"{tag}/{v.table}"] = (
+                    written.get(f"{tag}/{v.table}", 0) + df.height
+                )
+                logger.info(
+                    "leaguedash_write table=%s season=%s rows=%s",
+                    v.table,
+                    season,
+                    df.height,
+                )
+            # megas assemble from DISK state, not just this run's frames: a
+            # partial re-run (skipped tables keep their prior files) then
+            # converges to the full-width mega instead of overwriting it
+            # with a narrow one built from whatever happened to scrape.
+            for v in variants(league):
+                prior = out / tag / f"{v.table}_{season}.parquet"
+                if prior.exists():
+                    frames[v.table] = pl.read_parquet(prior)
             for mega in megas(league):
                 mdf = build_mega(mega, league, frames)
                 if mdf is None or mdf.is_empty():
@@ -109,19 +124,33 @@ def build(
 
 
 def _parser() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(description="Build + publish league-dash season datasets.")
-    ap.add_argument("--seasons", type=int, nargs="+", required=True, help="end-year seasons, e.g. 2024 2025")
+    ap = argparse.ArgumentParser(
+        description="Build + publish league-dash season datasets."
+    )
+    ap.add_argument(
+        "--seasons",
+        type=int,
+        nargs="+",
+        required=True,
+        help="end-year seasons, e.g. 2024 2025",
+    )
     ap.add_argument("--leagues", nargs="+", choices=_LEAGUES, default=list(_LEAGUES))
     ap.add_argument("--out", default="build_out/leaguedash", help="output directory")
     ap.add_argument("--repo", default=_REPO, help="release repo")
-    ap.add_argument("--publish", action="store_true", help="upload each league dir to its release")
-    ap.add_argument("--dry-run", action="store_true", help="plan publish without uploading")
+    ap.add_argument(
+        "--publish", action="store_true", help="upload each league dir to its release"
+    )
+    ap.add_argument(
+        "--dry-run", action="store_true", help="plan publish without uploading"
+    )
     return ap
 
 
 def main(argv: Optional[list[str]] = None) -> int:
     # long proxied job: make per-table progress visible in the redirected log
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
+    )
     args = _parser().parse_args(argv)
     out = Path(args.out)
     written = build(args.seasons, args.leagues, out)
