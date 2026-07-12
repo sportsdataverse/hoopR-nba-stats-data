@@ -133,18 +133,29 @@ def test_build_mega_lineups_joins_on_group_quantity() -> None:
         return _tagged(pl.DataFrame(rows))
 
     frames = {
-        # same group_id under two quantities must NOT cross-join
+        # same group_id under two quantities AND two teams (duo traded
+        # together, e.g. Olynyk-Agbaji UTA->TOR) must NOT cross-join
         "lineups_base": lu(
-            {"group_id": ["g", "g"], "group_quantity": [2, 5], "pts": [1, 2]}
+            {
+                "group_id": ["g", "g", "g"],
+                "team_id": [10, 10, 20],
+                "group_quantity": [2, 5, 2],
+                "pts": [1, 2, 3],
+            }
         ),
         "lineups_advanced": lu(
-            {"group_id": ["g", "g"], "group_quantity": [2, 5], "pace": [99.0, 101.0]}
+            {
+                "group_id": ["g", "g", "g"],
+                "team_id": [10, 10, 20],
+                "group_quantity": [2, 5, 2],
+                "pace": [99.0, 101.0, 95.0],
+            }
         ),
     }
     out = build_mega("lineups_master", "nba", frames)
     assert out is not None
-    assert out.height == 2
-    two = out.filter(pl.col("group_quantity") == 2)
+    assert out.height == 3  # no join inflation: team_id is a lineup key
+    two = out.filter((pl.col("group_quantity") == 2) & (pl.col("team_id") == 10))
     assert two["adv_pace"].to_list() == [99.0]
 
 

@@ -339,6 +339,12 @@ def build_mega(
     if spine is None or spine.is_empty():
         return None
     keys = [spine_v.entity_key, "season", "season_type", "league_id"]
+    if spine_v.entity_key == "group_id":
+        # group_id is a player-id composite, NOT team-unique: the same duo
+        # traded together appears under two teams. team_id disambiguates.
+        # (player/team spines must NOT add it — a traded player has one row
+        # whose team can drift between scrape windows, nulling his joins.)
+        keys.append("team_id")
     for s in spine_v.row_slices:  # slice tags join too (e.g. group_quantity), deduped
         for k in s:
             if k not in keys:
