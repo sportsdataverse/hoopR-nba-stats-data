@@ -147,7 +147,14 @@ def main(argv: Optional[list[str]] = None) -> int:
     for key, rows in sorted(written.items()):
         print(f"{key}: {rows} rows")
     if (args.publish or args.dry_run) and (out / _TAG).exists():
-        upload_artifacts(out / _TAG, _TAG, args.repo, dry_run=args.dry_run)
+        result = upload_artifacts(
+            out / _TAG, _TAG, args.repo, seasons=args.seasons, dry_run=args.dry_run
+        )
+        if result["failed"]:
+            print(
+                f"WARNING: {len(result['failed'])} file(s) failed to publish: {result['failed']}"
+            )
+            return 1
     return 0
 
 
