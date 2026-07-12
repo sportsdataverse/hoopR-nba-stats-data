@@ -22,7 +22,6 @@ from __future__ import annotations
 import argparse
 import logging
 from pathlib import Path
-from typing import Optional
 
 import polars as pl
 
@@ -54,7 +53,7 @@ def build(
     leagues: list[str],
     out: Path,
     *,
-    client: Optional[LeagueDashClient] = None,
+    client: LeagueDashClient | None = None,
 ) -> dict[str, int]:
     """Scrape the full cube to ``out/<tag>/<tag>_{season}.parquet`` (+ megas).
 
@@ -86,9 +85,7 @@ def build(
                 frames[v.table] = df
                 _write(out, tag, season, df)
                 written[tag] = written.get(tag, 0) + df.height
-                logger.info(
-                    "leaguedash_write tag=%s season=%s rows=%s", tag, season, df.height
-                )
+                logger.info("leaguedash_write tag=%s season=%s rows=%s", tag, season, df.height)
             for mega in megas(league):
                 mdf = build_mega(mega, league, frames)
                 if mdf is None or mdf.is_empty():
@@ -107,9 +104,7 @@ def build(
 
 
 def _parser() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(
-        description="Build + publish league-dash season datasets."
-    )
+    ap = argparse.ArgumentParser(description="Build + publish league-dash season datasets.")
     ap.add_argument(
         "--seasons",
         type=int,
@@ -120,16 +115,14 @@ def _parser() -> argparse.ArgumentParser:
     ap.add_argument("--leagues", nargs="+", choices=_LEAGUES, default=list(_LEAGUES))
     ap.add_argument("--out", default="build_out/leaguedash", help="output directory")
     ap.add_argument("--repo", default=_REPO, help="release repo")
-    ap.add_argument(
-        "--publish", action="store_true", help="upload each tag dir to its release"
-    )
-    ap.add_argument(
-        "--dry-run", action="store_true", help="plan publish without uploading"
-    )
+    ap.add_argument("--publish", action="store_true", help="upload each tag dir to its release")
+    ap.add_argument("--dry-run", action="store_true", help="plan publish without uploading")
     return ap
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
+    # long proxied job: make per-table progress visible in the redirected log
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     args = _parser().parse_args(argv)
     out = Path(args.out)
     written = build(args.seasons, args.leagues, out)
