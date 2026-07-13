@@ -21,24 +21,28 @@ def test_process_reads_raw_no_network():
 
 
 def test_process_uses_quarter_box_source():
-    # On the CURRENT pinned sdv-py rev, players_on_court_from_quarter_boxscores
-    # does not exist yet -- _quarter_box_oncourt's ImportError seam falls back
-    # to players_on_court_from_pbp, so every possession is genuinely stamped
-    # "pbp_fallback". This is the honest label for today's pin, not
-    # "quarter_box" (see the Critical-finding fix in from_raw.py).
+    # sdv-py @main now ships players_on_court_from_quarter_boxscores, so
+    # _quarter_box_oncourt's import resolves and the preferred quarter-box path
+    # runs -- every possession is stamped "quarter_box". (This assertion is a
+    # canary on a FLOATING dep: sportsdataverse is pinned to @main, so if
+    # upstream ever drops that symbol the seam silently reverts to the pbp
+    # fallback and the lineups we publish change source underneath us. That is
+    # exactly what this test is here to catch -- do not weaken it to accept
+    # either label.)
     pg = process_game(_ROOT, "0022300001")
-    assert pg.possessions["lineup_source"].unique().to_list() == ["pbp_fallback"]
+    assert pg.possessions["lineup_source"].unique().to_list() == ["quarter_box"]
 
 
-def test_process_uses_quarter_box_source_when_upstream_resolves(monkeypatch):
-    # Fake the future pin bump: make the upstream quarter-box function resolve
-    # and run, and assert the label flips to "quarter_box" -- pinning BOTH
-    # branches of the _quarter_box_oncourt seam so the test correctly flips
-    # the moment the real symbol lands upstream.
+def test_process_falls_back_when_upstream_symbol_absent(monkeypatch):
+    # The real upstream now ships players_on_court_from_quarter_boxscores, so the
+    # live path (test above) can no longer reach the ImportError branch. Simulate
+    # an upstream WITHOUT the symbol to keep the fallback covered: `from X import
+    # missing_name` raises ImportError, the seam catches it, and the label must be
+    # the honest "pbp_fallback" -- never a hardcoded "quarter_box" constant.
     calls: list[str] = []
 
-    def _fake_quarter_boxscores(enh, periods, *, home_team_id, away_team_id):
-        calls.append("quarter_box")
+    def _fake_players_on_court_from_pbp(enh, box_raw, *, home_team_id, away_team_id):
+        calls.append("pbp_fallback")
         return pl.DataFrame(
             {
                 "home_player_1": [1],
@@ -54,25 +58,21 @@ def test_process_uses_quarter_box_source_when_upstream_resolves(monkeypatch):
             }
         )
 
-    def _fake_players_on_court_from_pbp(*args, **kwargs):
-        calls.append("pbp_fallback")
-        raise AssertionError("pbp fallback must not run when the upstream import resolves")
-
+    # No players_on_court_from_quarter_boxscores attribute -> ImportError on import.
     fake_module = type(
         "FakeNbaLineups",
         (),
-        {
-            "players_on_court_from_quarter_boxscores": staticmethod(_fake_quarter_boxscores),
-            "players_on_court_from_pbp": staticmethod(_fake_players_on_court_from_pbp),
-        },
+        {"players_on_court_from_pbp": staticmethod(_fake_players_on_court_from_pbp)},
     )()
 
     monkeypatch.setitem(sys.modules, "sportsdataverse.nba.nba_lineups", fake_module)
 
     enh = pl.DataFrame({"order_index": [1]})
-    oc, used = from_raw._quarter_box_oncourt(enh, {}, {}, home_team_id=1, away_team_id=2)
-    assert used == "quarter_box"
-    assert calls == ["quarter_box"]
+    oc, used = from_raw._quarter_box_oncourt(
+        enh, {}, {}, home_team_id=1, away_team_id=2
+    )
+    assert used == "pbp_fallback"
+    assert calls == ["pbp_fallback"]
     assert oc.height == 1
 
 
