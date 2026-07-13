@@ -40,18 +40,23 @@ def _gh_release_exists(tag: str, repo: str) -> bool:
 
 
 def plan_uploads(
-    artifacts_dir: Path, seasons: Optional[Iterable[int]] = None
+    artifacts_dir: Path,
+    seasons: Optional[Iterable[int]] = None,
+    *,
+    pattern: str = "*.parquet",
 ) -> list[Path]:
-    """Return the *.parquet files under *artifacts_dir* (sorted).
+    """Return the files under *artifacts_dir* matching *pattern* (sorted).
 
     ``seasons``, when given, scopes this to only files ending in
     ``_{season}.parquet`` for one of the given seasons -- otherwise every
     prior season's files sitting in the same directory get globbed in too,
     which turns a single-season publish call into an ever-growing re-upload
     of the whole backfill-to-date (O(n^2) across a multi-season backfill).
+    Season scoping only makes sense for the default parquet pattern; a
+    non-parquet *pattern* (e.g. a model-card ``*.json``) is returned unscoped.
     """
-    files = sorted(Path(artifacts_dir).glob("*.parquet"))
-    if seasons is None:
+    files = sorted(Path(artifacts_dir).glob(pattern))
+    if seasons is None or pattern != "*.parquet":
         return files
     suffixes = tuple(f"_{s}.parquet" for s in seasons)
     return [f for f in files if f.name.endswith(suffixes)]
@@ -101,6 +106,8 @@ def upload_artifacts(
     repo: str,
     *,
     seasons: Optional[Iterable[int]] = None,
+    pattern: str = "*.parquet",
+    notes: Optional[str] = None,
     dry_run: bool = False,
     runner: Optional[Runner] = None,
     exists_check: Optional[ExistsCheck] = None,
@@ -111,6 +118,11 @@ def upload_artifacts(
     seasons this invocation actually built, not the whole directory. Each
     file uploads best-effort: one failed ``gh release upload`` is logged and
     skipped rather than aborting every file still queued behind it.
+
+    ``pattern`` selects a non-default asset set (e.g. a model-card
+    ``"*_card.json"`` sidecar); season scoping applies only to the default
+    parquet pattern. ``notes`` overrides the release body used when the
+    release has to be created (existing releases are never edited).
 
     ``runner`` (default: real `gh` subprocess) and ``exists_check`` are injectable for tests.
 
@@ -123,7 +135,7 @@ def upload_artifacts(
     # FIX 4: drop needless lambda — _gh_runner already matches the Runner signature.
     run = runner or _gh_runner
     exists = exists_check or _gh_release_exists
-    files = plan_uploads(artifacts_dir, seasons)
+    files = plan_uploads(artifacts_dir, seasons, pattern=pattern)
     if dry_run:
         return {"uploaded": 0, "failed": [], "files": [f.name for f in files]}
     if not exists(tag, repo):
@@ -137,7 +149,7 @@ def upload_artifacts(
                 "--title",
                 tag,
                 "--notes",
-                f"{tag} datasets (NBA model zoo)",
+                notes or f"{tag} datasets (NBA model zoo)",
             ]
         )
     uploaded: list[str] = []

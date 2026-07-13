@@ -15,7 +15,10 @@ def _mk(tmp_path):
 
 def test_plan_uploads_finds_parquet(tmp_path):
     d = _mk(tmp_path)
-    assert sorted(p.name for p in plan_uploads(d)) == ["nba_rapm_2023.parquet", "nba_rapm_2024.parquet"]
+    assert sorted(p.name for p in plan_uploads(d)) == [
+        "nba_rapm_2023.parquet",
+        "nba_rapm_2024.parquet",
+    ]
 
 
 def test_upload_creates_release_when_missing_then_uploads(tmp_path):
@@ -39,7 +42,11 @@ def test_upload_skips_create_when_release_exists(tmp_path):
     d = _mk(tmp_path)
     calls = []
     upload_artifacts(
-        d, tag="nba_stats_rapm", repo="r/r", runner=lambda args: calls.append(args), exists_check=lambda t, r: True
+        d,
+        tag="nba_stats_rapm",
+        repo="r/r",
+        runner=lambda args: calls.append(args),
+        exists_check=lambda t, r: True,
     )
     assert not any(c[:2] == ["release", "create"] for c in calls)
 
@@ -48,14 +55,52 @@ def test_dry_run_uploads_nothing(tmp_path):
     d = _mk(tmp_path)
     calls = []
     res = upload_artifacts(
-        d, tag="t", repo="r/r", dry_run=True, runner=lambda args: calls.append(args), exists_check=lambda t, r: True
+        d,
+        tag="t",
+        repo="r/r",
+        dry_run=True,
+        runner=lambda args: calls.append(args),
+        exists_check=lambda t, r: True,
     )
     assert calls == [] and res["uploaded"] == 0
 
 
+def test_plan_uploads_pattern_selects_non_parquet(tmp_path):
+    d = _mk(tmp_path)
+    (d / "nba_player_impact_card.json").write_text("{}")
+    names = [p.name for p in plan_uploads(d, pattern="*_card.json")]
+    assert names == ["nba_player_impact_card.json"]
+
+
+def test_plan_uploads_pattern_ignores_season_scoping(tmp_path):
+    """Season scoping only applies to the default parquet pattern."""
+    d = _mk(tmp_path)
+    (d / "nba_player_impact_card.json").write_text("{}")
+    names = [p.name for p in plan_uploads(d, seasons=[2023], pattern="*_card.json")]
+    assert names == ["nba_player_impact_card.json"]
+
+
+def test_upload_notes_used_on_release_create(tmp_path):
+    d = _mk(tmp_path)
+    calls = []
+    upload_artifacts(
+        d,
+        tag="nba_player_impact",
+        repo="r/r",
+        notes="custom release body",
+        runner=lambda args: calls.append(args),
+        exists_check=lambda t, r: False,
+    )
+    create = next(c for c in calls if c[:2] == ["release", "create"])
+    assert create[create.index("--notes") + 1] == "custom release body"
+
+
 def test_published_seasons_parses_asset_names():
     fake = "nba_rapm_2021.parquet\nnba_rapm_2023.parquet\nother.txt\n"
-    assert published_seasons("nba_stats_rapm", "r/r", runner=lambda args: fake) == {2021, 2023}
+    assert published_seasons("nba_stats_rapm", "r/r", runner=lambda args: fake) == {
+        2021,
+        2023,
+    }
 
 
 def test_published_seasons_returns_empty_when_release_absent():
