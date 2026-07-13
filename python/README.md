@@ -13,6 +13,38 @@ hangs on cloud IPs).
 
 Offline tests: `uv run pytest -q`. Live compile: `SDV_PY_NBA_STATS_LIVE=1 uv run pytest tests/test_live.py`.
 
+## `nba_model_publish` — consolidated model-output datasets
+
+Sibling package to `nba_data_build`: builds the **consolidated per-season
+player-impact table** (`nba_player_impact_{season}.parquet` — RAPM, adj-RAPM,
+SPM, BPM 2.0, WAR, DARKO joined on `player_id`, one row per player-season)
+plus a model-card sidecar, and uploads to the central
+`sportsdataverse/sportsdataverse-data` release tag `nba_player_impact`.
+Reuses `nba_data_build.publish` for uploads (season-scoped, resilient,
+release auto-create). The single-model `nba_stats_rapm` /
+`nba_stats_possessions` tags stay owned by `nba_data_build`.
+
+```sh
+cd python && uv sync
+# build + publish (LIVE stats.nba.com — droplet/residential + proxy only):
+uv run python -m nba_model_publish impact --seasons 2000:2024 --out out/impact \
+    --cache-dir /data/nba_possessions
+# publish an already-built directory (fully network-free with --dry-run):
+uv run python -m nba_model_publish upload --dir out/impact --tag nba_player_impact --dry-run
+```
+
+- **Priors flow forward within an invocation**: adj-RAPM's prior is the
+  previous season's SPM; DARKO forecasts need the panel to span >= 2 seasons.
+  For a single-season refresh (cron), pass trailing seasons — e.g.
+  `--seasons 2021:2025` — the per-game possession cache makes them cheap and
+  re-uploading with `--clobber` is safe.
+- **WAR conventions**: `pts_per_win` is calibrated per season from the team
+  game logs; `replacement_level` defaults to `-2.0` per 100 (basketball-
+  reference VORP convention), overridable via `--replacement-level`.
+- Hermetic tests: `tests/test_model_publish_builders.py` stubs the model seam
+  and verifies orchestration (join guards, prior threading, schema stability);
+  `tests/test_model_publish_cli.py` covers the network-free upload path.
+
 ## Notes
 
 - **`--dry-run` still compiles.** `--dry-run` scopes only the *publish* step — it plans
