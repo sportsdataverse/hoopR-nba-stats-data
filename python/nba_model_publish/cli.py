@@ -1,0 +1,201 @@
+"""CLI entrypoint for nba_model_publish.
+
+Usage::
+
+    python -m nba_model_publish impact \\
+        --seasons 2000:2024 \\
+        --out out/impact \\
+        [--lineup-source auto] \\
+        [--cache-dir /data/nba_possessions] \\
+        [--tag nba_player_impact] \\
+        [--repo sportsdataverse/sportsdataverse-data] \\
+        [--dry-run]
+
+    python -m nba_model_publish upload \\
+        --dir out/impact \\
+        --tag nba_player_impact \\
+        [--pattern "*.parquet"] \\
+        [--repo sportsdataverse/sportsdataverse-data] \\
+        [--dry-run]
+
+``impact`` compiles each season's possessions (cached + resumable via the
+per-game parquet cache), runs the impact model suite, writes one
+``nba_player_impact_{season}.parquet`` per season plus a model-card sidecar,
+and uploads the built seasons to the release tag. Requires live
+stats.nba.com access (droplet + proxy host — cloud IPs hang).
+
+``upload`` publishes an already-built directory without recomputing
+anything; with ``--dry-run`` it is fully network-free (hermetic).
+"""
+
+from __future__ import annotations
+
+import argparse
+
+from nba_data_build.publish import upload_artifacts
+
+_REPO_DEFAULT = "sportsdataverse/sportsdataverse-data"
+
+_IMPACT_RELEASE_NOTES = (
+    "NBA player-impact model outputs (RAPM / adj-RAPM / SPM / BPM / DARKO / WAR; "
+    "one parquet per season, one row per player-season; stats.nba.com-sourced; "
+    "Python-built by hoopR-nba-stats-data/python/nba_model_publish)."
+)
+
+
+def _parse_seasons(spec: str) -> list[int]:
+    """Parse a ``"start:end"`` (inclusive) or single ``"year"`` season spec.
+
+    Args:
+        spec: Either ``"2022:2024"`` (inclusive range) or a single ``"2023"``.
+
+    Returns:
+        Ascending list of seasons.
+
+    Raises:
+        argparse.ArgumentTypeError: On malformed input or an inverted range.
+    """
+    try:
+        if ":" in spec:
+            lo_s, hi_s = spec.split(":", 1)
+            lo, hi = int(lo_s), int(hi_s)
+        else:
+            lo = hi = int(spec)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(f"invalid --seasons {spec!r}: expected 'YYYY' or 'YYYY:YYYY'") from exc
+    if hi < lo:
+        raise argparse.ArgumentTypeError(f"invalid --seasons {spec!r}: end {hi} precedes start {lo}")
+    return list(range(lo, hi + 1))
+
+
+def _add_repo_dry(p: argparse.ArgumentParser) -> None:
+    """Attach the shared ``--repo`` + ``--dry-run`` options to a subparser."""
+    p.add_argument(
+        "--repo",
+        default=_REPO_DEFAULT,
+        help="Target GitHub repository (owner/name).",
+    )
+    p.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Build/plan but do not upload.",
+    )
+
+
+def build_parser() -> argparse.ArgumentParser:
+    ap = argparse.ArgumentParser(prog="nba_model_publish")
+    sub = ap.add_subparsers(dest="cmd", required=True)
+
+    imp = sub.add_parser(
+        "impact",
+        help="Build + upload per-season NBA player-impact tables (RAPM/adj-RAPM/SPM/BPM/DARKO/WAR).",
+    )
+    imp.add_argument(
+        "--seasons",
+        required=True,
+        type=_parse_seasons,
+        help="Season range 'YYYY:YYYY' (inclusive) or a single 'YYYY'; "
+        "seasons are built earliest-to-latest so multi-season priors flow forward.",
+    )
+    imp.add_argument(
+        "--out",
+        required=True,
+        help="Output directory for nba_player_impact_{season}.parquet files.",
+    )
+    imp.add_argument(
+        "--lineup-source",
+        default="auto",
+        help="Passed through to compile_nba_season (default 'auto').",
+    )
+    imp.add_argument(
+        "--cache-dir",
+        default=None,
+        help="Possession per-game parquet cache directory "
+        "(default: $SDV_PY_NBA_CACHE_DIR or ~/.sdv_py_nba_cache/possessions).",
+    )
+    imp.add_argument(
+        "--replacement-level",
+        type=float,
+        default=-2.0,
+        help="WAR replacement level, points per 100 possessions "
+        "(default -2.0, the basketball-reference VORP convention).",
+    )
+    imp.add_argument("--tag", default="nba_player_impact", help="GitHub release tag.")
+    _add_repo_dry(imp)
+
+    up = sub.add_parser(
+        "upload",
+        help="Upload an already-built artifact directory to a release (no recompute; --dry-run is fully network-free).",
+    )
+    up.add_argument(
+        "--dir",
+        required=True,
+        dest="artifacts_dir",
+        help="Directory containing the built artifacts.",
+    )
+    up.add_argument("--tag", required=True, help="GitHub release tag.")
+    up.add_argument(
+        "--pattern",
+        default="*.parquet",
+        help="Glob (relative to --dir) selecting the assets to upload.",
+    )
+    _add_repo_dry(up)
+
+    return ap
+
+
+def _print_result(res: dict, repo: str, tag: str, dry_run: bool) -> None:
+    suffix = " (dry-run)" if dry_run else ""
+    failed = res.get("failed") or []
+    failed_part = f" failed={len(failed)}" if failed else ""
+    print(f"publish: uploaded={res['uploaded']} files={len(res['files'])}{failed_part} -> {repo}:{tag}{suffix}")
+
+
+def main(argv=None) -> int:
+    args = build_parser().parse_args(argv)
+    if args.cmd == "impact":
+        from .builders import build_nba_player_impact
+
+        built = build_nba_player_impact(
+            args.seasons,
+            args.out,
+            lineup_source=args.lineup_source,
+            cache_dir=args.cache_dir,
+            replacement_level=args.replacement_level,
+        )
+        total_rows = sum(b["rows"] for b in built)
+        res = upload_artifacts(
+            args.out,
+            args.tag,
+            args.repo,
+            seasons=[b["season"] for b in built],
+            notes=_IMPACT_RELEASE_NOTES,
+            dry_run=args.dry_run,
+        )
+        card_res = upload_artifacts(
+            args.out,
+            args.tag,
+            args.repo,
+            pattern="*_card.json",
+            notes=_IMPACT_RELEASE_NOTES,
+            dry_run=args.dry_run,
+        )
+        suffix = " (dry-run)" if args.dry_run else ""
+        failed = list(res.get("failed") or []) + list(card_res.get("failed") or [])
+        failed_part = f" failed={len(failed)}" if failed else ""
+        print(
+            f"publish: seasons={len(built)} rows={total_rows} "
+            f"uploaded={res['uploaded'] + card_res['uploaded']} "
+            f"files={len(res['files']) + len(card_res['files'])}"
+            f"{failed_part} -> {args.repo}:{args.tag}{suffix}"
+        )
+    elif args.cmd == "upload":
+        res = upload_artifacts(
+            args.artifacts_dir,
+            args.tag,
+            args.repo,
+            pattern=args.pattern,
+            dry_run=args.dry_run,
+        )
+        _print_result(res, args.repo, args.tag, args.dry_run)
+    return 0

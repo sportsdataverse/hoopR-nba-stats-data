@@ -19,7 +19,9 @@ def _fake_transport(tmp_path):
 
     def transport(kind, gid, **params):
         d = kind_dir.get(kind, "boxv3_periods")
-        return json.loads((tmp_path / "nba_stats" / "json" / d / f"{gid}.json").read_text())
+        return json.loads(
+            (tmp_path / "nba_stats" / "json" / d / f"{gid}.json").read_text()
+        )
 
     return transport
 
@@ -30,14 +32,33 @@ def test_dry_run_builds_but_does_not_publish(tmp_path, monkeypatch):
     monkeypatch.setattr(
         pipeline_cli,
         "_discover_finished",
-        lambda season, root: [{"game_id": "0022300001", "game_status": 3, "home_team_id": 1610612744, "n_periods": 4}],
+        lambda season, root: [
+            {
+                "game_id": "0022300001",
+                "game_status": 3,
+                "home_team_id": 1610612744,
+                "n_periods": 4,
+            }
+        ],
     )
-    monkeypatch.setattr(pipeline_cli, "_make_client", lambda: V3Client(transport=_fake_transport(tmp_path)))
+    monkeypatch.setattr(
+        pipeline_cli,
+        "_make_client",
+        lambda: V3Client(transport=_fake_transport(tmp_path)),
+    )
     published = {"called": False}
-    monkeypatch.setattr(pipeline_cli, "_publish", lambda *a, **k: published.__setitem__("called", True))
+    monkeypatch.setattr(
+        pipeline_cli, "_publish", lambda *a, **k: published.__setitem__("called", True)
+    )
     rc = pipeline_cli.main(["--seasons", "2023", "--root", str(tmp_path), "--dry-run"])
     assert rc == 0
-    assert (tmp_path / "nba_stats" / "possessions" / "parquet" / "nba_possessions_v3_2023.parquet").exists()
+    assert (
+        tmp_path
+        / "nba_stats"
+        / "possessions"
+        / "parquet"
+        / "nba_possessions_v3_2023.parquet"
+    ).exists()
     assert published["called"] is False  # dry-run must NOT publish
 
 
@@ -53,7 +74,9 @@ def test_publish_flag_alone_calls_publish(tmp_path, monkeypatch):
     monkeypatch.setattr(pipeline_cli, "_discover_finished", lambda s, r: [])
     called = {}
     monkeypatch.setattr(
-        pipeline_cli, "_publish", lambda root, seasons, **k: called.update(root=root, seasons=seasons, kwargs=k)
+        pipeline_cli,
+        "_publish",
+        lambda root, seasons, **k: called.update(root=root, seasons=seasons, kwargs=k),
     )
     rc = pipeline_cli.main(["--seasons", "2023", "--root", str(tmp_path), "--publish"])
     assert rc == 0
@@ -64,31 +87,58 @@ def test_dry_run_wins_when_both_flags_set(tmp_path, monkeypatch):
     """--dry-run alongside --publish must still suppress the publish call."""
     monkeypatch.setattr(pipeline_cli, "_discover_finished", lambda s, r: [])
     published = {"called": False}
-    monkeypatch.setattr(pipeline_cli, "_publish", lambda *a, **k: published.__setitem__("called", True))
-    rc = pipeline_cli.main(["--seasons", "2023", "--root", str(tmp_path), "--publish", "--dry-run"])
+    monkeypatch.setattr(
+        pipeline_cli, "_publish", lambda *a, **k: published.__setitem__("called", True)
+    )
+    rc = pipeline_cli.main(
+        ["--seasons", "2023", "--root", str(tmp_path), "--publish", "--dry-run"]
+    )
     assert rc == 0
     assert published["called"] is False
 
 
-def test_dry_run_writes_schedule_snapshot_and_flips_availability_true(tmp_path, monkeypatch):
+def test_dry_run_writes_schedule_snapshot_and_flips_availability_true(
+    tmp_path, monkeypatch
+):
     """End-to-end: after a real rollup, the season snapshot + master both show POSS/LINEUP True."""
     shutil.copytree("tests/fixtures/raw/nba_stats", tmp_path / "nba_stats")
     monkeypatch.setattr(
         pipeline_cli,
         "_discover_finished",
-        lambda season, root: [{"game_id": "0022300001", "game_status": 3, "home_team_id": 1610612744, "n_periods": 4}],
+        lambda season, root: [
+            {
+                "game_id": "0022300001",
+                "game_status": 3,
+                "home_team_id": 1610612744,
+                "n_periods": 4,
+            }
+        ],
     )
-    monkeypatch.setattr(pipeline_cli, "_make_client", lambda: V3Client(transport=_fake_transport(tmp_path)))
-    monkeypatch.setattr(pipeline_cli, "_publish", lambda *a, **k: pytest.fail("must not be called"))
+    monkeypatch.setattr(
+        pipeline_cli,
+        "_make_client",
+        lambda: V3Client(transport=_fake_transport(tmp_path)),
+    )
+    monkeypatch.setattr(
+        pipeline_cli, "_publish", lambda *a, **k: pytest.fail("must not be called")
+    )
 
     rc = pipeline_cli.main(["--seasons", "2023", "--root", str(tmp_path), "--dry-run"])
     assert rc == 0
 
-    snapshot = pl.read_parquet(tmp_path / "nba_stats" / "schedule_v3" / "parquet" / "nba_schedule_v3_2023.parquet")
+    snapshot = pl.read_parquet(
+        tmp_path
+        / "nba_stats"
+        / "schedule_v3"
+        / "parquet"
+        / "nba_schedule_v3_2023.parquet"
+    )
     row = snapshot.filter(pl.col("game_id") == "0022300001").to_dicts()[0]
     assert row["POSS"] is True and row["LINEUP"] is True and row["PBP_V3"] is True
 
-    master = pl.read_parquet(tmp_path / "nba_stats" / "nba_stats_schedule_master.parquet")
+    master = pl.read_parquet(
+        tmp_path / "nba_stats" / "nba_stats_schedule_master.parquet"
+    )
     mrow = master.filter(pl.col("game_id") == "0022300001").to_dicts()[0]
     assert mrow["POSS"] is True and mrow["LINEUP"] is True
 
@@ -118,7 +168,9 @@ def test_master_upsert_preserves_other_seasons(tmp_path):
     )
     merged = pipeline_cli._upsert_master_flags(prior, new_season)
     old_row = merged.filter(pl.col("game_id") == "0022200001").to_dicts()[0]
-    assert old_row["POSS"] is True and old_row["LINEUP"] is True  # untouched by this run
+    assert (
+        old_row["POSS"] is True and old_row["LINEUP"] is True
+    )  # untouched by this run
     new_row = merged.filter(pl.col("game_id") == "0022300001").to_dicts()[0]
     assert new_row["POSS"] is False and new_row["PBP_V3"] is True
 
@@ -135,14 +187,22 @@ def test_publish_stages_explicit_path_and_commits_preserved_subject(tmp_path):
     assert calls[1] == ["add", "nba_stats"]
     assert calls[2][:2] == ["commit", "-m"]
     assert calls[2][2] == "NBA Stats Update (Start: 2022 End: 2024)"
-    assert result == {"committed": True, "subject": "NBA Stats Update (Start: 2022 End: 2024)", "target": "commit"}
+    assert result == {
+        "committed": True,
+        "subject": "NBA Stats Update (Start: 2022 End: 2024)",
+        "target": "commit",
+    }
 
 
 def test_publish_noop_when_nothing_staged(tmp_path):
     """An empty `git status --porcelain` means nothing to commit -- _publish must not add/commit."""
     calls = []
-    result = pipeline_cli._publish(tmp_path, [2023], git_runner=lambda args: calls.append(args) or "")
-    assert calls == [["status", "--porcelain", "--", "nba_stats"]]  # never reached add/commit
+    result = pipeline_cli._publish(
+        tmp_path, [2023], git_runner=lambda args: calls.append(args) or ""
+    )
+    assert calls == [
+        ["status", "--porcelain", "--", "nba_stats"]
+    ]  # never reached add/commit
     assert result["committed"] is False
 
 
@@ -161,14 +221,27 @@ def test_publish_target_release_mirrors_rollups(tmp_path):
         target="release",
         git_runner=lambda args: git_calls.append(args) or "M nba_stats/x",
         runner=lambda args: gh_calls.append(args) or "",
+        exists_check=lambda tag, repo: False,  # hermetic: never probe the real remote
     )
     assert result["committed"] is True
-    assert set(result["release_mirror"]) == {"nba_stats_pbpv3", "nba_stats_possessions_v3", "nba_stats_lineups_v3"}
+    assert set(result["release_mirror"]) == {
+        "nba_stats_pbpv3",
+        "nba_stats_possessions_v3",
+        "nba_stats_lineups_v3",
+    }
     assert any(c[:2] == ["release", "create"] for c in gh_calls)
 
 
 def test_help_lists_expected_flags():
     parser = pipeline_cli.build_pipeline_parser()
     help_text = parser.format_help()
-    for flag in ("--seasons", "--root", "--rescrape", "--dry-run", "--publish", "--target", "--cache-dir"):
+    for flag in (
+        "--seasons",
+        "--root",
+        "--rescrape",
+        "--dry-run",
+        "--publish",
+        "--target",
+        "--cache-dir",
+    ):
         assert flag in help_text
