@@ -62,9 +62,13 @@ def _parse_seasons(spec: str) -> list[int]:
         else:
             lo = hi = int(spec)
     except ValueError as exc:
-        raise argparse.ArgumentTypeError(f"invalid --seasons {spec!r}: expected 'YYYY' or 'YYYY:YYYY'") from exc
+        raise argparse.ArgumentTypeError(
+            f"invalid --seasons {spec!r}: expected 'YYYY' or 'YYYY:YYYY'"
+        ) from exc
     if hi < lo:
-        raise argparse.ArgumentTypeError(f"invalid --seasons {spec!r}: end {hi} precedes start {lo}")
+        raise argparse.ArgumentTypeError(
+            f"invalid --seasons {spec!r}: end {hi} precedes start {lo}"
+        )
     return list(range(lo, hi + 1))
 
 
@@ -120,6 +124,14 @@ def build_parser() -> argparse.ArgumentParser:
         help="WAR replacement level, points per 100 possessions "
         "(default -2.0, the basketball-reference VORP convention).",
     )
+    imp.add_argument(
+        "--no-proxy",
+        action="store_true",
+        help="Fetch stats.nba.com DIRECTLY instead of through the ProxyBonanza pool. "
+        "Only correct from a residential IP -- stats.nba.com HANGS (does not error) on "
+        "datacenter/cloud IPs, so an unattended/droplet run without a proxy will stall, "
+        "not fail loudly. Default: rotate through the pool (PROXY_ENDPOINT/_KEY/_PKG).",
+    )
     imp.add_argument("--tag", default="nba_player_impact", help="GitHub release tag.")
     _add_repo_dry(imp)
 
@@ -148,7 +160,36 @@ def _print_result(res: dict, repo: str, tag: str, dry_run: bool) -> None:
     suffix = " (dry-run)" if dry_run else ""
     failed = res.get("failed") or []
     failed_part = f" failed={len(failed)}" if failed else ""
-    print(f"publish: uploaded={res['uploaded']} files={len(res['files'])}{failed_part} -> {repo}:{tag}{suffix}")
+    print(
+        f"publish: uploaded={res['uploaded']} files={len(res['files'])}{failed_part} -> {repo}:{tag}{suffix}"
+    )
+
+
+def _resolve_proxy_provider(no_proxy: bool):
+    """Build the rotating proxy provider, or ``None`` for a direct (residential) run.
+
+    Proxy is the DEFAULT: stats.nba.com hangs rather than errors on datacenter IPs,
+    so an unattended run that silently forgot its proxy would stall for hours instead
+    of failing. Refusing to start beats hanging. ``--no-proxy`` is the explicit opt-out.
+    """
+    if no_proxy:
+        print(
+            "impact: --no-proxy -- fetching stats.nba.com directly (residential IP only)"
+        )
+        return None
+
+    from nba_data_build.scrape.proxy import RoundRobin, load_proxies
+
+    proxies = load_proxies()
+    if not proxies:
+        raise SystemExit(
+            "impact: no proxies available (PROXY_ENDPOINT / PROXY_KEY / PROXY_PKG unset "
+            "or the vendor API is unreachable). stats.nba.com HANGS on datacenter IPs, so "
+            "this would stall rather than fail. Set the proxy env vars, or pass --no-proxy "
+            "if you are on a residential IP."
+        )
+    print(f"impact: rotating through {len(proxies)} proxies")
+    return RoundRobin(proxies).next
 
 
 def main(argv=None) -> int:
@@ -159,6 +200,7 @@ def main(argv=None) -> int:
         built = build_nba_player_impact(
             args.seasons,
             args.out,
+            proxy_provider=_resolve_proxy_provider(args.no_proxy),
             lineup_source=args.lineup_source,
             cache_dir=args.cache_dir,
             replacement_level=args.replacement_level,

@@ -251,3 +251,64 @@ def test_join_key_dtype_guard(stubbed, monkeypatch, tmp_path):
     monkeypatch.setattr(B, "nba_adj_rapm", lambda poss, prior, **kw: bad)
     with pytest.raises(AssertionError, match="player_id dtype"):
         B.build_nba_player_impact([2022], tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# Proxy threading. stats.nba.com HANGS (does not error) on datacenter IPs, so a
+# surface that quietly fetches unproxied stalls the whole run instead of failing.
+# The builder touches FOUR network surfaces -- proxying only the compile is the
+# bug this pins.
+# ---------------------------------------------------------------------------
+
+
+def test_proxied_injects_a_fresh_proxy_per_call():
+    pool = iter(["http://p1:1", "http://p2:2"])
+    seen = []
+
+    def wrapper(season, *, proxy_url=None):
+        seen.append((season, proxy_url))
+        return "ok"
+
+    f = B._proxied(wrapper, lambda: next(pool))
+    f("2023-24")
+    f("2024-25")
+    # rotates -- a static proxy_url would burn one exit IP across a whole backfill
+    assert seen == [("2023-24", "http://p1:1"), ("2024-25", "http://p2:2")]
+
+
+def test_proxied_without_provider_returns_wrapper_untouched():
+    def wrapper(season):
+        return "ok"
+
+    assert B._proxied(wrapper, None) is wrapper  # local/residential runs stay direct
+
+
+def test_build_threads_proxy_to_all_four_network_surfaces(stubbed, tmp_path, monkeypatch):
+    captured: dict = {}
+
+    def _cap(name, orig, key):
+        def _f(*a, **kw):
+            captured[name] = kw.get(key)
+            return orig(*a, **kw)
+
+        return _f
+
+    monkeypatch.setattr(
+        B, "compile_nba_season", _cap("compile", B.compile_nba_season, "proxy_provider")
+    )
+    monkeypatch.setattr(B, "nba_box_logs", _cap("box_logs", B.nba_box_logs, "fetch"))
+    monkeypatch.setattr(
+        B, "nba_player_positions", _cap("positions", B.nba_player_positions, "fetch")
+    )
+    monkeypatch.setattr(B, "nba_player_ages", _cap("ages", B.nba_player_ages, "fetch"))
+
+    def provider():
+        return "http://p:1"
+
+    B.build_nba_player_impact([2023], tmp_path, proxy_provider=provider)
+
+    assert captured["compile"] is provider  # possession compile rotates per game
+    # ...and the OTHER three (leaguegamelog / playerindex / leaguedashplayerbiostats)
+    # each got a proxied fetch seam -- not left fetching from the host's real IP.
+    for surface in ("box_logs", "positions", "ages"):
+        assert captured[surface] is not None, f"{surface} would fetch UNPROXIED and hang"

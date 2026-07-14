@@ -4,6 +4,7 @@ import argparse
 
 import pytest
 
+import nba_model_publish.cli as cli
 from nba_model_publish.cli import _parse_seasons, main
 
 
@@ -57,3 +58,31 @@ def test_upload_subcommand_pattern_selects_card(tmp_path, capsys):
     assert rc == 0
     out = capsys.readouterr().out
     assert "files=1" in out
+
+
+# ---------------------------------------------------------------------------
+# Proxy resolution. Refusing to start beats hanging: an unattended run that
+# silently lost its proxy would stall for hours on stats.nba.com, not error.
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_proxy_provider_refuses_to_start_with_an_empty_pool(monkeypatch):
+    monkeypatch.setattr("nba_data_build.scrape.proxy.load_proxies", lambda: [])
+    with pytest.raises(SystemExit, match="no proxies available"):
+        cli._resolve_proxy_provider(no_proxy=False)
+
+
+def test_resolve_proxy_provider_rotates_the_pool(monkeypatch):
+    monkeypatch.setattr(
+        "nba_data_build.scrape.proxy.load_proxies",
+        lambda: [
+            {"ip": "1.1.1.1", "port": 8000, "login": "u", "password": "p"},
+            {"ip": "2.2.2.2", "port": 8000, "login": "u", "password": "p"},
+        ],
+    )
+    nxt = cli._resolve_proxy_provider(no_proxy=False)
+    assert nxt() != nxt()  # successive calls hand out different exit IPs
+
+
+def test_no_proxy_opts_out_explicitly():
+    assert cli._resolve_proxy_provider(no_proxy=True) is None

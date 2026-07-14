@@ -33,7 +33,7 @@ from __future__ import annotations
 import datetime as _dt
 import json
 from pathlib import Path
-from typing import Optional
+from typing import Any, Callable, Optional
 
 import polars as pl
 from sportsdataverse.nba import (
@@ -55,6 +55,14 @@ from sportsdataverse.nba import (
 # nba_rapm is NOT re-exported from the sportsdataverse.nba package (verified on
 # main) — it lives in the nba_rapm submodule.
 from sportsdataverse.nba.nba_rapm import nba_rapm
+from sportsdataverse.nba.nba_stats import (
+    nba_stats_leaguedashplayerbiostats,
+    nba_stats_leaguegamelog,
+    nba_stats_playerindex,
+)
+
+#: Zero-arg callable yielding a proxy URL (``RoundRobin.next`` matches this).
+ProxyProvider = Callable[[], Optional[str]]
 
 #: basketball-reference VORP replacement level, points per 100 possessions
 #: relative to league average. ``nba_war`` requires an explicit value.
@@ -147,6 +155,25 @@ def _write_model_card(
     return path
 
 
+def _proxied(
+    wrapper: Callable[..., Any], provider: Optional[ProxyProvider]
+) -> Callable[..., Any]:
+    """Wrap an ``nba_stats_*`` callable so each call draws a fresh proxy from *provider*.
+
+    ``nba_box_logs`` / ``nba_player_positions`` / ``nba_player_ages`` each take a
+    ``fetch=`` seam documented as "an injectable ``nba_stats_*`` replacement" —
+    so the proxied form is just the same wrapper with a rotating ``proxy_url``.
+    Returns *wrapper* unchanged when there is no provider (local/residential runs).
+    """
+    if provider is None:
+        return wrapper
+
+    def _f(*args: Any, **kwargs: Any) -> Any:
+        return wrapper(*args, proxy_url=provider(), **kwargs)
+
+    return _f
+
+
 def build_nba_player_impact(
     seasons: list[int],
     out_dir,
@@ -154,6 +181,7 @@ def build_nba_player_impact(
     lineup_source: str = "auto",
     cache_dir: Optional[str] = None,
     replacement_level: float = DEFAULT_REPLACEMENT_LEVEL,
+    proxy_provider: Optional[ProxyProvider] = None,
 ) -> list[dict]:
     """Build per-season consolidated player-impact tables and write parquet.
 
@@ -170,6 +198,14 @@ def build_nba_player_impact(
             ``compile_nba_season``; default resolves to ``$SDV_PY_NBA_CACHE_DIR``
             or ``~/.sdv_py_nba_cache/possessions``).
         replacement_level: WAR replacement level, points per 100 possessions.
+        proxy_provider: Zero-arg callable returning a proxy URL (e.g.
+            ``RoundRobin.next``). ``stats.nba.com`` *hangs* rather than errors on
+            datacenter/cloud IPs, so an unattended host MUST supply one.
+            It is threaded into **all four** network surfaces this builder
+            touches — the possession compile (playbyplayv3 / gamerotation /
+            boxscoretraditionalv3) AND leaguegamelog, playerindex, and
+            leaguedashplayerbiostats. Proxying only the compile would leave the
+            other three fetching from the host's real IP and hang the run.
 
     Returns:
         List of ``{"season": int, "rows": int, "path": str}`` dicts, one per
@@ -183,10 +219,20 @@ def build_nba_player_impact(
     panel_frames: list[pl.DataFrame] = []
     age_frames: list[pl.DataFrame] = []
 
+    # Every stats.nba.com surface this builder touches must be proxied, not just
+    # the possession compile -- an unproxied leaguegamelog/playerindex call hangs
+    # the whole run on a datacenter host.
+    _leaguegamelog = _proxied(nba_stats_leaguegamelog, proxy_provider)
+    _playerindex = _proxied(nba_stats_playerindex, proxy_provider)
+    _biostats = _proxied(nba_stats_leaguedashplayerbiostats, proxy_provider)
+
     for season in sorted(seasons):
         s_str = _season_str(season)
         poss = compile_nba_season(
-            season, lineup_source=lineup_source, cache_dir=cache_dir
+            season,
+            lineup_source=lineup_source,
+            cache_dir=cache_dir,
+            proxy_provider=proxy_provider,
         )
         if poss.height == 0:
             print(f"impact: season={season} no possessions; skipped")
@@ -197,7 +243,7 @@ def build_nba_player_impact(
         assert rapm.height > 0, f"impact: season={season} RAPM came back empty"
 
         # Box-log substrate (per-player + per-team leaguegamelog, one call each).
-        logs = nba_box_logs(s_str)
+        logs = nba_box_logs(s_str, fetch=_leaguegamelog)
         bf = box_features(logs["player"], logs["team"])
 
         # SPM: within-season training on this season's RAPM target.
@@ -205,7 +251,7 @@ def build_nba_player_impact(
         spm = nba_spm(bf, coef)
 
         # BPM 2.0 off the same logs + listed positions.
-        positions = nba_player_positions(s_str)
+        positions = nba_player_positions(s_str, fetch=_playerindex)
         bpm = nba_bpm(logs["player"], logs["team"], positions)
 
         # adj-RAPM: prior = previous season's SPM (empty dict on the first season).
@@ -235,7 +281,7 @@ def build_nba_player_impact(
             ).with_columns(pl.lit(season, dtype=pl.Int64).alias("season"))
         )
         age_frames.append(
-            nba_player_ages(s_str).with_columns(
+            nba_player_ages(s_str, fetch=_biostats).with_columns(
                 pl.lit(season, dtype=pl.Int64).alias("season")
             )
         )
