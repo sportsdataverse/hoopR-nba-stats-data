@@ -253,9 +253,11 @@ git commit -m "feat(impact): add --season-types (default Regular Season,Playoffs
 
 ---
 
-### Task 3: Split the season loop into an RS pass and a PO pass
+### Task 3: Split the season loop into RS/PO passes + season-granular DARKO panel + blended carry
 
-The core change. The RS pass keeps today's behavior and fits `coef`/`pts_per_win`; the PO pass reuses them.
+The core change, in one gate. The RS pass keeps today's behavior and fits `coef`/`pts_per_win`; the PO pass reuses them; the DARKO panel stays season-granular and the forward prior is the blend.
+
+**This task ends green:** the loop restructure removes the parquet write and the carry restores it, so they are a single edit. Do all of Step 3's parts (3a and 3b) before running the suite.
 
 **Files:**
 - Modify: `python/nba_model_publish/builders.py:177-217` (signature + docstring)
@@ -266,6 +268,7 @@ The core change. The RS pass keeps today's behavior and fits `coef`/`pts_per_win
 - Consumes: `_blend_by_poss` (Task 1); `args.season_types` (Task 2).
 - Produces: `build_nba_player_impact(seasons, out_dir, *, lineup_source="auto", cache_dir=None, delay_s=0.6, season_types=("Regular Season", "Playoffs"), proxy_provider=None, replacement_level=-2.0) -> list[dict]`. Each result dict stays `{"season": int, "rows": int, "path": str}` where `rows` counts **both** season types. Output frames gain `season_type: Utf8`.
 - Produces: `_impact_for_season_type(...) -> pl.DataFrame` is NOT introduced — keep the logic inline in the loop to match the file's existing style.
+- Produces: one parquet per season containing both season types; `prev_spm` carries the blended SPM.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -321,7 +324,7 @@ def test_compile_is_called_once_per_season_type_with_the_right_string(tmp_path, 
 Run: `uv run pytest tests/test_model_publish_builders.py -k "season_type or playoffs or no_playoffs" -v`
 Expected: FAIL — `TypeError: build_nba_player_impact() got an unexpected keyword argument 'season_types'`
 
-- [ ] **Step 3: Write the implementation**
+- [ ] **Step 3a: Write the loop restructure**
 
 First widen the typing import at `builders.py:36` — `Sequence` is not currently imported:
 
@@ -436,33 +439,9 @@ Replace the loop body (`builders.py:233` onward). The RS pass is today's code; t
             continue
 ```
 
-The DARKO join, parquet write and `prev_spm` carry move below the inner loop — Task 4.
+The DARKO join, parquet write and `prev_spm` carry go below the inner loop — Step 3b. **The suite is red until 3b lands; that is expected within this task, so do not run it yet.**
 
-- [ ] **Step 4: Run tests to verify they pass**
-
-Run: `uv run pytest tests/test_model_publish_builders.py -v`
-Expected: PASS — the 4 new tests plus the existing suite (Task 4 completes the DARKO/carry wiring; if a DARKO test fails here, finish Task 4 before judging).
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add python/nba_model_publish/builders.py python/tests/test_model_publish_builders.py
-git commit -m "feat(impact): build Regular Season + Playoffs passes, tag season_type"
-```
-
----
-
-### Task 4: Season-granular DARKO panel + blended forward carry
-
-**Files:**
-- Modify: `python/nba_model_publish/builders.py` (below the inner loop from Task 3)
-- Test: `python/tests/test_model_publish_builders.py`
-
-**Interfaces:**
-- Consumes: `_blend_by_poss` (Task 1); `rapm_rs`/`rapm_po`/`spm_rs`/`spm_po` from Task 3's loop.
-- Produces: one parquet per season containing both season types; `prev_spm` carries the blended SPM.
-
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1b: Write the remaining failing tests**
 
 ```python
 def test_darko_panel_stays_one_row_per_player_season(tmp_path, monkeypatch, stubbed):
@@ -527,12 +506,7 @@ def test_rs_only_build_reproduces_the_pre_playoffs_behavior(tmp_path, stubbed):
     assert set(rs_cols).issubset(set(both.columns))
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
-
-Run: `uv run pytest tests/test_model_publish_builders.py -k "darko_panel or same_darko or forward_prior" -v`
-Expected: FAIL — `season_type` present in the panel / duplicate `(player_id, season)` rows.
-
-- [ ] **Step 3: Write the implementation**
+- [ ] **Step 3b: Write the DARKO panel + carry**
 
 Directly after `if not frames: continue` in the season loop:
 
@@ -611,9 +585,9 @@ Directly after `if not frames: continue` in the season loop:
             prev_spm = spm_rs
 ```
 
-Remove the now-duplicated DARKO/write/`prev_spm = spm` block left over from Task 3.
+Remove the old DARKO/write/`prev_spm = spm` block that the restructure superseded.
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [ ] **Step 4: Run the whole suite**
 
 Run: `uv run pytest tests/test_model_publish_builders.py tests/test_model_publish_cli.py -v`
 Expected: PASS — full suite green (19 pre-existing + the new tests).
@@ -622,12 +596,12 @@ Expected: PASS — full suite green (19 pre-existing + the new tests).
 
 ```bash
 git add python/nba_model_publish/builders.py python/tests/test_model_publish_builders.py
-git commit -m "feat(impact): season-granular DARKO panel + blended forward prior"
+git commit -m "feat(impact): RS+Playoffs passes, season-granular DARKO panel, blended prior"
 ```
 
 ---
 
-### Task 5: Model card — document the grain and the exclusions
+### Task 4: Model card — document the grain and the exclusions
 
 **Files:**
 - Modify: `python/nba_model_publish/builders.py:114-155` (`_write_model_card`)
@@ -747,7 +721,7 @@ git commit -m "docs(impact): document season_type grain + PlayIn exclusion in th
 
 ---
 
-### Task 6: Live single-season verification on the droplet
+### Task 5: Live single-season verification on the droplet
 
 Not a unit test — this is the gate the unit tests structurally cannot be, because every one of them stubs `compile_nba_season`. That stubbing is exactly what let the unproxied-discovery bug reach production.
 
@@ -769,8 +743,13 @@ SDV_NBA_DELAY_S=7 bash scripts/run_impact_backfill.sh 2023 --dry-run
 
 - [ ] **Step 2: Verify playoff games actually fetched**
 
+Use the env var, not a hardcoded path — `P0_DROPLET_RUNBOOK.md:46` has a
+`$HOME/nba_possessions` fallback, and hardcoding `/data/...` would report `0`
+(a false failure) if that fallback was taken.
+
 ```bash
-ls /data/nba_possessions/possessions/ | grep -c '^004'
+. ~/.config/sdv/env
+ls "${SDV_PY_NBA_CACHE_DIR:-$HOME/.sdv_py_nba_cache}/possessions/" | grep -c '^004'
 ```
 
 Expected: **> 0** (roughly 80-90 for 2023). `0` means the playoff pass fetched nothing — treat as failure, not success, regardless of the exit code.
@@ -781,14 +760,43 @@ Expected: **> 0** (roughly 80-90 for 2023). `0` means the playoff pass fetched n
 cd python && uv run python -c "
 import polars as pl
 df = pl.read_parquet('build_out/impact/nba_player_impact_2023.parquet')
+rs = df.filter(pl.col('season_type')=='Regular Season')
+po = df.filter(pl.col('season_type')=='Playoffs')
 print('rows:', df.height)
 print('season_types:', df['season_type'].unique().to_list())
 print('dupes on grain:', df.select('player_id','season','season_type').is_duplicated().sum())
-print('playoff rows:', df.filter(pl.col('season_type')=='Playoffs').height)
+print('playoff rows:', po.height)
+# season_type must reach nba_box_logs -- it is keyword-only WITH A DEFAULT, so an
+# omission is SILENT and playoff rows would carry regular-season min/gp. No unit
+# test can catch this (they all stub nba_box_logs); this is the only check that can.
+print('PO gp max:', po['gp'].max(), '(playoff-scale if <= ~30)')
+print('RS gp max:', rs['gp'].max(), '(regular-season-scale, ~82)')
+j = rs.join(po, on='player_id', suffix='_po')
+print('players whose PO gp >= RS gp:', j.filter(pl.col('gp_po') >= pl.col('gp')).height, '(expect 0)')
 "
 ```
 
-Expected: both season types present, `dupes on grain: 0`, playoff rows > 0.
+Expected: both season types present, `dupes on grain: 0`, playoff rows > 0,
+**`PO gp max` ≲ 30 while `RS gp max` ≈ 82**, and no player with more playoff
+games than regular-season games. If PO `gp` looks regular-season-scale, the
+playoff pass is being fed regular-season box logs.
+
+- [ ] **Step 3b: Verify no season was silently skipped**
+
+```bash
+cd python && uv run python -c "
+import json
+card = json.load(open('build_out/impact/nba_player_impact_card.json'))
+print('seasons built:', [s['season'] for s in card['seasons']])
+print('season_types attested:', card['season_types'])
+print('grain:', card['grain'])
+"
+```
+
+The card records what was actually **built**, not what was requested. A season
+missing here means its regular-season compile came back empty and the run
+skipped it — which exits 0 and looks like success. That is this pipeline's
+failure mode of record; check the count, not the exit code.
 
 - [ ] **Step 4: Commit nothing; report**
 
@@ -796,7 +804,7 @@ No code change. If any expectation above fails, stop and report rather than star
 
 ---
 
-### Task 7: `sdv-py` loader schema — add `season_type`, fix the duplicate `season`
+### Task 6: `sdv-py` loader schema — add `season_type`, fix the duplicate `season`
 
 Separate repo, separate PR. `sportsdataverse-py` is a code/library repo: **branch + PR**, never a direct push to main.
 
@@ -879,4 +887,4 @@ the backfill publishes the tag — it is not a regression from this change.
 
 ## Execution order
 
-Tasks 1→5 are sequential (each consumes the previous). Task 6 gates Task 7 — the loader schema must be introspected against a **real** parquet, not an expected one. Do not start the 25-season backfill until Task 6 passes.
+Tasks 1→4 are sequential (each consumes the previous). Task 5 gates Task 6 — the loader schema must be introspected against a **real** parquet, not an expected one. Do not start the 25-season backfill until Task 5 passes.
