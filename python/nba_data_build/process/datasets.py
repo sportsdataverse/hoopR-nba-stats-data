@@ -53,7 +53,7 @@ def write_game_cache(cache_root: Union[str, Path], season: int, pg: ProcessedGam
 
     Args:
         cache_root: Root directory for the per-game resumability cache.
-        season: Season end-year (e.g. 2024 for 2023-24), used to
+        season: Season start-year (e.g. 2023 for 2023-24), used to
             namespace the cache directory per season.
         pg: The game's compiled :class:`~nba_data_build.process.from_raw.ProcessedGame`.
 
@@ -130,7 +130,7 @@ def rollup_season(
     Args:
         root: Dataset root -- also the raw-store root consumed by
             ``process_game`` (``{root}/nba_stats/json/...``).
-        season: Season end-year (e.g. 2024 for 2023-24).
+        season: Season start-year (e.g. 2023 for 2023-24).
         game_ids: 10-digit NBA Stats game ids to include in the season.
         cache_root: Root directory for the per-game resumability cache (see
             :func:`write_game_cache`).

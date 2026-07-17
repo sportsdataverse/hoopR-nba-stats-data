@@ -42,10 +42,12 @@ def test_build_season_produces_possessions_and_rapm(monkeypatch: object) -> None
 
 def test_build_season_passes_end_year_through_with_no_conversion(monkeypatch: object) -> None:
     """Locks in the Task 7 chain unification: build_season's input IS the
-    compile_nba_season input verbatim -- no internal ``season + 1``. Previously
-    build_season added a stray +1, which combined with a CLI that already passes
-    the season end-year (from most_recent_nba_season()) produced an off-by-one
-    (the built season overshot the intended one by a year)."""
+    compile_nba_season input verbatim -- no internal ``season + 1``. A stray +1
+    was briefly introduced in build_season during this migration and later
+    removed; the actual pre-existing off-by-one was most_recent_nba_season()
+    (end-year) being fed into a --through slot still documented/treated as
+    start-year, fixed by making --through end-year to match rather than by
+    adjusting build_season."""
     seen: dict[str, int] = {}
 
     def _fake_compile(season, **kw):
