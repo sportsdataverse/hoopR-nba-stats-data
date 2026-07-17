@@ -15,3 +15,5 @@ __pycache__
 *.pyc
 daily_basketball_scraper.sh
 .nba_pipeline_cache/
+logs/
+python/build_out/

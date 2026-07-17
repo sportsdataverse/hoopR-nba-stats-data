@@ -31,6 +31,7 @@ anything; with ``--dry-run`` it is fully network-free (hermetic).
 from __future__ import annotations
 
 import argparse
+import os
 
 from nba_data_build.publish import upload_artifacts
 
@@ -118,6 +119,15 @@ def build_parser() -> argparse.ArgumentParser:
         "(default: $SDV_PY_NBA_CACHE_DIR or ~/.sdv_py_nba_cache/possessions).",
     )
     imp.add_argument(
+        "--delay-s",
+        type=float,
+        default=float(os.environ.get("SDV_NBA_DELAY_S", "0.6")),
+        help="Sleep between live per-game fetches, seconds "
+        "(default: $SDV_NBA_DELAY_S or 0.6). The stats.nba.com request budget "
+        "(~250 req/10min) is SHARED with the R daily scraper -- use ~7 for an "
+        "unattended multi-season backfill.",
+    )
+    imp.add_argument(
         "--replacement-level",
         type=float,
         default=-2.0,
@@ -203,6 +213,7 @@ def main(argv=None) -> int:
             proxy_provider=_resolve_proxy_provider(args.no_proxy),
             lineup_source=args.lineup_source,
             cache_dir=args.cache_dir,
+            delay_s=args.delay_s,
             replacement_level=args.replacement_level,
         )
         total_rows = sum(b["rows"] for b in built)

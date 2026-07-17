@@ -180,6 +180,7 @@ def build_nba_player_impact(
     *,
     lineup_source: str = "auto",
     cache_dir: Optional[str] = None,
+    delay_s: float = 0.6,
     replacement_level: float = DEFAULT_REPLACEMENT_LEVEL,
     proxy_provider: Optional[ProxyProvider] = None,
 ) -> list[dict]:
@@ -197,6 +198,9 @@ def build_nba_player_impact(
         cache_dir: Possession per-game parquet cache directory (forwarded to
             ``compile_nba_season``; default resolves to ``$SDV_PY_NBA_CACHE_DIR``
             or ``~/.sdv_py_nba_cache/possessions``).
+        delay_s: Sleep between live per-game fetches, seconds (forwarded to
+            ``compile_nba_season``; only live fetches sleep, cached games don't).
+            Throttles the shared stats.nba.com budget (~250 req/10min).
         replacement_level: WAR replacement level, points per 100 possessions.
         proxy_provider: Zero-arg callable returning a proxy URL (e.g.
             ``RoundRobin.next``). ``stats.nba.com`` *hangs* rather than errors on
@@ -232,6 +236,7 @@ def build_nba_player_impact(
             season,
             lineup_source=lineup_source,
             cache_dir=cache_dir,
+            delay_s=delay_s,
             proxy_provider=proxy_provider,
         )
         if poss.height == 0:

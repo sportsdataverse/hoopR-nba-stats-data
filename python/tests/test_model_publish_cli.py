@@ -86,3 +86,14 @@ def test_resolve_proxy_provider_rotates_the_pool(monkeypatch):
 
 def test_no_proxy_opts_out_explicitly():
     assert cli._resolve_proxy_provider(no_proxy=True) is None
+
+
+def test_impact_delay_s_flag_and_env_default(monkeypatch):
+    ns = cli.build_parser().parse_args(
+        ["impact", "--seasons", "2023", "--out", "o", "--delay-s", "1.5"]
+    )
+    assert ns.delay_s == 1.5
+    # env default is read at parser-build time, so re-build after setting it
+    monkeypatch.setenv("SDV_NBA_DELAY_S", "7")
+    ns = cli.build_parser().parse_args(["impact", "--seasons", "2023", "--out", "o"])
+    assert ns.delay_s == 7.0

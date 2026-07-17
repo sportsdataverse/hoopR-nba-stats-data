@@ -1656,7 +1656,7 @@ wheels = [
 [[package]]
 name = "sportsdataverse"
 version = "0.0.71"
-source = { git = "https://github.com/sportsdataverse/sportsdataverse-py?rev=main#65648a210acd754de466fc91f195e2efe6668b19" }
+source = { git = "https://github.com/sportsdataverse/sportsdataverse-py?rev=main#f80d490919fe8012fc7b062ef7ae98c9d63a3ce5" }
 dependencies = [
     { name = "attrs" },
     { name = "beautifulsoup4" },
@@ -1675,6 +1675,7 @@ dependencies = [
     { name = "scipy", version = "1.17.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "scipy", version = "1.18.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "tqdm" },
+    { name = "tzdata", marker = "sys_platform == 'win32'" },
     { name = "xgboost", version = "3.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "xgboost", version = "3.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
 ]
