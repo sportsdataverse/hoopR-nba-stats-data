@@ -111,6 +111,55 @@ def _team_season(team_logs: pl.DataFrame) -> pl.DataFrame:
     )
 
 
+def _blend_by_poss(
+    rs: pl.DataFrame,
+    po: Optional[pl.DataFrame],
+    value_cols: list[str],
+    weight_col: str,
+) -> pl.DataFrame:
+    """Possession-weighted combination of a regular-season and playoff frame.
+
+    The ONE forward-carrying rule: both the next season's adj-RAPM prior and the
+    DARKO panel row use this. A playoff sample is ~15 games/team, so a straight
+    "most recent estimate wins" carry would let a thin sample override a
+    1230-game one -- adding playoffs would then DEGRADE every regular-season row.
+    Weighting by possessions keeps the full RS sample behind the carried value
+    while still letting playoff form move it.
+
+    A player in only one frame keeps that frame's values (not null, not halved).
+
+    Args:
+        rs: Regular-season frame; one row per ``player_id``.
+        po: Playoff frame, or None/empty -- either returns *rs* untouched.
+        value_cols: Columns to weight-average.
+        weight_col: Possession-count column; summed in the output.
+
+    Returns:
+        One row per ``player_id`` with blended *value_cols* and summed *weight_col*.
+    """
+    if po is None or po.height == 0:
+        return rs
+
+    joined = rs.join(po, on="player_id", how="full", coalesce=True, suffix="_po")
+    w_rs = pl.col(weight_col).fill_null(0)
+    w_po = pl.col(f"{weight_col}_po").fill_null(0)
+    total = w_rs + w_po
+
+    exprs = []
+    for c in value_cols:
+        v_rs, v_po = pl.col(c), pl.col(f"{c}_po")
+        exprs.append(
+            pl.when(total == 0)
+            .then(v_rs.fill_null(v_po))
+            .otherwise(
+                (v_rs.fill_null(0) * w_rs + v_po.fill_null(0) * w_po) / total
+            )
+            .alias(c)
+        )
+    exprs.append(total.alias(weight_col))
+    return joined.select("player_id", *exprs)
+
+
 def _write_model_card(
     out_dir: Path, results: list[dict], *, replacement_level: float, lineup_source: str
 ) -> Path:

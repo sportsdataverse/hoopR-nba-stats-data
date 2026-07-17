@@ -328,3 +328,29 @@ def test_delay_s_threads_into_the_possession_compile(stubbed, monkeypatch, tmp_p
     )
     B.build_nba_player_impact([2023], tmp_path, delay_s=1.5)
     assert seen_kw["delay_s"] == 1.5
+
+
+def test_blend_by_poss_weights_by_possessions():
+    rs = pl.DataFrame({"player_id": [1], "rating": [2.0], "poss": [900]})
+    po = pl.DataFrame({"player_id": [1], "rating": [6.0], "poss": [100]})
+    out = B._blend_by_poss(rs, po, ["rating"], "poss")
+    # 900/1000 * 2.0 + 100/1000 * 6.0 = 2.4 -- the thin PO sample must not dominate
+    assert out["rating"].to_list() == [pytest.approx(2.4)]
+    assert out["poss"].to_list() == [1000]
+
+
+def test_blend_by_poss_player_in_one_frame_only():
+    rs = pl.DataFrame({"player_id": [1, 2], "rating": [2.0, 5.0], "poss": [900, 800]})
+    po = pl.DataFrame({"player_id": [1], "rating": [6.0], "poss": [100]})
+    out = B._blend_by_poss(rs, po, ["rating"], "poss").sort("player_id")
+    # player 2 missed the playoffs -> unchanged, NOT nulled
+    assert out["rating"].to_list() == [pytest.approx(2.4), pytest.approx(5.0)]
+    assert out["poss"].to_list() == [1000, 800]
+
+
+def test_blend_by_poss_empty_playoffs_returns_rs_unchanged():
+    rs = pl.DataFrame({"player_id": [1], "rating": [2.0], "poss": [900]})
+    empty = pl.DataFrame({"player_id": [], "rating": [], "poss": []},
+                         schema={"player_id": pl.Int64, "rating": pl.Float64, "poss": pl.Int64})
+    assert B._blend_by_poss(rs, empty, ["rating"], "poss")["rating"].to_list() == [2.0]
+    assert B._blend_by_poss(rs, None, ["rating"], "poss")["rating"].to_list() == [2.0]
