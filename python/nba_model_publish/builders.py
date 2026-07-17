@@ -278,15 +278,15 @@ def build_nba_player_impact(
     DARKO panel flow forward. Seasons whose possession compile comes back
     empty (not yet played / no data) are skipped with a notice.
 
-    Input/output season-year asymmetry (intentional): ``seasons`` is
-    START-year, matching the internal DARKO panel and the
-    ``last_season == season`` join, which must stay start-year for the
-    Kalman filter's season sequencing to be correct. The OUTPUT ``season``
-    column, the ``nba_player_impact_{season}.parquet`` filename, and the
-    returned/model-card ``season`` field are all END-year (2023 -> 2024,
-    i.e. 2023-24), matching ``compile_nba_season``'s season-arg convention.
-    Only the write sites are relabeled; nothing in the internal prior/panel
-    machinery observes the end-year label.
+    Season-year convention (end-year in, end-year out): ``seasons`` is the
+    END year (2024 = 2023-24), matching ``compile_nba_season`` and every
+    ESPN-sourced ``load_nba_*`` dataset. Each iteration derives an internal
+    START-year ``season = end_year - 1`` that drives the DARKO panel and the
+    ``last_season == season`` join, which must stay start-year for the Kalman
+    filter's season sequencing to be correct. The OUTPUT ``season`` column,
+    the ``nba_player_impact_{season}.parquet`` filename, and the returned/
+    model-card ``season`` field are all the END year (equal to the input).
+    Only the internal DARKO/panel machinery observes the start-year label.
 
     Args:
         seasons: Season END years (2024 = 2023-24). Sorted ascending
