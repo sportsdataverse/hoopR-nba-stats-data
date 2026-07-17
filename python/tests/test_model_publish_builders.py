@@ -283,7 +283,9 @@ def test_proxied_without_provider_returns_wrapper_untouched():
     assert B._proxied(wrapper, None) is wrapper  # local/residential runs stay direct
 
 
-def test_build_threads_proxy_to_all_four_network_surfaces(stubbed, tmp_path, monkeypatch):
+def test_build_threads_proxy_to_all_four_network_surfaces(
+    stubbed, tmp_path, monkeypatch
+):
     captured: dict = {}
 
     def _cap(name, orig, key):
@@ -311,4 +313,18 @@ def test_build_threads_proxy_to_all_four_network_surfaces(stubbed, tmp_path, mon
     # ...and the OTHER three (leaguegamelog / playerindex / leaguedashplayerbiostats)
     # each got a proxied fetch seam -- not left fetching from the host's real IP.
     for surface in ("box_logs", "positions", "ages"):
-        assert captured[surface] is not None, f"{surface} would fetch UNPROXIED and hang"
+        assert captured[surface] is not None, (
+            f"{surface} would fetch UNPROXIED and hang"
+        )
+
+
+def test_delay_s_threads_into_the_possession_compile(stubbed, monkeypatch, tmp_path):
+    stub_compile = B.compile_nba_season  # the stubbed fake
+    seen_kw: dict = {}
+    monkeypatch.setattr(
+        B,
+        "compile_nba_season",
+        lambda season, **kw: (seen_kw.update(kw), stub_compile(season, **kw))[1],
+    )
+    B.build_nba_player_impact([2023], tmp_path, delay_s=1.5)
+    assert seen_kw["delay_s"] == 1.5
