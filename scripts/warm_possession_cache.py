@@ -10,7 +10,7 @@ says "One process, sequential -- never parallelize the fetch loop; the budget is
 per-source, not per-process". That rule is correct for the R scraper (which only
 fetches and writes JSON) but does not describe this pipeline, which spends 86% of
 each game building enhanced pbp, deriving lineups, and constructing the
-possession stint matrix in polars. Sequentially that is ~13 days for 2000:2024 --
+possession stint matrix in polars. Sequentially that is ~13 days for 1997:2026 --
 not the runbook's 2.5-3 -- with 7 of 8 cores idle.
 
 The request budget is also not binding. Probed the same day:
@@ -32,9 +32,14 @@ Default 5. Raise only after watching RSS.
 Resumable: the per-game parquet cache IS the checkpoint. Ctrl-C and rerun; only
 uncached games refetch.
 
+SEASONS passed on the command line are now END years, matching
+``compile_nba_season``'s season-arg convention (2024 = 2023-24) -- the
+per-game possession cache is keyed by game_id, so already-warmed games stay
+valid regardless of which season label discovered them.
+
 Run:
     cd python && SDV_PY_NBA_CACHE_DIR=/data/nba_possessions \
-      uv run python ../scripts/warm_possession_cache.py 2000:2024
+      uv run python ../scripts/warm_possession_cache.py 1997:2026
 """
 
 from __future__ import annotations
@@ -104,7 +109,7 @@ def _warm(unit) -> dict:
 
 
 def main() -> int:
-    spec = sys.argv[1] if len(sys.argv) > 1 else "2000:2024"
+    spec = sys.argv[1] if len(sys.argv) > 1 else "1997:2026"
     seasons = _parse_seasons(spec)
     # Largest first: regular seasons (~1230 games) before playoffs (~85), so the
     # long poles start early and the tail packs into the idle workers.

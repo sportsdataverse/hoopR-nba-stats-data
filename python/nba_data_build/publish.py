@@ -65,7 +65,7 @@ def plan_uploads(
 def published_seasons(
     tag: str, repo: str, *, runner: Optional[Runner] = None
 ) -> set[int]:
-    """Season start-years already on the release, parsed from `_{season}.parquet` asset names.
+    """Season end-years already on the release, parsed from `_{season}.parquet` asset names.
 
     Returns an empty set if the release does not exist.
     """

@@ -17,12 +17,12 @@ _REPO = "sportsdataverse/sportsdataverse-data"
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="nba_data_build")
     ap.add_argument("--seasons", type=int, nargs="+", default=None,
-                    help="explicit season start-years (bypass incremental detection)")
+                    help="explicit season end-years, e.g. 2024 for 2023-24 (bypass incremental detection)")
     ap.add_argument("--latest-n", type=int, default=None,
                     help="force the last N seasons through --through (rebuild)")
     ap.add_argument("--through", type=int, default=None,
-                    help="target through-season start-year (default: most_recent_nba_season())")
-    ap.add_argument("--first", type=int, default=2021, help="earliest season for detection")
+                    help="target through-season end-year, e.g. 2024 for 2023-24 (default: most_recent_nba_season())")
+    ap.add_argument("--first", type=int, default=2021, help="earliest season (end-year) for detection")
     ap.add_argument("--out", default="build_out", help="output directory")
     ap.add_argument("--cache-dir", default=None, help="compile cache dir")
     ap.add_argument("--repo", default=_REPO, help="release repo")
