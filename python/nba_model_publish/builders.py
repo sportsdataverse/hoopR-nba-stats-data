@@ -1,7 +1,8 @@
 """Build the consolidated per-season NBA player-impact table.
 
 One ``nba_player_impact_{season}.parquet`` per season, one row per
-player-season, joining the sdv-py NBA model-zoo outputs on ``player_id``:
+player-season-season_type (Regular Season + Playoffs; PlayIn excluded),
+joining the sdv-py NBA model-zoo outputs on ``player_id``:
 
 * RAPM (``nba_rapm``) — the anchor population: every player with possession
   lineup data that season.
@@ -321,6 +322,13 @@ def build_nba_player_impact(
             "same invocation, so it cannot run alone. Include 'Regular "
             "Season' in season_types."
         )
+    # Canonicalize the order rather than merely validating membership: a
+    # caller-supplied season_types=["Playoffs", "Regular Season"] passes the
+    # membership check above but, iterated as-given, would run the Playoffs
+    # pass FIRST and burn a full ~85-game playoff compile (hours at
+    # delay_s=7) before hitting `assert coef is not None` deep in the loop
+    # below. Mirrors cli.py's ``_parse_season_types``.
+    season_types = [t for t in ("Regular Season", "Playoffs") if t in season_types]
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -553,7 +561,7 @@ def build_nba_player_impact(
             # weight_col="min" (minutes), not possessions -- SPM's own frame
             # doesn't carry a possession count, so minutes is used as a
             # defensible proxy here. Not a bug; see _blend_by_poss's docstring
-            # for the possession-weighted case (the DARKO panel blend below).
+            # for the possession-weighted case (the DARKO panel blend above).
             prev_spm = _blend_by_poss(
                 spm_rs, spm_po, ["ospm", "dspm", "spm"], "min"
             )

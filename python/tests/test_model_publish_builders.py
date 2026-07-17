@@ -735,3 +735,30 @@ def test_playoffs_without_regular_season_raises_at_entry_before_any_compile(
     with pytest.raises(ValueError, match="Regular Season"):
         B.build_nba_player_impact([2023], tmp_path, season_types=["Playoffs"])
     assert stubbed["compile_order"] == []
+
+
+def test_playoffs_first_input_order_is_canonicalized_to_regular_season_first(
+    tmp_path, stubbed, monkeypatch
+):
+    """A caller passing season_types=["Playoffs", "Regular Season"] passes the
+    membership guard (both types present) but must NOT get the Playoffs pass
+    run first: that would burn a full ~85-game playoff compile (hours at
+    delay_s=7) before ever hitting `assert coef is not None`, since the RS
+    pass is what fits the SPM coef and pts_per_win the Playoffs pass reuses.
+    The entry guard must canonicalize the order, not merely validate
+    membership.
+    """
+    real_compile = B.compile_nba_season
+    order: list[str] = []
+
+    def spy_compile(season, **kw):
+        order.append(kw.get("season_type"))
+        return real_compile(season, **kw)
+
+    monkeypatch.setattr(B, "compile_nba_season", spy_compile)
+
+    B.build_nba_player_impact(
+        [2023], tmp_path, season_types=["Playoffs", "Regular Season"]
+    )
+    assert order == ["Regular Season", "Playoffs"]
+    assert stubbed["compile_order"] == [2023, 2023]
