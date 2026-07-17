@@ -250,7 +250,7 @@ def test_empty_season_skipped_and_breaks_prior_chain(stubbed, monkeypatch, tmp_p
     assert stubbed["priors"] == [{}, {}]
 
 
-def test_empty_regular_season_skips_season_without_aborting_the_run(
+def test_empty_regular_season_skips_season_even_when_playoffs_have_data(
     stubbed, monkeypatch, tmp_path
 ):
     """Reproduces a real bug: an empty RS pass used to `continue` the INNER
@@ -260,14 +260,24 @@ def test_empty_regular_season_skips_season_without_aborting_the_run(
     seasons [2022, 2023(RS empty), 2024], 2024 never built and the model
     card was never written. The fix must skip the whole 2023 season instead
     and let 2024 build normally.
+
+    The stub returns empty ONLY for 2023's Regular Season pass; 2023's
+    Playoffs pass gets normal (non-empty) possessions. RS-empty-but-PO-has-
+    rows is the only shape that reaches the unset `coef` at all -- if both
+    passes were empty, the Playoffs pass would short-circuit on its own
+    `poss.height == 0` check and `continue` before ever touching `coef`,
+    which would let this test pass whether or not the `break` fix (vs. the
+    buggy `continue`) is present.
     """
     empty = pl.DataFrame({"game_id": [], "points": []})
     real_compile = B.compile_nba_season
-    monkeypatch.setattr(
-        B,
-        "compile_nba_season",
-        lambda season, **kw: empty if season == 2023 else real_compile(season, **kw),
-    )
+
+    def fake_compile(season, **kw):
+        if season == 2023 and kw.get("season_type") == "Regular Season":
+            return empty
+        return real_compile(season, **kw)
+
+    monkeypatch.setattr(B, "compile_nba_season", fake_compile)
     results = B.build_nba_player_impact([2022, 2023, 2024], tmp_path)
     assert [r["season"] for r in results] == [2022, 2024]
     assert (tmp_path / "nba_player_impact_2024.parquet").exists()
@@ -518,17 +528,31 @@ def test_forward_prior_is_the_blend_not_the_playoff_estimate(tmp_path, monkeypat
 
     monkeypatch.setattr(B, "_blend_by_poss", spy_blend)
 
+    # Track which (season, season_type) pass is currently building by
+    # observing compile_nba_season's own arguments -- nba_spm itself is
+    # never given season/season_type, so the reliable way to know which pass
+    # is which is to key off compile's call context, not to count nba_spm
+    # calls positionally. Positional counting (`calls["n"] == 2`) silently
+    # points at the wrong pass if a call is ever added or reordered, which
+    # would make this test vacuous again.
+    real_compile = B.compile_nba_season
+    current: dict = {}
+
+    def spy_compile(season, **kw):
+        current["key"] = (season, kw.get("season_type"))
+        return real_compile(season, **kw)
+
+    monkeypatch.setattr(B, "compile_nba_season", spy_compile)
+
     # Make the 2022 RS and PO SPM frames diverge on ospm so a carry that used
     # the raw playoff estimate is numerically distinguishable from the blend
     # (the stubbed nba_spm otherwise returns identical values for RS and PO,
     # which would let a broken "most recent wins" carry pass this test too).
     players = [1, 2, 3]
-    calls = {"n": 0}
 
     def fake_spm(bf, coef, **kw):
-        calls["n"] += 1
         frame = _spm(players)
-        if calls["n"] == 2:  # season 2022, Playoffs pass (RS pass is call 1)
+        if current.get("key") == (2022, "Playoffs"):
             frame = frame.with_columns((pl.col("ospm") * 5).alias("ospm"))
         return frame
 

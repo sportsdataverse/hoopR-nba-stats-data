@@ -295,11 +295,12 @@ def build_nba_player_impact(
         spm_po: Optional[pl.DataFrame] = None
         coef = None
         pts_per_win = None
-
-        # Season-type-independent -- hoisted above the loop so a both-types
-        # build doesn't fire the identical playerindex request twice per
-        # season against the shared ~250 req/10min stats.nba.com budget.
-        positions = nba_player_positions(s_str, fetch=_playerindex)
+        # Season-type-independent -- lazily fetched once per season (guarded
+        # below), NOT hoisted here: a gap season (RS empty) must pay ZERO
+        # playerindex requests, and a both-types build must still fire the
+        # identical request only once against the shared ~250 req/10min
+        # stats.nba.com budget.
+        positions: Optional[pl.DataFrame] = None
 
         for stype in season_types:
             poss = compile_nba_season(
@@ -331,6 +332,13 @@ def build_nba_player_impact(
                 # with no data, so say which case this is.
                 print(f"impact: season={season} type={stype!r} no possessions; skipped")
                 continue
+
+            # Fetched once per season, on the first pass that actually has
+            # possessions (normally the Regular Season pass) -- a gap season
+            # breaks out above and never reaches this line, so it pays zero
+            # playerindex requests.
+            if positions is None:
+                positions = nba_player_positions(s_str, fetch=_playerindex)
 
             rapm = nba_rapm(poss)
             assert rapm.height > 0, f"impact: season={season} {stype} RAPM came back empty"

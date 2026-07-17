@@ -140,3 +140,17 @@ def test_season_types_canonicalizes_regardless_of_input_order():
         ]
     )
     assert args.season_types == ["Regular Season", "Playoffs"]
+
+
+def test_season_types_rejects_playoffs_without_regular_season(capsys):
+    # A Playoffs pass reuses the RS-fitted SPM coef/pts_per_win, so it
+    # structurally cannot run alone -- reject at parse time rather than
+    # let it reach the bare `assert coef is not None` deep in the build
+    # (asserts vanish under `python -O`). argparse turns a type=
+    # callback's ArgumentTypeError into a SystemExit, same as the
+    # unknown-value case above.
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args(
+            ["impact", "--seasons", "2023", "--out", "o", "--season-types", "Playoffs"]
+        )
+    assert "requires 'Regular Season'" in capsys.readouterr().err

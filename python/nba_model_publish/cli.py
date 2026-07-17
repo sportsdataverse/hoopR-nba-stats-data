@@ -90,7 +90,8 @@ def _parse_season_types(spec: str) -> list[str]:
         Season types in canonical build order (RS before PO).
 
     Raises:
-        argparse.ArgumentTypeError: On an unknown or empty season type.
+        argparse.ArgumentTypeError: On an unknown or empty season type, or on
+            "Playoffs" without "Regular Season" (see below).
     """
     parts = [p.strip() for p in spec.split(",") if p.strip()]
     if not parts:
@@ -101,7 +102,22 @@ def _parse_season_types(spec: str) -> list[str]:
             f"invalid --season-types {unknown!r}: expected any of {list(SEASON_TYPES)}"
         )
     # canonical order: the PO pass reuses fitted values from the RS pass
-    return [t for t in SEASON_TYPES if t in parts]
+    canonical = [t for t in SEASON_TYPES if t in parts]
+    if "Playoffs" in canonical and "Regular Season" not in canonical:
+        # A Playoffs pass structurally cannot run alone: it reuses the SPM
+        # `coef` and `pts_per_win` fitted by the Regular Season pass in the
+        # same invocation. Without RS, the builder hits a bare
+        # `assert coef is not None` deep in the build -- and asserts vanish
+        # under `python -O`, which would let coef=None reach nba_spm instead
+        # of failing loudly. Reject this here, at parse time, where the
+        # error is clear and unconditional.
+        raise argparse.ArgumentTypeError(
+            "--season-types 'Playoffs' requires 'Regular Season' in the same "
+            "run: the Playoffs pass reuses the SPM coef and pts_per_win fitted "
+            "by the Regular Season pass, so it cannot run alone. Pass "
+            "'Regular Season,Playoffs' (or 'Regular Season' alone)."
+        )
+    return canonical
 
 
 def _add_repo_dry(p: argparse.ArgumentParser) -> None:
