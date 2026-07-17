@@ -32,20 +32,22 @@ def build_season(season: int, *, cache_dir: Optional[str] = None) -> BuildResult
         cache_dir: Optional compile cache dir (forwarded to ``compile_nba_season``).
 
     Returns:
-        A ``BuildResult`` with the possession frame and the season-tagged RAPM frame.
+        A ``BuildResult`` with the possession frame and the season-tagged RAPM frame,
+        both tagged with the season end-year (e.g. 2024 for 2023-24).
     """
-    poss = compile_nba_season(season, cache_dir=cache_dir)
-    ratings = nba_rapm(poss).with_columns(pl.lit(season, dtype=pl.Int64).alias("season"))
+    season_end = season + 1
+    poss = compile_nba_season(season_end, cache_dir=cache_dir)
+    ratings = nba_rapm(poss).with_columns(pl.lit(season_end, dtype=pl.Int64).alias("season"))
     n_games = poss["game_id"].n_unique() if not poss.is_empty() else 0
-    return BuildResult(season=season, possessions=poss, rapm=ratings,
+    return BuildResult(season=season_end, possessions=poss, rapm=ratings,
                        n_games=n_games, n_possessions=poss.height)
 
 
 def build(seasons: list[int], out_dir: Path, *, cache_dir: Optional[str] = None) -> list[BuildResult]:
     """Build each season, write its parquet, then write the pooled validation card.
 
-    Writes ``out_dir/possessions/nba_possessions_{season}.parquet``,
-    ``out_dir/rapm/nba_rapm_{season}.parquet``, and
+    Writes ``out_dir/possessions/nba_possessions_{season_end}.parquet``,
+    ``out_dir/rapm/nba_rapm_{season_end}.parquet``, and
     ``out_dir/nba_rapm_validation_report.md``.
 
     Args:
@@ -54,14 +56,14 @@ def build(seasons: list[int], out_dir: Path, *, cache_dir: Optional[str] = None)
         cache_dir: Optional compile cache dir (forwarded to ``compile_nba_season``).
 
     Returns:
-        A list of ``BuildResult`` instances, one per season.
+        A list of ``BuildResult`` instances, one per season (``season`` end-year tagged).
     """
     out_dir = Path(out_dir)
     results: list[BuildResult] = []
     for season in seasons:
         res = build_season(season, cache_dir=cache_dir)
-        write_possessions(res.possessions, out_dir / "possessions" / f"nba_possessions_{season}.parquet")
-        write_rapm(res.rapm, out_dir / "rapm" / f"nba_rapm_{season}.parquet")
+        write_possessions(res.possessions, out_dir / "possessions" / f"nba_possessions_{res.season}.parquet")
+        write_rapm(res.rapm, out_dir / "rapm" / f"nba_rapm_{res.season}.parquet")
         results.append(res)
     if results:
         report = validate_model(RidgeRapmModel(), [r.possessions for r in results],

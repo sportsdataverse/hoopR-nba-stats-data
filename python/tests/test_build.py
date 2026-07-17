@@ -34,17 +34,17 @@ def _synthetic_season(season: int) -> pl.DataFrame:
 def test_build_season_produces_possessions_and_rapm(monkeypatch: object) -> None:
     monkeypatch.setattr(B, "compile_nba_season", lambda season, **kw: _synthetic_season(season))
     res = B.build_season(2023)
-    assert res.season == 2023 and res.n_possessions == res.possessions.height > 0
+    assert res.season == 2024 and res.n_possessions == res.possessions.height > 0
     # rapm has RAPM_SCHEMA columns + a season column
     assert {"player_id", "o_rapm", "d_rapm", "rapm", "off_poss", "def_poss", "season"} <= set(res.rapm.columns)
-    assert res.rapm["season"].unique().to_list() == [2023]
+    assert res.rapm["season"].unique().to_list() == [2024]
 
 
 def test_build_writes_artifacts_and_card(tmp_path: Path, monkeypatch: object) -> None:
     monkeypatch.setattr(B, "compile_nba_season", lambda season, **kw: _synthetic_season(season))
     results = B.build([2022, 2023], out_dir=tmp_path)
-    assert (tmp_path / "rapm" / "nba_rapm_2023.parquet").exists()
-    assert (tmp_path / "possessions" / "nba_possessions_2023.parquet").exists()
+    assert (tmp_path / "rapm" / "nba_rapm_2024.parquet").exists()
+    assert (tmp_path / "possessions" / "nba_possessions_2024.parquet").exists()
     card = tmp_path / "nba_rapm_validation_report.md"
     assert card.exists() and "plain_rapm" in card.read_text(encoding="utf-8")
     assert len(results) == 2
