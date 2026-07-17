@@ -1,5 +1,18 @@
 """Tests for CLI season resolution and publish dispatch."""
+import argparse
+
 import nba_data_build.cli as C
+
+
+def test_resolve_seasons_through_is_end_year_and_matches_most_recent(monkeypatch):
+    # most_recent_nba_season() is end-year (e.g. 2026 == the 2025-26 season). With the
+    # whole chain unified to end-year, --through's default must equal it with NO -1
+    # adjustment -- that's the fix for the pre-existing off-by-one.
+    monkeypatch.setattr(C, "most_recent_nba_season", lambda: 2026)
+    seasons = C._resolve_seasons(
+        argparse.Namespace(seasons=None, through=None, latest_n=1, first=None)
+    )
+    assert seasons[-1] == 2026
 
 
 def test_explicit_seasons_bypass_detection(monkeypatch, tmp_path):

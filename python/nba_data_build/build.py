@@ -28,30 +28,30 @@ def build_season(season: int, *, cache_dir: Optional[str] = None) -> BuildResult
     """Compile one season's possessions (live, cached) and fit its RAPM ratings.
 
     Args:
-        season: Season start-year (e.g. 2023 for 2023-24).
+        season: Season end-year (e.g. 2024 for 2023-24). Passed straight through to
+            ``compile_nba_season``, which is itself end-year -- no conversion here.
         cache_dir: Optional compile cache dir (forwarded to ``compile_nba_season``).
 
     Returns:
         A ``BuildResult`` with the possession frame and the season-tagged RAPM frame,
         both tagged with the season end-year (e.g. 2024 for 2023-24).
     """
-    season_end = season + 1
-    poss = compile_nba_season(season_end, cache_dir=cache_dir)
-    ratings = nba_rapm(poss).with_columns(pl.lit(season_end, dtype=pl.Int64).alias("season"))
+    poss = compile_nba_season(season, cache_dir=cache_dir)
+    ratings = nba_rapm(poss).with_columns(pl.lit(season, dtype=pl.Int64).alias("season"))
     n_games = poss["game_id"].n_unique() if not poss.is_empty() else 0
-    return BuildResult(season=season_end, possessions=poss, rapm=ratings,
+    return BuildResult(season=season, possessions=poss, rapm=ratings,
                        n_games=n_games, n_possessions=poss.height)
 
 
 def build(seasons: list[int], out_dir: Path, *, cache_dir: Optional[str] = None) -> list[BuildResult]:
     """Build each season, write its parquet, then write the pooled validation card.
 
-    Writes ``out_dir/possessions/nba_possessions_{season_end}.parquet``,
-    ``out_dir/rapm/nba_rapm_{season_end}.parquet``, and
+    Writes ``out_dir/possessions/nba_possessions_{season}.parquet``,
+    ``out_dir/rapm/nba_rapm_{season}.parquet``, and
     ``out_dir/nba_rapm_validation_report.md``.
 
     Args:
-        seasons: List of season start-years to build (e.g. [2022, 2023]).
+        seasons: List of season end-years to build (e.g. [2023, 2024] for 2022-23 and 2023-24).
         out_dir: Root output directory for all artifacts.
         cache_dir: Optional compile cache dir (forwarded to ``compile_nba_season``).
 

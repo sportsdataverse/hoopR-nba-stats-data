@@ -83,7 +83,7 @@ def build_pipeline_parser() -> argparse.ArgumentParser:
         type=int,
         nargs="+",
         required=True,
-        help="season start-years to run, e.g. 2023 for the 2023-24 season",
+        help="season end-years to run, e.g. 2024 for the 2023-24 season",
     )
     ap.add_argument(
         "--root",
@@ -145,7 +145,7 @@ def _discover_finished(season: int, root: Union[str, Path]) -> list[dict[str, An
     why this does NOT read the committed ``nba_stats_schedule_master.parquet``.
 
     Args:
-        season: Season start-year (e.g. 2023 for 2023-24).
+        season: Season end-year (e.g. 2024 for 2023-24).
         root: Dataset root (unused by the default implementation, kept in the signature
             so a root-aware override -- e.g. one that also reads a local cache -- is a
             drop-in swap).
@@ -266,7 +266,7 @@ def _write_schedule(
 
     Args:
         root: Dataset root.
-        season: Season start-year.
+        season: Season end-year.
         flagged: Output of :func:`~nba_data_build.process.availability.compute_flags`
             for this season's discovered rows.
 
@@ -317,7 +317,7 @@ def _publish(
 
     Args:
         root: Repo root (parent of ``nba_stats/``).
-        seasons: Season start-years processed this run -- used to build the preserved
+        seasons: Season end-years processed this run -- used to build the preserved
             commit subject ``NBA Stats Update (Start: {min} End: {max})``.
         target: ``"commit"`` (default) or ``"release"`` (OD2 Option B: additionally
             mirrors the per-season rollups to dedicated GitHub release tags).
