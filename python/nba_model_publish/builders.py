@@ -5,12 +5,18 @@ player-season, joining the sdv-py NBA model-zoo outputs on ``player_id``:
 
 * RAPM (``nba_rapm``) — the anchor population: every player with possession
   lineup data that season.
-* adj-RAPM (``nba_adj_rapm``) — prior = the **previous season's SPM** frame
-  (``AdjRapmModel.from_spm``), threaded earliest-to-latest; the first season
-  of an invocation gets an empty prior.
-* SPM (``train_spm`` + ``nba_spm``) — trained **within-season** (features and
-  RAPM target from the same season) so a season's output never depends on
-  which other seasons the invocation happened to include.
+* adj-RAPM (``nba_adj_rapm``) — cross-season prior = the possession-weighted
+  **blend of the previous season's Regular Season + Playoffs SPM**
+  (``_blend_by_poss`` over ``AdjRapmModel.from_spm``), threaded
+  earliest-to-latest; the first season of an invocation gets an empty prior.
+  Within a season, the Playoffs pass instead takes **that same season's
+  Regular Season SPM** as its prior -- the anchor that makes a ~15-game
+  playoff sample usable at all.
+* SPM (``train_spm`` + ``nba_spm``) — coefficients are fitted **once per
+  season, on the Regular Season** box features + RAPM target, and reused for
+  the Playoffs pass (re-fitting on a ~15-game playoff sample would train
+  noise on noise); a season's Regular Season output never depends on which
+  other seasons the invocation happened to include.
 * BPM 2.0 (``nba_bpm``) — box logs + listed positions.
 * WAR (``nba_war``) — ``pts_per_win`` calibrated per season from the team game
   logs (OLS wins ~ total margin); ``replacement_level`` defaults to ``-2.0``
@@ -302,6 +308,20 @@ def build_nba_player_impact(
         List of ``{"season": int, "rows": int, "path": str}`` dicts, one per
         season built, in season order.
     """
+    season_types = list(season_types)
+    if "Playoffs" in season_types and "Regular Season" not in season_types:
+        # Guard at the entry, not just in the CLI: a direct API call with
+        # season_types=["Playoffs"] would otherwise burn a full ~85-game
+        # playoff compile (hours at delay_s=7) before ever reaching the
+        # `assert coef is not None` deep in the loop below.
+        raise ValueError(
+            "season_types=['Playoffs'] (or any Playoffs-without-Regular-Season "
+            "combination) is not supported: the Playoffs pass reuses the SPM "
+            "coef and pts_per_win fitted by the Regular Season pass in the "
+            "same invocation, so it cannot run alone. Include 'Regular "
+            "Season' in season_types."
+        )
+
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -309,6 +329,7 @@ def build_nba_player_impact(
     prev_spm: Optional[pl.DataFrame] = None
     panel_frames: list[pl.DataFrame] = []
     age_frames: list[pl.DataFrame] = []
+    built_season_types: list[str] = []
 
     # Every stats.nba.com surface this builder touches must be proxied, not just
     # the possession compile -- an unproxied leaguegamelog/playerindex call hangs
@@ -372,7 +393,24 @@ def build_nba_player_impact(
                 positions = nba_player_positions(s_str, fetch=_playerindex)
 
             rapm = nba_rapm(poss)
-            assert rapm.height > 0, f"impact: season={season} {stype} RAPM came back empty"
+            if stype == "Regular Season":
+                assert rapm.height > 0, (
+                    f"impact: season={season} {stype} RAPM came back empty"
+                )
+            elif rapm.height == 0:
+                # Same pattern as a6ae584e's empty-RS-compile handling, but for
+                # a season-local RAPM anomaly on the PLAYOFF path specifically:
+                # a ~15-game sample going empty must not abort a 25-season /
+                # 3-day backfill. The spec only mandates the hard assert above
+                # on the Regular Season path -- here we log loudly and skip
+                # this season's Playoffs row; the RS SPM carries forward alone
+                # (same as an empty PO compile).
+                print(
+                    f"impact: season={season} type={stype!r} RAPM came back "
+                    f"empty (season-local anomaly) -- skipping the Playoffs "
+                    f"row for season {season}; RS SPM carries forward alone"
+                )
+                continue
 
             # Box-log substrate (per-player + per-team leaguegamelog, one call each).
             logs = nba_box_logs(s_str, season_type=stype, fetch=_leaguegamelog)
@@ -492,6 +530,13 @@ def build_nba_player_impact(
             out_frames.append(f)
         impact = pl.concat(out_frames, how="vertical")
 
+        # Track what was ACTUALLY built (not merely requested) for the model
+        # card: a season with no playoffs must not have the card claim a
+        # Playoffs row exists for it. Preserves the canonical season_types order.
+        for st in impact["season_type"].unique().to_list():
+            if st not in built_season_types:
+                built_season_types.append(st)
+
         path = out_dir / f"nba_player_impact_{season}.parquet"
         impact.write_parquet(path)
         results.append({"season": season, "rows": impact.height, "path": str(path)})
@@ -505,6 +550,10 @@ def build_nba_player_impact(
         # blend, NOT the playoff estimate: a ~15-game sample must not override a
         # 1230-game one as the prior for the following regular season.
         if spm_po is not None:
+            # weight_col="min" (minutes), not possessions -- SPM's own frame
+            # doesn't carry a possession count, so minutes is used as a
+            # defensible proxy here. Not a bug; see _blend_by_poss's docstring
+            # for the possession-weighted case (the DARKO panel blend below).
             prev_spm = _blend_by_poss(
                 spm_rs, spm_po, ["ospm", "dspm", "spm"], "min"
             )
@@ -512,12 +561,16 @@ def build_nba_player_impact(
             prev_spm = spm_rs
 
     if results:
+        # The card attests what was actually built, not merely what was
+        # requested -- e.g. a season_types=[RS, Playoffs] invocation whose
+        # only season had no playoffs must not claim a Playoffs row exists.
+        actual_season_types = [t for t in season_types if t in built_season_types]
         card_path = _write_model_card(
             out_dir,
             results,
             replacement_level=replacement_level,
             lineup_source=lineup_source,
-            season_types=season_types,
+            season_types=actual_season_types,
         )
         print(f"impact: model card -> {card_path}")
     return results

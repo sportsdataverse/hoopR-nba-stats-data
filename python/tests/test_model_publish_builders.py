@@ -502,6 +502,29 @@ def test_compile_is_called_once_per_season_type_with_the_right_string(tmp_path, 
     assert seen == [(2023, "Regular Season"), (2023, "Playoffs")]
 
 
+def test_box_logs_is_called_once_per_season_type_with_the_right_string(
+    tmp_path, monkeypatch, stubbed
+):
+    """Mirror of test_compile_is_called_once_per_season_type_with_the_right_string,
+    for nba_box_logs. The real signature is
+    ``nba_box_logs(season, *, season_type: str = "Regular Season", fetch=None)``
+    -- keyword-only WITH A DEFAULT, so a Playoffs pass that forgot to thread
+    season_type would omit the kwarg SILENTLY (not a TypeError) and pull
+    regular-season min/gp/spm/bpm into the playoff rows."""
+    seen = []
+    real_box_logs = B.nba_box_logs
+    monkeypatch.setattr(
+        B,
+        "nba_box_logs",
+        lambda s, **kw: (seen.append((s, kw.get("season_type"))), real_box_logs(s, **kw))[1],
+    )
+    B.build_nba_player_impact([2023], tmp_path)
+    assert seen == [
+        (B._season_str(2023), "Regular Season"),
+        (B._season_str(2023), "Playoffs"),
+    ]
+
+
 def test_darko_panel_stays_one_row_per_player_season(tmp_path, monkeypatch, stubbed):
     """DARKO's aging curve and process variance are per-season quantities -- a
     playoff time step would double-apply aging and mis-scale the filter."""
@@ -595,24 +618,120 @@ def test_forward_prior_is_the_blend_not_the_playoff_estimate(tmp_path, monkeypat
 
 
 def test_rs_only_build_reproduces_the_pre_playoffs_behavior(tmp_path, stubbed):
-    """Regression gate: --season-types "Regular Season" must be byte-identical to
-    the old regular-season-only pipeline, so the change is diffable. Adding
-    playoffs must not silently move the regular-season numbers."""
-    out = B.build_nba_player_impact(
+    """Regression gate, FIRST SEASON ONLY: the Regular Season rows of a
+    both-types build must be byte-identical, column-for-column, to an
+    RS-only build -- but ONLY for the first season of an invocation. For
+    that season the forward adj-RAPM prior is empty in both configurations
+    (nothing has been carried forward yet), so there is nothing to make the
+    two builds diverge.
+
+    From the second season onward this equality is EXPECTED TO BREAK, by
+    design: the both-types build's prior into season 2 is the
+    possession-weighted RS+PO blend (see
+    test_forward_prior_is_the_blend_not_the_playoff_estimate), while an
+    RS-only build's prior is RS alone. That divergence is the point of
+    adding playoffs, not a regression -- do NOT extend this comparison past
+    the first season, and do NOT narrow it to a single column (a column that
+    is both stubbed constant and fit independently per season_type, like
+    plain ``rapm``, cannot move even if the Playoffs pass corrupts every
+    other RS number)."""
+    rs_only = B.build_nba_player_impact(
         [2022, 2023], tmp_path, season_types=["Regular Season"]
     )
-    df = pl.read_parquet(out[-1]["path"])
-    assert df["season_type"].unique().to_list() == ["Regular Season"]
-    # with no PO frame the carry must be spm_rs itself, NOT a blend of it with nothing
-    rs_cols = [c for c in df.columns if c != "season_type"]
-    both = pl.read_parquet(
-        B.build_nba_player_impact(
-            [2022, 2023], tmp_path / "both", season_types=["Regular Season", "Playoffs"]
-        )[-1]["path"]
-    ).filter(pl.col("season_type") == "Regular Season")
-    # the RS rows of a both-types build agree with an RS-only build on RAPM --
-    # RAPM is fit per season_type and must not be touched by the playoff pass
-    assert df.sort("player_id")["rapm"].to_list() == pytest.approx(
-        both.sort("player_id")["rapm"].to_list()
+    both = B.build_nba_player_impact(
+        [2022, 2023], tmp_path / "both", season_types=["Regular Season", "Playoffs"]
     )
-    assert set(rs_cols).issubset(set(both.columns))
+    a = pl.read_parquet(rs_only[0]["path"]).sort("player_id")
+    b = (
+        pl.read_parquet(both[0]["path"])
+        .filter(pl.col("season_type") == "Regular Season")
+        .sort("player_id")
+    )
+    cols = sorted(a.columns)
+    assert a.select(cols).equals(b.select(cols)), "the Playoffs pass moved the RS numbers"
+
+
+# ---------------------------------------------------------------------------
+# Model card: must attest what was actually BUILT, not merely what was
+# requested via season_types=.
+# ---------------------------------------------------------------------------
+
+
+def test_model_card_records_actually_built_season_types_not_requested_ones(
+    tmp_path, monkeypatch, stubbed
+):
+    """A season with no playoffs must not leave the card claiming a Playoffs
+    row exists for it -- the card is the provenance artifact and must not
+    overclaim."""
+
+    def _compile(season, **kw):
+        if kw.get("season_type") == "Playoffs":
+            return _poss(season).clear()  # empty, correct schema
+        return _poss(season)
+
+    monkeypatch.setattr(B, "compile_nba_season", _compile)
+    B.build_nba_player_impact([2023], tmp_path)  # default: both season types requested
+    card = json.loads((tmp_path / "nba_player_impact_card.json").read_text())
+    assert card["season_types"] == ["Regular Season"]
+
+
+def test_model_card_records_both_types_when_both_are_actually_built(tmp_path, stubbed):
+    B.build_nba_player_impact([2023], tmp_path)
+    card = json.loads((tmp_path / "nba_player_impact_card.json").read_text())
+    assert card["season_types"] == ["Regular Season", "Playoffs"]
+
+
+# ---------------------------------------------------------------------------
+# A season-local RAPM anomaly (poss non-empty but RAPM comes back empty) must
+# only abort the run on the Regular Season path -- the spec (and a6ae584e's
+# empty-RS-compile precedent) only mandates the hard assert there.
+# ---------------------------------------------------------------------------
+
+
+def test_rs_rapm_empty_still_aborts_via_assert(tmp_path, monkeypatch, stubbed):
+    monkeypatch.setattr(B, "nba_rapm", lambda poss, **kw: _rapm([]))
+    with pytest.raises(AssertionError, match="RAPM came back empty"):
+        B.build_nba_player_impact([2023], tmp_path, season_types=["Regular Season"])
+
+
+def test_playoffs_rapm_empty_skips_the_row_without_aborting(
+    tmp_path, monkeypatch, stubbed, capsys
+):
+    """Mirrors a6ae584e's empty-RS-compile handling, but for a season-local
+    RAPM anomaly on the PLAYOFF path: it must not kill a 25-season backfill.
+    The RS SPM carries forward alone, same as an empty PO compile."""
+    real_compile = B.compile_nba_season
+    current: dict = {}
+
+    def spy_compile(season, **kw):
+        current["key"] = (season, kw.get("season_type"))
+        return real_compile(season, **kw)
+
+    monkeypatch.setattr(B, "compile_nba_season", spy_compile)
+
+    def rapm_stub(poss, **kw):
+        if current.get("key") == (2023, "Playoffs"):
+            return _rapm([])  # empty, but poss itself was non-empty
+        return _rapm([1, 2, 3])
+
+    monkeypatch.setattr(B, "nba_rapm", rapm_stub)
+
+    out = B.build_nba_player_impact([2023], tmp_path)
+    df = pl.read_parquet(out[0]["path"])
+    assert df["season_type"].unique().to_list() == ["Regular Season"]
+    assert "RAPM came back" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
+# Entry-point guard: season_types=["Playoffs"] alone must fail fast, before
+# any compile is even attempted -- a direct API caller shouldn't burn a full
+# ~85-game playoff compile before hitting `assert coef is not None`.
+# ---------------------------------------------------------------------------
+
+
+def test_playoffs_without_regular_season_raises_at_entry_before_any_compile(
+    tmp_path, stubbed
+):
+    with pytest.raises(ValueError, match="Regular Season"):
+        B.build_nba_player_impact([2023], tmp_path, season_types=["Playoffs"])
+    assert stubbed["compile_order"] == []

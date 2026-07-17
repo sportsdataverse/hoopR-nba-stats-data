@@ -39,8 +39,9 @@ _REPO_DEFAULT = "sportsdataverse/sportsdataverse-data"
 
 _IMPACT_RELEASE_NOTES = (
     "NBA player-impact model outputs (RAPM / adj-RAPM / SPM / BPM / DARKO / WAR; "
-    "one parquet per season, one row per player-season; stats.nba.com-sourced; "
-    "Python-built by hoopR-nba-stats-data/python/nba_model_publish)."
+    "one parquet per season, one row per player-season-season_type (Regular "
+    "Season + Playoffs; PlayIn excluded); stats.nba.com-sourced; Python-built "
+    "by hoopR-nba-stats-data/python/nba_model_publish)."
 )
 
 
