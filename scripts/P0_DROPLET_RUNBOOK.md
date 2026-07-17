@@ -92,12 +92,53 @@ earliest→latest so the adj-RAPM prior and DARKO panel flow forward — an
 out-of-sequence single-season build has no prior chain. `--dry-run` on the
 smoke is what makes it safe.
 
-## 4. Full backfill 2000:2024 (~2.5–3 days, resumable)
+## 4. Full backfill 2000:2024 (resumable)
 
-Budget math: ~1,230 games/season × 25 seasons × 3 endpoints ≈ **92K requests**
-against the shared ~250 req/10min budget ⇒ ~61 h floor. `SDV_NBA_DELAY_S=7`
-(≈26 req/min) paces right at budget. The default `0.6` **will blow the shared
-budget** — it's fine only for small cached re-runs.
+> **The budget math below was wrong. Measured on this droplet 2026-07-17:**
+>
+> | claim | measured |
+> |---|---|
+> | ~250 req/10min shared budget (≈25 req/min) | **1,707 req/min at concurrency 32, zero rejections** — no ceiling found |
+> | `SDV_NBA_DELAY_S=7` "paces right at budget" | delay is **19%** of per-game time; dropping 7→1 buys 16% |
+> | ~61 h floor / "2.5–3 days" | **~37 s/game sequential ⇒ ~13 days** |
+>
+> Requests were never the scarce resource; **wall-clock latency per game** is.
+> The probes are committed — rerun them rather than trusting either number:
+> `scripts/probe_stats_rate_limit.py` (per-IP vs per-source) and
+> `scripts/probe_stats_ceiling.py` (concurrency ramp).
+>
+> **Use the parallel cache warm instead** (§4a). It runs ~5.6× faster and the
+> per-game cache is the same checkpoint, so a warm cache makes the sequential
+> build CPU-only and quick.
+
+### 4a. Parallel cache warm (preferred)
+
+```bash
+. ~/.config/sdv/env
+export SDV_PY_NBA_CACHE_DIR=/data/nba_possessions WARM_WORKERS=5
+cd python && uv run python ../scripts/warm_possession_cache.py 2000:2024
+```
+
+Then run the sequential build (§4b) — it reads the warm cache, so it does no
+fetching and the earliest→latest prior chain is untouched.
+
+Worker count is bounded by **RAM and the live postgres on this box**, not by
+cores or the (non-binding) request budget: each worker holds a whole season's
+frames (~318 MB observed), and `sdv-db` serves reads from the same droplet.
+5 workers ≈ 9 games/min at 26% CPU. Watch `free -g` before raising it.
+
+**Do not pass `cache_dir=` to `compile_nba_season`.** `_default_cache_dir()`
+appends a `possessions` subdirectory to `$SDV_PY_NBA_CACHE_DIR`; passing
+`cache_dir` explicitly bypasses that suffix, so the warm writes one directory
+*above* where the builder reads — hours of work, exit 0, and the builder
+refetches everything. Verify with:
+`ls $SDV_PY_NBA_CACHE_DIR/*.parquet | wc -l` → must be **0**.
+
+### 4b. Sequential build
+
+`SDV_NBA_DELAY_S=7` remains the safe default for an *unattended* run, but it is
+conservative by ~10× on the evidence above. The default `0.6` does **not** blow
+any budget we could measure.
 
 The budget is shared with the R daily scraper (`daily_nba_stats.yml`, 07:00
 UTC, July window active). Disable it for the duration:
@@ -168,9 +209,17 @@ Season arg = start year (`2025` = 2025-26); bump it each October. Check
   failure signal. The CLI refuses to start with an empty proxy pool for
   exactly this reason; `--no-proxy` (`NO_PROXY_DIRECT=1`) is the explicit
   opt-out.
-- **One process, sequential** — never parallelize the fetch loop; the budget
-  is per-source, not per-process, and parallel workers blow it (the R side
-  removed its `furrr` path for the same reason).
+- **"One process, sequential — the budget is per-source" does NOT hold for this
+  Python pipeline.** Measured 2026-07-17 from this droplet: concurrency 32 →
+  1,707 req/min with **zero** rejections (~68× the documented ~25 req/min), and
+  a single IP took 109 req/min unthrottled. Rotation across the 50-IP pool
+  multiplies the ceiling; nothing per-source was detectable at any rate probed.
+  The rule is correct **for the R scraper**, which only fetches and writes JSON
+  and shares one in-process token bucket — it was inherited here without being
+  re-measured against the proxy pool. `scripts/warm_possession_cache.py`
+  parallelizes deliberately; the *model build* stays sequential for the
+  earliest→latest prior chain, which is a correctness constraint, not a rate one.
+  Re-run `scripts/probe_stats_ceiling.py` before trusting either claim.
 - The proxy env trio is the same `PROXY_ENDPOINT`/`PROXY_KEY`/`PROXY_PKG` the
   R workflows use (GitHub secrets) — never commit them, never echo them.
 - WNBA repeats this runbook later via `wehoop-wnba-stats-data`
