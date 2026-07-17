@@ -39,7 +39,7 @@ def _log(msg: str) -> None:
 
 def _probe(proxy_url) -> None:
     """One leaguegamelog call -- the backfill's first network touch."""
-    from sportsdataverse.nba import nba_stats_leaguegamelog
+    from sportsdataverse.nba.nba_stats import nba_stats_leaguegamelog
 
     payload = nba_stats_leaguegamelog(
         season=os.environ.get("CANARY_SEASON", "2023-24"),
