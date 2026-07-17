@@ -39,8 +39,9 @@ _REPO_DEFAULT = "sportsdataverse/sportsdataverse-data"
 
 _IMPACT_RELEASE_NOTES = (
     "NBA player-impact model outputs (RAPM / adj-RAPM / SPM / BPM / DARKO / WAR; "
-    "one parquet per season, one row per player-season; stats.nba.com-sourced; "
-    "Python-built by hoopR-nba-stats-data/python/nba_model_publish)."
+    "one parquet per season, one row per player-season-season_type (Regular "
+    "Season + Playoffs; PlayIn excluded); stats.nba.com-sourced; Python-built "
+    "by hoopR-nba-stats-data/python/nba_model_publish)."
 )
 
 
@@ -71,6 +72,53 @@ def _parse_seasons(spec: str) -> list[int]:
             f"invalid --seasons {spec!r}: end {hi} precedes start {lo}"
         )
     return list(range(lo, hi + 1))
+
+
+SEASON_TYPES: tuple[str, ...] = ("Regular Season", "Playoffs")
+
+
+def _parse_season_types(spec: str) -> list[str]:
+    """Comma-separated stats.nba.com SeasonType strings -> validated list.
+
+    Only "Regular Season" and "Playoffs" are supported. "PlayIn" is a real
+    third SeasonType (2020+, ~4-6 games/yr) but is deliberately out of scope --
+    see docs/superpowers/specs/2026-07-17-nba-player-impact-playoffs-design.md.
+
+    Args:
+        spec: e.g. ``"Regular Season,Playoffs"``.
+
+    Returns:
+        Season types in canonical build order (RS before PO).
+
+    Raises:
+        argparse.ArgumentTypeError: On an unknown or empty season type, or on
+            "Playoffs" without "Regular Season" (see below).
+    """
+    parts = [p.strip() for p in spec.split(",") if p.strip()]
+    if not parts:
+        raise argparse.ArgumentTypeError("--season-types must not be empty")
+    unknown = [p for p in parts if p not in SEASON_TYPES]
+    if unknown:
+        raise argparse.ArgumentTypeError(
+            f"invalid --season-types {unknown!r}: expected any of {list(SEASON_TYPES)}"
+        )
+    # canonical order: the PO pass reuses fitted values from the RS pass
+    canonical = [t for t in SEASON_TYPES if t in parts]
+    if "Playoffs" in canonical and "Regular Season" not in canonical:
+        # A Playoffs pass structurally cannot run alone: it reuses the SPM
+        # `coef` and `pts_per_win` fitted by the Regular Season pass in the
+        # same invocation. Without RS, the builder hits a bare
+        # `assert coef is not None` deep in the build -- and asserts vanish
+        # under `python -O`, which would let coef=None reach nba_spm instead
+        # of failing loudly. Reject this here, at parse time, where the
+        # error is clear and unconditional.
+        raise argparse.ArgumentTypeError(
+            "--season-types 'Playoffs' requires 'Regular Season' in the same "
+            "run: the Playoffs pass reuses the SPM coef and pts_per_win fitted "
+            "by the Regular Season pass, so it cannot run alone. Pass "
+            "'Regular Season,Playoffs' (or 'Regular Season' alone)."
+        )
+    return canonical
 
 
 def _add_repo_dry(p: argparse.ArgumentParser) -> None:
@@ -126,6 +174,15 @@ def build_parser() -> argparse.ArgumentParser:
         "(default: $SDV_NBA_DELAY_S or 0.6). The stats.nba.com request budget "
         "(~250 req/10min) is SHARED with the R daily scraper -- use ~7 for an "
         "unattended multi-season backfill.",
+    )
+    imp.add_argument(
+        "--season-types",
+        type=_parse_season_types,
+        default=list(SEASON_TYPES),
+        help="Comma-separated season types to build "
+        '(default: "Regular Season,Playoffs"). Rows are tagged with a '
+        "season_type column. Pass 'Regular Season' alone to reproduce a "
+        "regular-season-only build for diffing. PlayIn is not supported.",
     )
     imp.add_argument(
         "--replacement-level",
@@ -214,6 +271,7 @@ def main(argv=None) -> int:
             lineup_source=args.lineup_source,
             cache_dir=args.cache_dir,
             delay_s=args.delay_s,
+            season_types=args.season_types,
             replacement_level=args.replacement_level,
         )
         total_rows = sum(b["rows"] for b in built)
