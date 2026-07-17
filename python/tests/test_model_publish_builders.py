@@ -234,6 +234,16 @@ def test_model_card_written(stubbed, tmp_path):
     assert "stats.nba.com" in card["source"]
 
 
+def test_model_card_documents_grain_and_playin_exclusion(tmp_path, stubbed):
+    B.build_nba_player_impact([2023], tmp_path)
+    card = json.loads((tmp_path / "nba_player_impact_card.json").read_text())
+    assert card["grain"] == ["player_id", "season", "season_type"]
+    assert card["season_types"] == ["Regular Season", "Playoffs"]
+    # the play-in exclusion must be explicit, not silent
+    assert "PlayIn" in card["excluded"]
+    assert "playoffs" in card["models"]["spm"].lower()
+
+
 def test_empty_season_skipped_and_breaks_prior_chain(stubbed, monkeypatch, tmp_path):
     empty = pl.DataFrame({"game_id": [], "points": []})
     real_compile = B.compile_nba_season

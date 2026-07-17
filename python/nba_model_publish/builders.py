@@ -161,7 +161,12 @@ def _blend_by_poss(
 
 
 def _write_model_card(
-    out_dir: Path, results: list[dict], *, replacement_level: float, lineup_source: str
+    out_dir: Path,
+    results: list[dict],
+    *,
+    replacement_level: float,
+    lineup_source: str,
+    season_types: Sequence[str],
 ) -> Path:
     from sportsdataverse.nba.nba_season_compile import PIPELINE_VERSION
 
@@ -170,26 +175,52 @@ def _write_model_card(
         "description": (
             "Consolidated per-season NBA player-impact table: RAPM, adj-RAPM, "
             "SPM, BPM 2.0, WAR, and DARKO forecasts joined on player_id. One "
-            "parquet per season, one row per player-season. Base population = "
-            "players with possession lineup data (RAPM-rated)."
+            "parquet per season, one row per player-season-season_type. Base "
+            "population = players with possession lineup data (RAPM-rated)."
+        ),
+        "grain": ["player_id", "season", "season_type"],
+        "season_types": list(season_types),
+        "excluded": (
+            "PlayIn -- the NBA exposes PlayIn as a third SeasonType (2020+, "
+            "~4-6 games/year). Those games appear in neither season type here."
         ),
         "source": "stats.nba.com (playbyplayv3 / gamerotation / boxscoretraditionalv3 / leaguegamelog / playerindex / leaguedashplayerbiostats)",
         "producer": "hoopR-nba-stats-data/python/nba_model_publish",
         "models": {
             "rapm": "sportsdataverse.nba.nba_rapm (single-season ridge)",
-            "adj_rapm": "sportsdataverse.nba.nba_adj_rapm; prior = previous season's SPM (empty for the first season of an invocation)",
-            "spm": "sportsdataverse.nba.train_spm + nba_spm, trained within-season on that season's box features + RAPM target",
+            "adj_rapm": (
+                "sportsdataverse.nba.nba_adj_rapm. Within a season, the Playoffs "
+                "fit takes that season's Regular Season SPM as its prior -- that "
+                "anchor is what makes a ~15-game playoff sample usable. Across "
+                "seasons the prior is the possession-weighted blend of the "
+                "season's Regular Season + Playoffs SPM, so a thin playoff "
+                "sample never overrides a full regular season (empty for the "
+                "first season of an invocation)."
+            ),
+            "spm": (
+                "sportsdataverse.nba.train_spm + nba_spm. Coefficients are "
+                "trained ONCE per season, on the Regular Season box features + "
+                "RAPM target, and reused for the Playoffs pass -- re-fitting on "
+                "a ~15-game playoff sample would train noise on noise. Playoff "
+                "figures are therefore on the same scale as regular-season ones "
+                "but rest on far fewer possessions; treat them as directional."
+            ),
             "bpm": "sportsdataverse.nba.nba_bpm (BPM 2.0, season granularity)",
             "war": (
                 "sportsdataverse.nba.nba_war on the RAPM rating; pts_per_win "
-                "calibrated per season from team game logs (OLS wins ~ total "
-                f"margin); replacement_level = {replacement_level} per 100 "
+                "calibrated ONCE per season from Regular Season team game logs "
+                "(OLS wins ~ total margin) and reused for the Playoffs pass; "
+                f"replacement_level = {replacement_level} per 100 "
                 "(basketball-reference VORP convention)"
             ),
             "darko": (
-                "sportsdataverse.nba.nba_darko on the within-invocation RAPM "
-                "panel (rating=rapm, weight=off_poss+def_poss); darko_* columns "
-                "are null until the panel spans >= 2 seasons"
+                "sportsdataverse.nba.nba_darko on a SEASON-GRANULAR panel: one "
+                "row per player-season whose rating is the possession-weighted "
+                "blend of Regular Season + Playoffs (DARKO's aging curve and "
+                "process variance are per-season quantities, so playoffs enter "
+                "as a blend, not a second time step). DARKO projects the NEXT "
+                "season, so both season_type rows carry the same projection; "
+                "darko_* columns are null until the panel spans >= 2 seasons"
             ),
         },
         "possession_pipeline_version": PIPELINE_VERSION,
@@ -486,6 +517,7 @@ def build_nba_player_impact(
             results,
             replacement_level=replacement_level,
             lineup_source=lineup_source,
+            season_types=season_types,
         )
         print(f"impact: model card -> {card_path}")
     return results
