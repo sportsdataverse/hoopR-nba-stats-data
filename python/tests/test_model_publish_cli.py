@@ -123,3 +123,20 @@ def test_season_types_rejects_unknown_value():
         cli.build_parser().parse_args(
             ["impact", "--seasons", "2023", "--out", "o", "--season-types", "PlayIn"]
         )
+
+
+def test_season_types_canonicalizes_regardless_of_input_order():
+    # The loop's correctness depends on RS being built before PO (fit-once,
+    # reuse), so out-of-order input must still canonicalize to RS-then-PO.
+    args = cli.build_parser().parse_args(
+        [
+            "impact",
+            "--seasons",
+            "2023",
+            "--out",
+            "o",
+            "--season-types",
+            "Playoffs,Regular Season",
+        ]
+    )
+    assert args.season_types == ["Regular Season", "Playoffs"]

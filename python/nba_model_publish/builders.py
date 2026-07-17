@@ -33,7 +33,7 @@ from __future__ import annotations
 import datetime as _dt
 import json
 from pathlib import Path
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Sequence
 
 import polars as pl
 from sportsdataverse.nba import (
@@ -230,6 +230,7 @@ def build_nba_player_impact(
     lineup_source: str = "auto",
     cache_dir: Optional[str] = None,
     delay_s: float = 0.6,
+    season_types: Sequence[str] = ("Regular Season", "Playoffs"),
     replacement_level: float = DEFAULT_REPLACEMENT_LEVEL,
     proxy_provider: Optional[ProxyProvider] = None,
 ) -> list[dict]:
@@ -250,6 +251,12 @@ def build_nba_player_impact(
         delay_s: Sleep between live per-game fetches, seconds (forwarded to
             ``compile_nba_season``; only live fetches sleep, cached games don't).
             Throttles the shared stats.nba.com budget (~250 req/10min).
+        season_types: Season types to build, in order. The "Regular Season"
+            pass fits the SPM coefficients and pts_per_win; the "Playoffs"
+            pass reuses them (a playoff sample is ~15 games/team -- re-fitting
+            trains noise on noise) and takes the regular season's SPM as its
+            adj-RAPM prior. Rows are tagged with a ``season_type`` column.
+            "PlayIn" is not supported.
         replacement_level: WAR replacement level, points per 100 possessions.
         proxy_provider: Zero-arg callable returning a proxy URL (e.g.
             ``RoundRobin.next``). ``stats.nba.com`` *hangs* rather than errors on
@@ -281,58 +288,124 @@ def build_nba_player_impact(
 
     for season in sorted(seasons):
         s_str = _season_str(season)
-        poss = compile_nba_season(
-            season,
-            lineup_source=lineup_source,
-            cache_dir=cache_dir,
-            delay_s=delay_s,
-            proxy_provider=proxy_provider,
-        )
-        if poss.height == 0:
-            print(f"impact: season={season} no possessions; skipped")
-            prev_spm = None  # a gap season breaks the prior chain
+        frames: list[pl.DataFrame] = []
+        rapm_rs: Optional[pl.DataFrame] = None
+        spm_rs: Optional[pl.DataFrame] = None
+        rapm_po: Optional[pl.DataFrame] = None
+        spm_po: Optional[pl.DataFrame] = None
+        coef = None
+        pts_per_win = None
+
+        for stype in season_types:
+            poss = compile_nba_season(
+                season,
+                season_type=stype,
+                lineup_source=lineup_source,
+                cache_dir=cache_dir,
+                delay_s=delay_s,
+                proxy_provider=proxy_provider,
+            )
+            if poss.height == 0:
+                # A season can legitimately have no playoffs (lockout, in-progress).
+                # This is NOT the same as a network failure: the empty-in/empty-out
+                # contract is exactly what made the unproxied-discovery bug exit 0
+                # with no data, so say which case this is.
+                print(f"impact: season={season} type={stype!r} no possessions; skipped")
+                if stype == "Regular Season":
+                    prev_spm = None  # a gap season breaks the prior chain
+                continue
+
+            rapm = nba_rapm(poss)
+            assert rapm.height > 0, f"impact: season={season} {stype} RAPM came back empty"
+
+            # Box-log substrate (per-player + per-team leaguegamelog, one call each).
+            logs = nba_box_logs(s_str, season_type=stype, fetch=_leaguegamelog)
+            bf = box_features(logs["player"], logs["team"])
+
+            if stype == "Regular Season":
+                # Fitted ONCE, on the regular season; the playoff pass reuses both.
+                coef = train_spm(bf, rapm.select("player_id", "o_rapm", "d_rapm"))
+                pts_per_win = calibrate_pts_per_win(_team_season(logs["team"]))
+                prior = AdjRapmModel.from_spm(prev_spm).prior if prev_spm is not None else {}
+            else:
+                assert coef is not None, "playoff pass requires the regular-season coef"
+                # Within the season, the playoff fit is anchored on the RS estimate --
+                # that prior is what makes a ~15-game sample usable at all.
+                prior = AdjRapmModel.from_spm(spm_rs).prior if spm_rs is not None else {}
+
+            spm = nba_spm(bf, coef)
+
+            # BPM 2.0 off the same logs + listed positions.
+            positions = nba_player_positions(s_str, fetch=_playerindex)
+            bpm = nba_bpm(logs["player"], logs["team"], positions)
+
+            # adj-RAPM: prior threaded in above (previous-season SPM for RS,
+            # this season's RS SPM for PO).
+            adj = nba_adj_rapm(poss, prior)
+
+            # WAR off the RAPM rating; pts_per_win calibrated once, from the
+            # regular season's team logs (NBA has no ties, so plus_minus > 0 is
+            # a win), and reused for the playoff pass.
+            war = nba_war(
+                rapm.select("player_id", pl.col("rapm").alias("rating")),
+                rapm.select(
+                    "player_id",
+                    (pl.col("off_poss") + pl.col("def_poss")).alias("poss"),
+                ),
+                replacement_level=replacement_level,
+                pts_per_win=pts_per_win,
+            )
+
+            if stype == "Regular Season":
+                rapm_rs, spm_rs = rapm, spm
+            else:
+                rapm_po, spm_po = rapm, spm
+
+            impact = rapm
+            impact = _join_on_player(
+                impact,
+                adj.select("player_id", "o_adj_rapm", "d_adj_rapm", "adj_rapm"),
+                "adj_rapm",
+            )
+            impact = _join_on_player(
+                impact, spm.select("player_id", "ospm", "dspm", "spm", "min", "gp"), "spm"
+            )
+            impact = _join_on_player(
+                impact, bpm.select("player_id", "obpm", "dbpm", "bpm"), "bpm"
+            )
+            impact = _join_on_player(impact, war, "war")
+            impact = impact.with_columns(
+                pl.lit(season, dtype=pl.Int64).alias("season"),
+                pl.lit(stype, dtype=pl.Utf8).alias("season_type"),
+            )
+            frames.append(impact)
+
+        if not frames:
             continue
 
-        rapm = nba_rapm(poss)
-        assert rapm.height > 0, f"impact: season={season} RAPM came back empty"
-
-        # Box-log substrate (per-player + per-team leaguegamelog, one call each).
-        logs = nba_box_logs(s_str, fetch=_leaguegamelog)
-        bf = box_features(logs["player"], logs["team"])
-
-        # SPM: within-season training on this season's RAPM target.
-        coef = train_spm(bf, rapm.select("player_id", "o_rapm", "d_rapm"))
-        spm = nba_spm(bf, coef)
-
-        # BPM 2.0 off the same logs + listed positions.
-        positions = nba_player_positions(s_str, fetch=_playerindex)
-        bpm = nba_bpm(logs["player"], logs["team"], positions)
-
-        # adj-RAPM: prior = previous season's SPM (empty dict on the first season).
-        prior = AdjRapmModel.from_spm(prev_spm).prior if prev_spm is not None else {}
-        adj = nba_adj_rapm(poss, prior)
-
-        # WAR off the RAPM rating; pts_per_win calibrated from this season's
-        # team logs (NBA has no ties, so plus_minus > 0 is a win).
-        pts_per_win = calibrate_pts_per_win(_team_season(logs["team"]))
-        war = nba_war(
-            rapm.select("player_id", pl.col("rapm").alias("rating")),
-            rapm.select(
-                "player_id",
-                (pl.col("off_poss") + pl.col("def_poss")).alias("poss"),
-            ),
-            replacement_level=replacement_level,
-            pts_per_win=pts_per_win,
+        # --- DARKO panel: ONE row per player-season ---------------------------
+        # DARKO is a per-season Kalman filter + aging curve projecting NEXT
+        # season. Inserting a playoff time step would apply a season of aging
+        # twice and mis-scale the per-season process variance, so playoff form
+        # enters as a possession-weighted blend instead of a second step.
+        panel_rs = rapm_rs.select(
+            "player_id",
+            pl.col("rapm").alias("rating"),
+            (pl.col("off_poss") + pl.col("def_poss")).alias("weight"),
         )
-
-        # DARKO panel: accumulate this season's RAPM ratings, forecast when the
-        # panel spans >= 2 seasons.
-        panel_frames.append(
-            rapm.select(
+        panel_po = (
+            rapm_po.select(
                 "player_id",
                 pl.col("rapm").alias("rating"),
                 (pl.col("off_poss") + pl.col("def_poss")).alias("weight"),
-            ).with_columns(pl.lit(season, dtype=pl.Int64).alias("season"))
+            )
+            if rapm_po is not None
+            else None
+        )
+        panel_frames.append(
+            _blend_by_poss(panel_rs, panel_po, ["rating"], "weight").with_columns(
+                pl.lit(season, dtype=pl.Int64).alias("season")
+            )
         )
         age_frames.append(
             nba_player_ages(s_str, fetch=_biostats).with_columns(
@@ -351,33 +424,37 @@ def build_nba_player_impact(
         else:
             darko_season = None
 
-        impact = rapm
-        impact = _join_on_player(
-            impact,
-            adj.select("player_id", "o_adj_rapm", "d_adj_rapm", "adj_rapm"),
-            "adj_rapm",
-        )
-        impact = _join_on_player(
-            impact, spm.select("player_id", "ospm", "dspm", "spm", "min", "gp"), "spm"
-        )
-        impact = _join_on_player(
-            impact, bpm.select("player_id", "obpm", "dbpm", "bpm"), "bpm"
-        )
-        impact = _join_on_player(impact, war, "war")
-        if darko_season is not None:
-            impact = _join_on_player(impact, darko_season, "darko")
-        else:
-            impact = impact.with_columns(
-                [pl.lit(None, dtype=pl.Float64).alias(c) for c in _DARKO_COLS]
-            )
-        impact = impact.with_columns(pl.lit(season, dtype=pl.Int64).alias("season"))
+        # DARKO projects NEXT season, which is not a playoff-specific quantity:
+        # both season_type rows carry the same projection.
+        out_frames = []
+        for f in frames:
+            if darko_season is not None:
+                f = _join_on_player(f, darko_season, "darko")
+            else:
+                f = f.with_columns(
+                    [pl.lit(None, dtype=pl.Float64).alias(c) for c in _DARKO_COLS]
+                )
+            out_frames.append(f)
+        impact = pl.concat(out_frames, how="vertical")
 
         path = out_dir / f"nba_player_impact_{season}.parquet"
         impact.write_parquet(path)
         results.append({"season": season, "rows": impact.height, "path": str(path)})
-        print(f"impact: season={season} rows={impact.height} -> {path}")
+        print(
+            f"impact: season={season} rows={impact.height} "
+            f"types={impact['season_type'].unique().to_list()} -> {path}"
+        )
 
-        prev_spm = spm
+        # --- forward carry ---------------------------------------------------
+        # The next season's adj-RAPM prior is the possession-weighted RS+PO
+        # blend, NOT the playoff estimate: a ~15-game sample must not override a
+        # 1230-game one as the prior for the following regular season.
+        if spm_po is not None:
+            prev_spm = _blend_by_poss(
+                spm_rs, spm_po, ["ospm", "dspm", "spm"], "min"
+            )
+        else:
+            prev_spm = spm_rs
 
     if results:
         card_path = _write_model_card(
