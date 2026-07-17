@@ -97,3 +97,29 @@ def test_impact_delay_s_flag_and_env_default(monkeypatch):
     monkeypatch.setenv("SDV_NBA_DELAY_S", "7")
     ns = cli.build_parser().parse_args(["impact", "--seasons", "2023", "--out", "o"])
     assert ns.delay_s == 7.0
+
+
+# ---------------------------------------------------------------------------
+# --season-types. Only "Regular Season" and "Playoffs" are supported;
+# "PlayIn" is a real third stats.nba.com SeasonType but deliberately out of
+# scope -- see docs/superpowers/specs/2026-07-17-nba-player-impact-playoffs-design.md.
+# ---------------------------------------------------------------------------
+
+
+def test_season_types_defaults_to_both():
+    args = cli.build_parser().parse_args(["impact", "--seasons", "2023", "--out", "o"])
+    assert args.season_types == ["Regular Season", "Playoffs"]
+
+
+def test_season_types_accepts_rs_only_for_regression_diffing():
+    args = cli.build_parser().parse_args(
+        ["impact", "--seasons", "2023", "--out", "o", "--season-types", "Regular Season"]
+    )
+    assert args.season_types == ["Regular Season"]
+
+
+def test_season_types_rejects_unknown_value():
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args(
+            ["impact", "--seasons", "2023", "--out", "o", "--season-types", "PlayIn"]
+        )

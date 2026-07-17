@@ -73,6 +73,37 @@ def _parse_seasons(spec: str) -> list[int]:
     return list(range(lo, hi + 1))
 
 
+SEASON_TYPES: tuple[str, ...] = ("Regular Season", "Playoffs")
+
+
+def _parse_season_types(spec: str) -> list[str]:
+    """Comma-separated stats.nba.com SeasonType strings -> validated list.
+
+    Only "Regular Season" and "Playoffs" are supported. "PlayIn" is a real
+    third SeasonType (2020+, ~4-6 games/yr) but is deliberately out of scope --
+    see docs/superpowers/specs/2026-07-17-nba-player-impact-playoffs-design.md.
+
+    Args:
+        spec: e.g. ``"Regular Season,Playoffs"``.
+
+    Returns:
+        Season types in canonical build order (RS before PO).
+
+    Raises:
+        argparse.ArgumentTypeError: On an unknown or empty season type.
+    """
+    parts = [p.strip() for p in spec.split(",") if p.strip()]
+    if not parts:
+        raise argparse.ArgumentTypeError("--season-types must not be empty")
+    unknown = [p for p in parts if p not in SEASON_TYPES]
+    if unknown:
+        raise argparse.ArgumentTypeError(
+            f"invalid --season-types {unknown!r}: expected any of {list(SEASON_TYPES)}"
+        )
+    # canonical order: the PO pass reuses fitted values from the RS pass
+    return [t for t in SEASON_TYPES if t in parts]
+
+
 def _add_repo_dry(p: argparse.ArgumentParser) -> None:
     """Attach the shared ``--repo`` + ``--dry-run`` options to a subparser."""
     p.add_argument(
@@ -126,6 +157,15 @@ def build_parser() -> argparse.ArgumentParser:
         "(default: $SDV_NBA_DELAY_S or 0.6). The stats.nba.com request budget "
         "(~250 req/10min) is SHARED with the R daily scraper -- use ~7 for an "
         "unattended multi-season backfill.",
+    )
+    imp.add_argument(
+        "--season-types",
+        type=_parse_season_types,
+        default=list(SEASON_TYPES),
+        help="Comma-separated season types to build "
+        '(default: "Regular Season,Playoffs"). Rows are tagged with a '
+        "season_type column. Pass 'Regular Season' alone to reproduce a "
+        "regular-season-only build for diffing. PlayIn is not supported.",
     )
     imp.add_argument(
         "--replacement-level",
@@ -214,6 +254,7 @@ def main(argv=None) -> int:
             lineup_source=args.lineup_source,
             cache_dir=args.cache_dir,
             delay_s=args.delay_s,
+            season_types=args.season_types,
             replacement_level=args.replacement_level,
         )
         total_rows = sum(b["rows"] for b in built)
