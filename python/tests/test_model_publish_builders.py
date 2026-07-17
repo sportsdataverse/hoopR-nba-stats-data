@@ -192,9 +192,12 @@ def test_impact_schema_and_outputs(stubbed, tmp_path):
         [2023, 2022], tmp_path, season_types=["Regular Season"]
     )
 
-    # earliest -> latest regardless of input order
-    assert stubbed["compile_order"] == [2022, 2023]
-    assert [r["season"] for r in results] == [2022, 2023]
+    # earliest -> latest regardless of input order. compile_nba_season now
+    # takes the END year (SDK flip), so the compile_order values are start+1.
+    assert stubbed["compile_order"] == [2023, 2024]
+    # output "season" is the END year (2022 -> 2023, 2023 -> 2024); the
+    # internal loop/join domain stays start-year (asserted elsewhere).
+    assert [r["season"] for r in results] == [2023, 2024]
 
     for r in results:
         df = pl.read_parquet(r["path"])
@@ -230,7 +233,8 @@ def test_model_card_written(stubbed, tmp_path):
     B.build_nba_player_impact([2022], tmp_path, season_types=["Regular Season"])
     card = json.loads((tmp_path / "nba_player_impact_card.json").read_text())
     assert card["dataset"] == "nba_player_impact"
-    assert card["seasons"] == [{"season": 2022, "rows": 3}]
+    # card season is the output (end-year) season: loop season 2022 -> 2023.
+    assert card["seasons"] == [{"season": 2023, "rows": 3}]
     assert "stats.nba.com" in card["source"]
 
 
@@ -247,15 +251,18 @@ def test_model_card_documents_grain_and_playin_exclusion(tmp_path, stubbed):
 def test_empty_season_skipped_and_breaks_prior_chain(stubbed, monkeypatch, tmp_path):
     empty = pl.DataFrame({"game_id": [], "points": []})
     real_compile = B.compile_nba_season
+    # compile_nba_season now receives the END year (loop season 2023 -> 2024);
+    # the gap season is start-year 2023, so gate on its season_end (2024).
     monkeypatch.setattr(
         B,
         "compile_nba_season",
-        lambda season, **kw: empty if season == 2023 else real_compile(season, **kw),
+        lambda season, **kw: empty if season == 2024 else real_compile(season, **kw),
     )
     results = B.build_nba_player_impact(
         [2022, 2023, 2024], tmp_path, season_types=["Regular Season"]
     )
-    assert [r["season"] for r in results] == [2022, 2024]
+    # built (start-year) loop seasons 2022, 2024 -> output (end-year) 2023, 2025
+    assert [r["season"] for r in results] == [2023, 2025]
     # the 2023 gap resets the prior: 2024 gets an empty prior again
     assert stubbed["priors"] == [{}, {}]
 
@@ -282,17 +289,20 @@ def test_empty_regular_season_skips_season_even_when_playoffs_have_data(
     empty = pl.DataFrame({"game_id": [], "points": []})
     real_compile = B.compile_nba_season
 
+    # compile_nba_season now receives the END year -- gate on season_end (2024)
+    # for the start-year-2023 gap season.
     def fake_compile(season, **kw):
-        if season == 2023 and kw.get("season_type") == "Regular Season":
+        if season == 2024 and kw.get("season_type") == "Regular Season":
             return empty
         return real_compile(season, **kw)
 
     monkeypatch.setattr(B, "compile_nba_season", fake_compile)
     results = B.build_nba_player_impact([2022, 2023, 2024], tmp_path)
-    assert [r["season"] for r in results] == [2022, 2024]
-    assert (tmp_path / "nba_player_impact_2024.parquet").exists()
+    # built (start-year) loop seasons 2022, 2024 -> output (end-year) 2023, 2025
+    assert [r["season"] for r in results] == [2023, 2025]
+    assert (tmp_path / "nba_player_impact_2025.parquet").exists()
     card = json.loads((tmp_path / "nba_player_impact_card.json").read_text())
-    assert [s["season"] for s in card["seasons"]] == [2022, 2024]
+    assert [s["season"] for s in card["seasons"]] == [2023, 2025]
 
 
 def test_duplicate_player_id_join_guard(stubbed, monkeypatch, tmp_path):
@@ -499,7 +509,8 @@ def test_compile_is_called_once_per_season_type_with_the_right_string(tmp_path, 
         lambda season, **kw: (seen.append((season, kw.get("season_type"))), _poss(season))[1],
     )
     B.build_nba_player_impact([2023], tmp_path)
-    assert seen == [(2023, "Regular Season"), (2023, "Playoffs")]
+    # compile_nba_season now receives the END year (2023 -> 2024).
+    assert seen == [(2024, "Regular Season"), (2024, "Playoffs")]
 
 
 def test_box_logs_is_called_once_per_season_type_with_the_right_string(
@@ -537,6 +548,38 @@ def test_darko_panel_stays_one_row_per_player_season(tmp_path, monkeypatch, stub
     last = panels[-1]
     assert last.select("player_id", "season").is_duplicated().sum() == 0
     assert "season_type" not in last.columns
+
+
+def test_darko_panel_and_last_season_join_stay_start_year_under_the_end_year_flip(
+    tmp_path, monkeypatch, stubbed
+):
+    """DARKO-safety invariant of the end-year output flip: the panel tag
+    (``panel_frames``/``age_frames``) and the ``last_season == season`` join
+    must stay in the START-year domain even though the outward-facing
+    ``season`` column and filename are now end-year. If either were
+    accidentally relabeled to ``season_end`` this test fails two ways: the
+    captured panel's ``season`` values would be end-year, and/or the fixed
+    player's ``darko_projected_rating`` would no longer match a pinned
+    start-year build (the join would silently miss and null out instead)."""
+    panels = []
+    monkeypatch.setattr(
+        B, "nba_darko",
+        lambda panel, ages, **kw: (panels.append(panel.clone()), _darko(panel))[1],
+    )
+    out = B.build_nba_player_impact([2022, 2023], tmp_path)
+    last_panel = panels[-1]
+
+    # Internal panel domain is START-year: loop seasons 2022, 2023 -- NOT the
+    # end-year output seasons 2023, 2024 that the parquet/results carry.
+    assert sorted(last_panel["season"].unique().to_list()) == [2022, 2023]
+
+    # The projection itself (driven by the last_season == season join, still
+    # start-year) must be unchanged vs. a pinned start-year build's value --
+    # the flip only relabels the OUTPUT season column/filename, it must not
+    # perturb the panel or the join, and it must not go null from a missed join.
+    df = pl.read_parquet(out[-1]["path"])
+    row = df.filter(pl.col("player_id") == 1).row(0, named=True)
+    assert row["darko_projected_rating"] == pytest.approx(1.2)
 
 
 def test_both_season_type_rows_carry_the_same_darko_projection(tmp_path, stubbed):
@@ -585,7 +628,9 @@ def test_forward_prior_is_the_blend_not_the_playoff_estimate(tmp_path, monkeypat
 
     def fake_spm(bf, coef, **kw):
         frame = _spm(players)
-        if current.get("key") == (2022, "Playoffs"):
+        # current["key"] is keyed off compile_nba_season's argument, which is
+        # now the END year: start-year loop season 2022 -> 2023.
+        if current.get("key") == (2023, "Playoffs"):
             frame = frame.with_columns((pl.col("ospm") * 5).alias("ospm"))
         return frame
 
@@ -710,7 +755,9 @@ def test_playoffs_rapm_empty_skips_the_row_without_aborting(
     monkeypatch.setattr(B, "compile_nba_season", spy_compile)
 
     def rapm_stub(poss, **kw):
-        if current.get("key") == (2023, "Playoffs"):
+        # current["key"] is keyed off compile_nba_season's argument, which is
+        # now the END year: start-year loop season 2023 -> 2024.
+        if current.get("key") == (2024, "Playoffs"):
             return _rapm([])  # empty, but poss itself was non-empty
         return _rapm([1, 2, 3])
 
@@ -761,4 +808,5 @@ def test_playoffs_first_input_order_is_canonicalized_to_regular_season_first(
         [2023], tmp_path, season_types=["Playoffs", "Regular Season"]
     )
     assert order == ["Regular Season", "Playoffs"]
-    assert stubbed["compile_order"] == [2023, 2023]
+    # compile_nba_season now receives the END year (2023 -> 2024).
+    assert stubbed["compile_order"] == [2024, 2024]

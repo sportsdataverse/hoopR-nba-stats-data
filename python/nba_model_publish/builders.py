@@ -278,6 +278,16 @@ def build_nba_player_impact(
     DARKO panel flow forward. Seasons whose possession compile comes back
     empty (not yet played / no data) are skipped with a notice.
 
+    Input/output season-year asymmetry (intentional): ``seasons`` is
+    START-year, matching the internal DARKO panel and the
+    ``last_season == season`` join, which must stay start-year for the
+    Kalman filter's season sequencing to be correct. The OUTPUT ``season``
+    column, the ``nba_player_impact_{season}.parquet`` filename, and the
+    returned/model-card ``season`` field are all END-year (2023 -> 2024,
+    i.e. 2023-24), matching ``compile_nba_season``'s season-arg convention.
+    Only the write sites are relabeled; nothing in the internal prior/panel
+    machinery observes the end-year label.
+
     Args:
         seasons: Season start years (2023 = 2023-24). Sorted ascending
             internally.
@@ -307,7 +317,8 @@ def build_nba_player_impact(
 
     Returns:
         List of ``{"season": int, "rows": int, "path": str}`` dicts, one per
-        season built, in season order.
+        season built, in season order. ``season`` here is END-year (see
+        Input/output note above).
     """
     season_types = list(season_types)
     if "Playoffs" in season_types and "Regular Season" not in season_types:
@@ -348,6 +359,12 @@ def build_nba_player_impact(
 
     for season in sorted(seasons):
         s_str = _season_str(season)
+        # End-year label for OUTPUT only (parquet "season" column, filename,
+        # results/model-card season fields) and for the compile_nba_season
+        # fetch (the SDK now takes the end year, e.g. 2024 = 2023-24). The
+        # DARKO panel tags, the `last_season == season` join, and every other
+        # internal use of `season` stay start-year -- do not flip those.
+        season_end = season + 1
         frames: list[pl.DataFrame] = []
         rapm_rs: Optional[pl.DataFrame] = None
         spm_rs: Optional[pl.DataFrame] = None
@@ -363,8 +380,14 @@ def build_nba_player_impact(
         positions: Optional[pl.DataFrame] = None
 
         for stype in season_types:
+            # compile_nba_season is a FETCH, not a write site, but the SDK
+            # itself now takes the end year -- pass season_end so it
+            # discovers/compiles the correct season's game ids. The
+            # per-game possession cache is keyed by game_id (season-agnostic),
+            # so this only changes which season's games get discovered, not
+            # how already-cached games are looked up.
             poss = compile_nba_season(
-                season,
+                season_end,
                 season_type=stype,
                 lineup_source=lineup_source,
                 cache_dir=cache_dir,
@@ -476,7 +499,10 @@ def build_nba_player_impact(
             )
             impact = _join_on_player(impact, war, "war")
             impact = impact.with_columns(
-                pl.lit(season, dtype=pl.Int64).alias("season"),
+                # OUTPUT season is the end year; internal joins below (adj-RAPM
+                # prior threading, the DARKO panel/last_season join) never see
+                # this frame's "season" column, so this flip is write-only.
+                pl.lit(season_end, dtype=pl.Int64).alias("season"),
                 pl.lit(stype, dtype=pl.Utf8).alias("season_type"),
             )
             frames.append(impact)
@@ -503,6 +529,10 @@ def build_nba_player_impact(
             if rapm_po is not None
             else None
         )
+        # DARKO panel/age tags stay START-year (internal domain) -- do NOT
+        # flip to season_end. This is what keeps the Kalman panel's season
+        # sequencing and the last_season join below correct regardless of
+        # what the OUTPUT "season" column says.
         panel_frames.append(
             _blend_by_poss(panel_rs, panel_po, ["rating"], "weight").with_columns(
                 pl.lit(season, dtype=pl.Int64).alias("season")
@@ -516,6 +546,7 @@ def build_nba_player_impact(
         panel = pl.concat(panel_frames)
         if panel["season"].n_unique() >= 2:
             darko = nba_darko(panel, pl.concat(age_frames))
+            # last_season join stays START-year to match the panel above.
             darko_season = darko.filter(pl.col("last_season") == season).select(
                 "player_id",
                 pl.col("filtered_skill").alias("darko_filtered_skill"),
@@ -545,11 +576,11 @@ def build_nba_player_impact(
             if st not in built_season_types:
                 built_season_types.append(st)
 
-        path = out_dir / f"nba_player_impact_{season}.parquet"
+        path = out_dir / f"nba_player_impact_{season_end}.parquet"
         impact.write_parquet(path)
-        results.append({"season": season, "rows": impact.height, "path": str(path)})
+        results.append({"season": season_end, "rows": impact.height, "path": str(path)})
         print(
-            f"impact: season={season} rows={impact.height} "
+            f"impact: season={season} (output season={season_end}) rows={impact.height} "
             f"types={impact['season_type'].unique().to_list()} -> {path}"
         )
 
