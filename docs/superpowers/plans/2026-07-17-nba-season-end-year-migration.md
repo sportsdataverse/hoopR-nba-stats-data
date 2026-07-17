@@ -24,75 +24,69 @@
 
 Work on branch `feat/nba-season-end-year` in `/mnt/sdv_repos/sportsdataverse-py`.
 
-### Task 1: Flip `year_to_season` to take the END year
+### Task 1: De-contradict `year_to_season`'s docstring (NO behavior change)
 
-`year_to_season`'s own summary docstring already claims "season-end year (e.g. 2024)", but its body takes the start year (`year_to_season(2023) -> "2023-24"`). Make the body match the (correct) end-year summary. This is the root of the cascade.
+`year_to_season` is CORRECT and must NOT be flipped. It is a low-level
+**start-year → span** helper: `year_to_season(2023) -> "2023-24"`. The intended
+idiom is `year_to_season(most_recent_nba_season() - 1)` — i.e. callers subtract
+1 from the end year to get the start year (the same pattern `nba_clutch._season_str`
+uses). External callers of `year_to_season` rely on this, so its behavior stays.
+
+The ONLY problem is its docstring: the **summary line** wrongly says "season-END
+year (e.g. 2024)" while its `Args` and body correctly say start year. Fix the
+contradiction — make the summary say start year — and change nothing else.
 
 **Files:**
-- Modify: `sportsdataverse/nba/nba_schedule.py:271-304`
-- Test: `tests/nba/test_nba_schedule.py` (create the test fn if absent)
+- Modify: `sportsdataverse/nba/nba_schedule.py:271-276` (docstring summary only)
+- Test: `tests/nba/test_nba_schedule.py` (add a lock-in test for the existing behavior)
 
 **Interfaces:**
-- Produces: `year_to_season(end_year: int) -> str` — `year_to_season(2024)` returns `"2023-24"`, `year_to_season(2000)` returns `"1999-00"`.
+- Produces: `year_to_season(start_year: int) -> str` — UNCHANGED. `year_to_season(2023)` returns `"2023-24"`. This task only edits the docstring.
 
-- [ ] **Step 1: Write the failing test**
+- [ ] **Step 1: Write a behavior lock-in test**
 
 ```python
-def test_year_to_season_takes_end_year():
+def test_year_to_season_takes_start_year_unchanged():
     from sportsdataverse.nba import year_to_season
-    assert year_to_season(2024) == "2023-24"   # end year -> span
-    assert year_to_season(1997) == "1996-97"
-    assert year_to_season(2000) == "1999-00"   # century rollover
+    # year_to_season is a low-level START-year helper; callers pass end_year - 1.
+    assert year_to_season(2023) == "2023-24"
+    assert year_to_season(1996) == "1996-97"
+    assert year_to_season(1999) == "1999-00"   # century rollover
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [ ] **Step 2: Run test to verify it PASSES already**
 
-Run: `uv run pytest tests/nba/test_nba_schedule.py -k year_to_season_takes_end -v`
-Expected: FAIL — currently `year_to_season(2024)` returns `"2024-25"`.
+Run: `uv run pytest tests/nba/test_nba_schedule.py -k year_to_season_takes_start -v`
+Expected: PASS immediately — this locks in existing correct behavior; do not change the function body.
 
-- [ ] **Step 3: Implement**
+- [ ] **Step 3: Fix the contradictory summary docstring only**
 
-Replace the body of `year_to_season` (`nba_schedule.py:271-304`):
+In `nba_schedule.py:271-276`, change the summary line from "Convert a season-END
+year (e.g. 2024)…" to:
 
 ```python
-def year_to_season(year):
-    """Convert a season-END year (e.g. 2024) to the NBA's hyphenated label
+    """Convert a season START year (e.g. 2023) to the NBA's hyphenated label
     (e.g. ``"2023-24"``).
 
-    Args:
-        year (int): The ENDING calendar year of the season (2024 for the
-            2023-24 season). Matches the NBA/Basketball-Reference convention
-            and ``most_recent_nba_season()``.
-
-    Returns:
-        str: NBA-style season label, e.g. ``"2023-24"``.
-
-    Example:
-        Quick start::
-
-            from sportsdataverse.nba import year_to_season
-            print(year_to_season(2024))  # "2023-24"
-            print(year_to_season(2000))  # "1999-00"  (century rollover)
-    """
-    start = year - 1
-    return f"{start}-{year % 100:02d}"
+    Callers working in the end-year convention pass ``end_year - 1`` (e.g.
+    ``year_to_season(most_recent_nba_season() - 1)``).
 ```
+Leave the `Args`, `Returns`, `Example`, and the entire function body unchanged.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 4: Run test to verify still green**
 
-Run: `uv run pytest tests/nba/test_nba_schedule.py -k year_to_season -v`
-Expected: PASS. Also run the whole file: `uv run pytest tests/nba/test_nba_schedule.py -v` — fix any sibling test that passed a start year to `year_to_season` (update it to pass the end year).
+Run: `uv run pytest tests/nba/test_nba_schedule.py -v`
+Expected: PASS.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 cd /mnt/sdv_repos/sportsdataverse-py
 git add sportsdataverse/nba/nba_schedule.py tests/nba/test_nba_schedule.py
-git commit -m "refactor(nba)!: year_to_season takes the season END year
+git commit -m "docs(nba): fix year_to_season summary (it takes the START year)
 
-BREAKING CHANGE: year_to_season(2024) now returns \"2023-24\" (end-year
-input), matching most_recent_nba_season() and the ESPN-sourced loaders.
-Previously it took the start year."
+Behavior unchanged. The summary line wrongly said end-year while Args/body
+correctly say start-year; callers in the end-year convention pass end_year - 1."
 ```
 
 ### Task 2: Flip `compile_nba_season` / `_season_game_index` input to end-year
@@ -102,7 +96,7 @@ Previously it took the start year."
 - Test: `tests/nba/test_nba_season_compile.py:55`
 
 **Interfaces:**
-- Consumes: `year_to_season(end_year)` from Task 1.
+- Consumes: `year_to_season(start_year)` (UNCHANGED start-year helper from Task 1).
 - Produces: `compile_nba_season(season=<end_year>, ...)` — `compile_nba_season(2024)` compiles the 2023-24 season and tags `season=2024`. `_season_game_index(season=<end_year>, ...)`.
 
 - [ ] **Step 1: Update the failing test**
@@ -123,7 +117,17 @@ Expected: FAIL — output tags `2024` but the assertion (pre-edit) or the call c
 
 - [ ] **Step 3: Implement**
 
-`_season_game_index` already calls `year_to_season(season)` at `nba_season_compile.py:58`. Because `year_to_season` now takes the END year (Task 1), passing the (now end-year) `season` straight through is **correct with no arithmetic change**. The only work here is documentation: update every docstring/example in `nba_season_compile.py` (lines ~44-45, 103-124, 148, 152-153, 164-181) from "season start year (e.g. 2023 for 2023-24)" to "season END year (e.g. 2024 for 2023-24)". The `pl.lit(season).alias("season")` at line 239 needs no change — it echoes the (now end-year) input.
+`_season_game_index` calls `year_to_season(season)` at `nba_season_compile.py:58`. Since the public `season` is now the END year but `year_to_season` stays a START-year helper (Task 1), change that call to subtract 1:
+
+```python
+    log = nba_stats_leaguegamelog(
+        season=year_to_season(season - 1),   # end-year input -> start-year helper
+        season_type_all_star=season_type,
+        league_id=_LEAGUE_ID,
+        proxy_url=proxy_url,
+    )
+```
+This is the same `year_to_season(most_recent_nba_season() - 1)` idiom the rest of the ecosystem uses. The `pl.lit(season).alias("season")` output at line 239 needs **no** change — it echoes the (now end-year) input. Then update every docstring/example in `nba_season_compile.py` (lines ~44-45, 103-124, 148, 152-153, 164-181) from "season start year (e.g. 2023 for 2023-24)" to "season END year (e.g. 2024 for 2023-24)".
 
 - [ ] **Step 4: Run to verify it passes**
 
@@ -217,12 +221,13 @@ In `nba_loaders.py`, `load_nba_player_impact`'s docstring: state that `season` i
 ```markdown
 ### BREAKING CHANGES
 - **NBA season convention is now END-year across the Python API.**
-  `compile_nba_season(2024)`, `year_to_season(2024)`, and `nba_availability`
-  now use the season ENDING year (2024 = 2023-24), matching
-  `most_recent_nba_season()` and every ESPN-sourced `load_nba_*` dataset.
-  Previously the stats.nba.com compile path used the start year. External
-  callers passing a start year must add 1. (`nba_box_logs` is unchanged — it
-  already takes the hyphenated `"2023-24"` string, not an integer.)
+  `compile_nba_season(2024)` and `nba_availability` now use the season ENDING
+  year (2024 = 2023-24), matching `most_recent_nba_season()` and every
+  ESPN-sourced `load_nba_*` dataset. Previously the stats.nba.com compile path
+  used the start year — external callers passing a start year must add 1.
+  Unchanged: `year_to_season` (still a low-level start-year helper — call it as
+  `year_to_season(end_year - 1)`), and `nba_box_logs` (takes the `"2023-24"`
+  string, not an integer).
 ```
 
 - [ ] **Step 3: Regenerate docs (drift gate)**
