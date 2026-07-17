@@ -214,9 +214,10 @@ def test_prior_threads_forward(stubbed, tmp_path):
 
 
 def test_darko_null_until_two_seasons(stubbed, tmp_path):
-    results = B.build_nba_player_impact(
-        [2022, 2023], tmp_path, season_types=["Regular Season"]
-    )
+    # Unpinned (both season_types, the default): nothing else asserts
+    # darko-null-until-two-seasons under the default configuration, so this
+    # coverage would be lost if pinned to Regular-Season-only.
+    results = B.build_nba_player_impact([2022, 2023], tmp_path)
     first = pl.read_parquet(results[0]["path"])
     second = pl.read_parquet(results[1]["path"])
     assert first["darko_projected_rating"].null_count() == first.height
@@ -247,6 +248,31 @@ def test_empty_season_skipped_and_breaks_prior_chain(stubbed, monkeypatch, tmp_p
     assert [r["season"] for r in results] == [2022, 2024]
     # the 2023 gap resets the prior: 2024 gets an empty prior again
     assert stubbed["priors"] == [{}, {}]
+
+
+def test_empty_regular_season_skips_season_without_aborting_the_run(
+    stubbed, monkeypatch, tmp_path
+):
+    """Reproduces a real bug: an empty RS pass used to `continue` the INNER
+    season-type loop, falling through to the Playoffs pass with coef still
+    None and hitting `AssertionError: playoff pass requires the
+    regular-season coef` -- killing the entire multi-season run. With
+    seasons [2022, 2023(RS empty), 2024], 2024 never built and the model
+    card was never written. The fix must skip the whole 2023 season instead
+    and let 2024 build normally.
+    """
+    empty = pl.DataFrame({"game_id": [], "points": []})
+    real_compile = B.compile_nba_season
+    monkeypatch.setattr(
+        B,
+        "compile_nba_season",
+        lambda season, **kw: empty if season == 2023 else real_compile(season, **kw),
+    )
+    results = B.build_nba_player_impact([2022, 2023, 2024], tmp_path)
+    assert [r["season"] for r in results] == [2022, 2024]
+    assert (tmp_path / "nba_player_impact_2024.parquet").exists()
+    card = json.loads((tmp_path / "nba_player_impact_card.json").read_text())
+    assert [s["season"] for s in card["seasons"]] == [2022, 2024]
 
 
 def test_duplicate_player_id_join_guard(stubbed, monkeypatch, tmp_path):
@@ -411,6 +437,11 @@ def test_impact_emits_a_row_per_season_type(tmp_path, stubbed):
     assert sorted(df["season_type"].unique().to_list()) == ["Playoffs", "Regular Season"]
     # grain is (player_id, season, season_type) -- no dupes
     assert df.select("player_id", "season", "season_type").is_duplicated().sum() == 0
+    # EXPECTED_COLS equality was only ever checked on an RS-only build
+    # (test_impact_schema_and_outputs); assert it exactly here too so a stray
+    # column introduced by the Playoffs path can't slip through an
+    # issubset-only check.
+    assert set(df.columns) == EXPECTED_COLS
 
 
 def test_playoffs_reuse_the_rs_fitted_coef_and_pts_per_win(tmp_path, monkeypatch, stubbed):
@@ -479,14 +510,54 @@ def test_forward_prior_is_the_blend_not_the_playoff_estimate(tmp_path, monkeypat
     estimate -- that would degrade every regular-season row."""
     blends = []
     real_blend = B._blend_by_poss
-    monkeypatch.setattr(
-        B, "_blend_by_poss",
-        lambda rs, po, vc, wc: (blends.append((vc, wc)), real_blend(rs, po, vc, wc))[1],
-    )
+
+    def spy_blend(rs, po, vc, wc):
+        out = real_blend(rs, po, vc, wc)
+        blends.append((vc, wc, out))
+        return out
+
+    monkeypatch.setattr(B, "_blend_by_poss", spy_blend)
+
+    # Make the 2022 RS and PO SPM frames diverge on ospm so a carry that used
+    # the raw playoff estimate is numerically distinguishable from the blend
+    # (the stubbed nba_spm otherwise returns identical values for RS and PO,
+    # which would let a broken "most recent wins" carry pass this test too).
+    players = [1, 2, 3]
+    calls = {"n": 0}
+
+    def fake_spm(bf, coef, **kw):
+        calls["n"] += 1
+        frame = _spm(players)
+        if calls["n"] == 2:  # season 2022, Playoffs pass (RS pass is call 1)
+            frame = frame.with_columns((pl.col("ospm") * 5).alias("ospm"))
+        return frame
+
+    monkeypatch.setattr(B, "nba_spm", fake_spm)
+
     B.build_nba_player_impact([2022, 2023], tmp_path)
-    # blended twice per season: the DARKO panel row and the forward SPM carry
-    assert ("rating", "weight") in [(vc[0], wc) for vc, wc in blends]
+
+    # blended twice per season: the DARKO panel row and the forward SPM carry.
+    kinds = [(vc[0], wc) for vc, wc, _ in blends]
+    assert ("rating", "weight") in kinds  # the DARKO panel blend ran
+    assert ("ospm", "min") in kinds  # the SPM-carry blend ran
     assert len(blends) >= 2
+
+    # The SPM-carry blend that runs at the end of season 2022 is what feeds
+    # season 2023's Regular Season adj-RAPM prior. Recover it and assert the
+    # threaded prior is exactly that blend -- NOT the raw 2022 playoff SPM.
+    spm_carry_blends = [b for vc, wc, b in blends if wc == "min"]
+    assert len(spm_carry_blends) == 2  # one per season (2022, 2023)
+    carried_blend = spm_carry_blends[0]
+
+    raw_po_spm = _spm(players).with_columns((pl.col("ospm") * 5).alias("ospm"))
+    expected_prior = B.AdjRapmModel.from_spm(carried_blend).prior
+    raw_po_prior = B.AdjRapmModel.from_spm(raw_po_spm).prior
+    assert expected_prior != raw_po_prior  # sanity: the two are actually distinguishable
+
+    # priors recorded in order: [2022 RS (empty), 2022 PO, 2023 RS, 2023 PO]
+    threaded_prior = stubbed["priors"][2]
+    assert threaded_prior == expected_prior
+    assert threaded_prior != raw_po_prior
 
 
 def test_rs_only_build_reproduces_the_pre_playoffs_behavior(tmp_path, stubbed):

@@ -296,6 +296,11 @@ def build_nba_player_impact(
         coef = None
         pts_per_win = None
 
+        # Season-type-independent -- hoisted above the loop so a both-types
+        # build doesn't fire the identical playerindex request twice per
+        # season against the shared ~250 req/10min stats.nba.com budget.
+        positions = nba_player_positions(s_str, fetch=_playerindex)
+
         for stype in season_types:
             poss = compile_nba_season(
                 season,
@@ -306,13 +311,25 @@ def build_nba_player_impact(
                 proxy_provider=proxy_provider,
             )
             if poss.height == 0:
+                if stype == "Regular Season":
+                    # No RS pass means no fitted coef/pts_per_win -- falling
+                    # through to the Playoffs pass would hit "playoff pass
+                    # requires the regular-season coef" and abort the WHOLE
+                    # multi-season run (this killed a real [2022, 2023-empty,
+                    # 2024] backfill: 2024 never built, no model card). Skip
+                    # this season entirely instead.
+                    print(
+                        f"impact: season={season} type={stype!r} REGULAR SEASON "
+                        f"EMPTY -- skipping season {season} entirely (no coef/"
+                        f"pts_per_win for a Playoffs pass); prior chain reset"
+                    )
+                    prev_spm = None  # a gap season breaks the prior chain
+                    break
                 # A season can legitimately have no playoffs (lockout, in-progress).
                 # This is NOT the same as a network failure: the empty-in/empty-out
                 # contract is exactly what made the unproxied-discovery bug exit 0
                 # with no data, so say which case this is.
                 print(f"impact: season={season} type={stype!r} no possessions; skipped")
-                if stype == "Regular Season":
-                    prev_spm = None  # a gap season breaks the prior chain
                 continue
 
             rapm = nba_rapm(poss)
@@ -335,8 +352,7 @@ def build_nba_player_impact(
 
             spm = nba_spm(bf, coef)
 
-            # BPM 2.0 off the same logs + listed positions.
-            positions = nba_player_positions(s_str, fetch=_playerindex)
+            # BPM 2.0 off the same logs + listed positions (fetched once above).
             bpm = nba_bpm(logs["player"], logs["team"], positions)
 
             # adj-RAPM: prior threaded in above (previous-season SPM for RS,
