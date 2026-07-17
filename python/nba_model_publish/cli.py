@@ -3,7 +3,7 @@
 Usage::
 
     python -m nba_model_publish impact \\
-        --seasons 2000:2024 \\
+        --seasons 1997:2026 \\
         --out out/impact \\
         [--lineup-source auto] \\
         [--cache-dir /data/nba_possessions] \\
@@ -147,8 +147,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--seasons",
         required=True,
         type=_parse_seasons,
-        help="Season range 'YYYY:YYYY' (inclusive) or a single 'YYYY'; "
-        "seasons are built earliest-to-latest so multi-season priors flow forward.",
+        help="Season end-years, 2024 = 2023-24. Range 'YYYY:YYYY' (inclusive, "
+        "e.g. '1997:2026') or a single 'YYYY'; seasons are built earliest-to-"
+        "latest so multi-season priors flow forward.",
     )
     imp.add_argument(
         "--out",

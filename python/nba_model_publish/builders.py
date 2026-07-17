@@ -289,7 +289,7 @@ def build_nba_player_impact(
     machinery observes the end-year label.
 
     Args:
-        seasons: Season start years (2023 = 2023-24). Sorted ascending
+        seasons: Season END years (2024 = 2023-24). Sorted ascending
             internally.
         out_dir: Output directory (created if absent).
         lineup_source: Forwarded to ``compile_nba_season``.
@@ -357,7 +357,8 @@ def build_nba_player_impact(
     _playerindex = _proxied(nba_stats_playerindex, proxy_provider)
     _biostats = _proxied(nba_stats_leaguedashplayerbiostats, proxy_provider)
 
-    for season in sorted(seasons):
+    for end_year in sorted(seasons):
+        season = end_year - 1  # start-year drives the internal DARKO domain + _season_str
         s_str = _season_str(season)
         # End-year label for OUTPUT only (parquet "season" column, filename,
         # results/model-card season fields) and for the compile_nba_season

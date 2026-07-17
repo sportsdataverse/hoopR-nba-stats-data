@@ -3,7 +3,8 @@
 #
 # Usage:
 #   bash scripts/run_impact_backfill.sh [SEASONS] [extra nba_model_publish args...]
-#     SEASONS   'YYYY:YYYY' or 'YYYY' (default 2000:2024)
+#     SEASONS   'YYYY:YYYY' or 'YYYY', season END-years e.g. 2024 = 2023-24
+#               (default 1997:2026)
 #     extras    forwarded verbatim, e.g. --dry-run for a no-upload smoke run
 #
 # Watch live (exact path printed at start):
@@ -31,7 +32,7 @@ export PYTHONIOENCODING=utf-8
 : "${SDV_PY_NBA_CACHE_DIR:=/data/nba_possessions}"
 export SDV_PY_NBA_CACHE_DIR
 
-SEASONS="${1:-2000:2024}"
+SEASONS="${1:-1997:2026}"
 [ $# -gt 0 ] && shift
 
 mkdir -p logs "$SDV_PY_NBA_CACHE_DIR"
