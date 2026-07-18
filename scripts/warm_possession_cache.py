@@ -40,13 +40,15 @@ valid regardless of which season label discovered them.
 Run:
     cd python && SDV_PY_NBA_CACHE_DIR=/data/nba_possessions \
       SDV_PY_NBA_RAW_JSON_DIR=/mnt/sdv_repos/hoopR-nba-stats-raw/nba_stats/json \
+      SDV_PY_NBA_RAW_JSON_READONLY=1 \
       uv run python ../scripts/warm_possession_cache.py 1997:2026
 
-``SDV_PY_NBA_RAW_JSON_DIR`` enables sdv-py's read-through raw store: every
-stats.nba.com payload a worker fetches is persisted to the raw repo as
-``{endpoint}/{season}/{game_id}.json`` (and served from there without a
-fetch when present). See scripts/backfill_raw_json.py for games warmed
-before the store existed.
+``SDV_PY_NBA_RAW_JSON_DIR`` points at sdv-py's read-through raw store (the
+hoopR-nba-stats-raw checkout): a game already scraped there is served from
+disk with no fetch. ``SDV_PY_NBA_RAW_JSON_READONLY=1`` keeps this compile a
+pure CONSUMER of the store — filling it is hoopR-nba-stats-raw's own
+``scripts/scrape_raw_json.py`` sweep, not this repo's job (separation of
+concerns: -raw scrapes + pushes raw, -data compiles + releases).
 """
 
 from __future__ import annotations
