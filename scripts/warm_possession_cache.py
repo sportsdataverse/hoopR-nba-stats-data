@@ -39,7 +39,14 @@ valid regardless of which season label discovered them.
 
 Run:
     cd python && SDV_PY_NBA_CACHE_DIR=/data/nba_possessions \
+      SDV_PY_NBA_RAW_JSON_DIR=/mnt/sdv_repos/hoopR-nba-stats-raw/nba_stats/json \
       uv run python ../scripts/warm_possession_cache.py 1997:2026
+
+``SDV_PY_NBA_RAW_JSON_DIR`` enables sdv-py's read-through raw store: every
+stats.nba.com payload a worker fetches is persisted to the raw repo as
+``{endpoint}/{season}/{game_id}.json`` (and served from there without a
+fetch when present). See scripts/backfill_raw_json.py for games warmed
+before the store existed.
 """
 
 from __future__ import annotations
@@ -134,13 +141,13 @@ def main() -> int:
                 _log(f"  [{done}/{len(units)}] {tag}: FAILED after {r['secs']:.0f}s -- {r['error']}")
             else:
                 _log(
-                    f"  [{done}/{len(units)}] {tag}: {r['rows']} poss in {r['secs']/60:.0f}m "
-                    f"| elapsed {(time.monotonic()-t0)/3600:.1f}h"
+                    f"  [{done}/{len(units)}] {tag}: {r['rows']} poss in {r['secs'] / 60:.0f}m "
+                    f"| elapsed {(time.monotonic() - t0) / 3600:.1f}h"
                 )
 
     _log("---- summary ----")
-    _log(f"  units={len(units)} ok={len(units)-len(failed)} failed={len(failed)}")
-    _log(f"  wall clock: {(time.monotonic()-t0)/3600:.1f}h")
+    _log(f"  units={len(units)} ok={len(units) - len(failed)} failed={len(failed)}")
+    _log(f"  wall clock: {(time.monotonic() - t0) / 3600:.1f}h")
     for tag, err in failed:
         _log(f"  FAILED {tag}: {err}")
     if failed:
