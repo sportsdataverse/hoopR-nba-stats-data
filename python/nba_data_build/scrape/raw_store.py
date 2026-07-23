@@ -15,9 +15,10 @@ now exist and they are not interchangeable:
     game* holding every period.
 
 ``{root}/nba_stats/json/{endpoint}/{season}/{game_id}.json`` (**shared**, the raw repo)
-    Endpoint names, a season directory, and per-period boxscores split into one
-    file per game-period (``{game_id}_p{period}.json``) -- what sdv-py's
-    ``_raw_store_path`` writes and what every other league's store looks like.
+    Endpoint names and a season directory -- what sdv-py's ``_raw_store_path``
+    writes and what every other league's store looks like. Per-period boxscores are
+    one payload per *game* keyed by period, matching legacy; an earlier sweep wrote
+    them split one-per-period and those are still read, so they need no re-fetch.
 
 Readers prefer the shared layout and fall back to legacy, so this repo can migrate
 onto ``hoopR-nba-stats-raw`` (a strict superset: ~87k payloads vs ~40k, and the
@@ -112,22 +113,31 @@ def period_paths(root: Union[str, Path], game_id: str) -> list[Path]:
 def read_raw(root: Union[str, Path], kind: str, game_id: str) -> Any:
     """Load one capture, from whichever layout has it.
 
-    ``boxv3_periods`` is the awkward one: legacy stored every period in a single
-    file, the shared store splits them one-per-period. When reading the shared
-    layout the periods are reassembled into the ``{period: payload}`` mapping the
-    rest of the pipeline expects, so callers never see the difference.
+    ``boxv3_periods`` always comes back as ``{period: payload}`` keyed by ``int``,
+    whichever way it was stored. The canonical form is one payload per game keyed
+    by period; JSON keys are strings, so they are coerced. An earlier sweep wrote
+    the periods split one-file-per-game-period, and those are still reassembled so
+    that they need no re-fetch.
 
     Raises:
         FileNotFoundError: If the capture is absent from both layouts.
     """
     if kind == "boxv3_periods":
+        found = resolve_raw_path(root, kind, game_id)
+        if found is not None:
+            combined = json.loads(found.read_text())
+            if isinstance(combined, dict):
+                return {int(k): v for k, v in combined.items() if str(k).isdigit()}
+            return combined
         parts = period_paths(root, game_id)
         if parts:
-            out: dict[int, Any] = {}
-            for path in parts:
-                period = path.stem.rsplit("_p", 1)[1]
-                out[int(period)] = json.loads(path.read_text())
-            return out
+            return {
+                int(path.stem.rsplit("_p", 1)[1]): json.loads(path.read_text())
+                for path in parts
+            }
+        raise FileNotFoundError(
+            f"no {kind} capture for {game_id} under {_store_root(root)}"
+        )
 
     found = resolve_raw_path(root, kind, game_id)
     if found is None:

@@ -91,3 +91,17 @@ def test_has_raw_accepts_split_periods(tmp_path):
     d.mkdir(parents=True, exist_ok=True)
     (d / "0020500469_p1.json").write_text("{}")
     assert has_raw(tmp_path, "0020500469")
+
+
+def test_combined_period_payload_keys_are_ints(tmp_path):
+    """JSON keys are strings; callers index periods by int."""
+    write_raw(tmp_path, "boxv3_periods", "0020500469", {"1": {"p": 1}, "2": {"p": 2}})
+    assert read_raw(tmp_path, "boxv3_periods", "0020500469") == {1: {"p": 1}, 2: {"p": 2}}
+
+
+def test_combined_is_preferred_over_split(tmp_path):
+    d = Path(tmp_path) / "nba_stats" / "json" / "boxscoretraditionalv3_period" / "2006"
+    d.mkdir(parents=True)
+    (d / "0020500469_p1.json").write_text(json.dumps({"which": "split"}))
+    write_raw(tmp_path, "boxv3_periods", "0020500469", {"1": {"which": "combined"}})
+    assert read_raw(tmp_path, "boxv3_periods", "0020500469") == {1: {"which": "combined"}}
