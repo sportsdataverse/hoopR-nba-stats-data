@@ -45,7 +45,7 @@ from typing import Any, Union
 import polars as pl
 
 from ..cache_guard import assert_pipeline_version
-from ..scrape.raw_store import raw_path
+from ..scrape.raw_store import read_raw
 
 
 @dataclass
@@ -70,8 +70,13 @@ class ProcessedGame:
 
 
 def _load_raw_json(root: Union[str, Path], kind: str, game_id: str) -> Any:
-    """Read one verbatim raw capture from disk (never fetches)."""
-    return json.loads(raw_path(root, kind, game_id).read_text(encoding="utf-8"))
+    """Read one verbatim raw capture from disk (never fetches).
+
+    Delegates to :func:`~nba_data_build.scrape.raw_store.read_raw`, which resolves
+    either store layout -- so this reads hoopR-nba-stats-raw's shared tree as
+    happily as the legacy one here, and reassembles split per-period boxscores.
+    """
+    return read_raw(root, kind, game_id)
 
 
 def _quarter_box_oncourt(
