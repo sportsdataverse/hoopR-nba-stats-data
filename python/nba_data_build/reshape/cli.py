@@ -163,8 +163,17 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     if args.publish or args.dry_run:
         for tag in sorted(built_tags):
+            # All three formats ship to the tag: hoopR::load_nba_*() reads the
+            # .rds and the release is the only channel that carries rds/csv (the
+            # repo commits none of them). publish.py defaults to parquet-only for
+            # the v3/modeling tags, so the reshaper opts in explicitly here.
             result = upload_artifacts(
-                out / tag, tag, args.repo, seasons=seasons, dry_run=args.dry_run
+                out / tag,
+                tag,
+                args.repo,
+                seasons=seasons,
+                exts=("parquet", "rds", "csv"),
+                dry_run=args.dry_run,
             )
             print(f"publish {tag}: {result}")
     else:

@@ -95,6 +95,33 @@ def test_upload_notes_used_on_release_create(tmp_path):
     assert create[create.index("--notes") + 1] == "custom release body"
 
 
+def test_plan_uploads_exts_default_is_parquet_only(tmp_path):
+    """The v3/modeling callers pass no exts and MUST stay parquet-only."""
+    d = tmp_path / "t"
+    d.mkdir()
+    for n in ("x_2025.parquet", "x_2025.rds", "x_2025.csv"):
+        (d / n).write_bytes(b"x")
+    assert sorted(p.name for p in plan_uploads(d, [2025])) == ["x_2025.parquet"]
+
+
+def test_plan_uploads_three_exts_season_scoped(tmp_path):
+    """The reshaper opts into parquet+rds+csv; season scoping applies to every ext.
+
+    Regression guard: the first NBA reshaper publish shipped parquet only because
+    publish.py defaulted to parquet, so hoopR::load_nba_*() (which reads the .rds)
+    had nothing to load.
+    """
+    d = tmp_path / "t"
+    d.mkdir()
+    for s in (2024, 2025):
+        for ext in ("parquet", "rds", "csv"):
+            (d / f"x_{s}.{ext}").write_bytes(b"x")
+    got = sorted(
+        p.name for p in plan_uploads(d, [2025], exts=("parquet", "rds", "csv"))
+    )
+    assert got == ["x_2025.csv", "x_2025.parquet", "x_2025.rds"], "3 exts, 2025 only"
+
+
 def test_published_seasons_parses_asset_names():
     fake = "nba_rapm_2021.parquet\nnba_rapm_2023.parquet\nother.txt\n"
     assert published_seasons("nba_stats_rapm", "r/r", runner=lambda args: fake) == {
