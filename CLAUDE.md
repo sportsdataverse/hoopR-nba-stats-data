@@ -49,6 +49,26 @@ Flags: `-s`/`-e` start/end year (default `hoopR:::most_recent_nba_season()`),
 - `run_and_commit()` commits each script's output independently (schedules first, pbp last)
   so a slow/empty-cache pbp pass can't block the schedule commit.
 
+### Python v3 reshaper (`python/nba_data_build/reshape/`, PR #18)
+- Separate build+publish path that rebuilds the classic `nba_stats_*` release
+  datasets from the **unified raw store** in the sibling `hoopR-nba-stats-raw`
+  (`nba_stats/json/{endpoint}/{season}/`), reading the **v3** endpoints. Full
+  replacement, not parity — the v3 schema is the new contract. Mirrors the WNBA
+  reshaper (`wehoop-wnba-stats-data`).
+- Entry: `python -m nba_data_build.reshape --root <store> --seasons … --publish`,
+  or the sdv-orch-facing wrapper `scripts/daily_nba_stats_python_processor.sh -s -e`.
+  **Droplet-safe** (reads committed JSON, uploads via `gh`, no stats.nba.com calls)
+  — it is the `data.build_py` stage in sdv-orch's `nba_stats` pipeline.
+- Ships **parquet + rds + csv** to 15 `nba_stats_*` tags (`hoopR_data` rds stamp).
+  Season-dir split: **league endpoints key by start-year, game endpoints by
+  end-year** (`season_of=start+1`). `lineups` floor 2007; history 1996–2025.
+  **These tags have no hoopR loader** — `load_nba_*` read ESPN tags; the
+  `nba_stats_*` tags are a standalone product (see memory `nba_stats_tags_standalone`).
+- **Draft is NOT built yet:** `drafthistory` is uncaptured in `-raw` (0 files) and
+  needs a live stats.nba.com scrape off-droplet. The other 14 datasets are complete.
+- The R scrapers above remain the **capture** path; the reshaper is the **build+publish**
+  path from that captured raw.
+
 ## Gotchas — NBA Stats headers / rate-limit / proxy
 
 - `R/utils.R` `rate_limit()` is a **trailing-window token bucket** over the shared
