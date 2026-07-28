@@ -20,7 +20,7 @@ set -uo pipefail
 
 SEASONS="${1:-1996:2026}"
 REPO="${RAW_REPO:-sportsdataverse/hoopR-nba-stats-raw}"
-TAG="${BUNDLE_TAG:-raw-json}"
+TAG="${BUNDLE_TAG:-nba-stats-raw-json}"
 DEST="${RAW_STORE_DIR:-$PWD/.raw_store}"
 TMP="${BUNDLE_TMP_DIR:-$DEST/.bundles}"
 
@@ -28,7 +28,7 @@ command -v gh >/dev/null || { echo "FATAL: gh CLI not found" >&2; exit 3; }
 mkdir -p "$DEST" "$TMP" || { echo "FATAL: cannot create $DEST" >&2; exit 1; }
 
 lo="${SEASONS%%:*}"; hi="${SEASONS##*:}"
-ok=0; missing=0
+ok=0; missing=0; failed=0
 
 for season in $(seq "$lo" "$hi"); do
   # A season is already hydrated if any endpoint dir for it exists. Marker file
@@ -50,8 +50,18 @@ for season in $(seq "$lo" "$hi"); do
     ok=$((ok + 1))
   else
     echo "season $season: EXTRACT FAILED" >&2
+    failed=$((failed + 1))
   fi
 done
+
+# A torn extraction leaves a PARTIAL season on disk, and the store's read path
+# treats a missing file as an ordinary miss -- so exiting 0 here would let a
+# build proceed against silently-incomplete data. Fail loudly instead.
+if [ "$failed" -gt 0 ]; then
+  echo "FATAL: $failed season(s) failed to extract -- store at $DEST is INCOMPLETE." >&2
+  echo "       Delete the affected .hydrated_<season> marker(s) and re-run." >&2
+  exit 5
+fi
 
 echo "store ready: $DEST ($ok season(s) present, $missing bundle(s) unpublished)"
 echo "  use: python -m nba_model_publish impact --seasons ${lo}:${hi} --raw-store-dir \"$DEST\""

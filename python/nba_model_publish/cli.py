@@ -64,13 +64,9 @@ def _parse_seasons(spec: str) -> list[int]:
         else:
             lo = hi = int(spec)
     except ValueError as exc:
-        raise argparse.ArgumentTypeError(
-            f"invalid --seasons {spec!r}: expected 'YYYY' or 'YYYY:YYYY'"
-        ) from exc
+        raise argparse.ArgumentTypeError(f"invalid --seasons {spec!r}: expected 'YYYY' or 'YYYY:YYYY'") from exc
     if hi < lo:
-        raise argparse.ArgumentTypeError(
-            f"invalid --seasons {spec!r}: end {hi} precedes start {lo}"
-        )
+        raise argparse.ArgumentTypeError(f"invalid --seasons {spec!r}: end {hi} precedes start {lo}")
     return list(range(lo, hi + 1))
 
 
@@ -99,9 +95,7 @@ def _parse_season_types(spec: str) -> list[str]:
         raise argparse.ArgumentTypeError("--season-types must not be empty")
     unknown = [p for p in parts if p not in SEASON_TYPES]
     if unknown:
-        raise argparse.ArgumentTypeError(
-            f"invalid --season-types {unknown!r}: expected any of {list(SEASON_TYPES)}"
-        )
+        raise argparse.ArgumentTypeError(f"invalid --season-types {unknown!r}: expected any of {list(SEASON_TYPES)}")
     # canonical order: the PO pass reuses fitted values from the RS pass
     canonical = [t for t in SEASON_TYPES if t in parts]
     if "Playoffs" in canonical and "Regular Season" not in canonical:
@@ -207,8 +201,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Read committed hoopR-nba-stats-raw JSON instead of the live API: a local "
         "nba_stats/json checkout OR an http(s):// base such as "
         "https://raw.githubusercontent.com/sportsdataverse/hoopR-nba-stats-raw/main/nba_stats/json "
-        "(or a CDN mirror). Makes a GitHub Actions run viable -- no proxy and no ~1GB "
-        "clone; only a genuine miss touches stats.nba.com. "
+        "(or a CDN mirror). Removes the ~1GB clone and serves per-game payloads, game "
+        "discovery, playerindex and biostats from the committed tree. "
+        "NOT yet fully proxy-free: the raw sweep captured leaguegamelog only for "
+        "player_or_team='T', so nba_box_logs' player-log call still goes live and can "
+        "hang on a cloud runner -- keep a proxy configured (or run from a residential "
+        "host) until the 'P' variant is captured. "
         "Defaults to $SDV_PY_NBA_RAW_JSON_DIR.",
     )
     imp.add_argument("--tag", default="nba_player_impact", help="GitHub release tag.")
@@ -239,9 +237,7 @@ def _print_result(res: dict, repo: str, tag: str, dry_run: bool) -> None:
     suffix = " (dry-run)" if dry_run else ""
     failed = res.get("failed") or []
     failed_part = f" failed={len(failed)}" if failed else ""
-    print(
-        f"publish: uploaded={res['uploaded']} files={len(res['files'])}{failed_part} -> {repo}:{tag}{suffix}"
-    )
+    print(f"publish: uploaded={res['uploaded']} files={len(res['files'])}{failed_part} -> {repo}:{tag}{suffix}")
 
 
 def _resolve_proxy_provider(no_proxy: bool):
@@ -252,9 +248,7 @@ def _resolve_proxy_provider(no_proxy: bool):
     of failing. Refusing to start beats hanging. ``--no-proxy`` is the explicit opt-out.
     """
     if no_proxy:
-        print(
-            "impact: --no-proxy -- fetching stats.nba.com directly (residential IP only)"
-        )
+        print("impact: --no-proxy -- fetching stats.nba.com directly (residential IP only)")
         return None
 
     from nba_data_build.scrape.proxy import RoundRobin, load_proxies
