@@ -54,6 +54,7 @@ from sportsdataverse.nba import (
     nba_darko,
     nba_player_ages,
     nba_player_positions,
+    nba_raw_store_season_frame,
     nba_spm,
     nba_war,
     train_spm,
@@ -91,19 +92,11 @@ def _join_on_player(base: pl.DataFrame, right: pl.DataFrame, name: str) -> pl.Da
     did not change the base height (a duplicate-key explosion or key-dtype
     mismatch would).
     """
-    assert right.schema["player_id"] == pl.Int64, (
-        f"{name}: player_id dtype {right.schema['player_id']} != Int64"
-    )
-    assert base.schema["player_id"] == right.schema["player_id"], (
-        f"{name}: join-key dtype mismatch"
-    )
-    assert right["player_id"].n_unique() == right.height, (
-        f"{name}: duplicate player_id rows"
-    )
+    assert right.schema["player_id"] == pl.Int64, f"{name}: player_id dtype {right.schema['player_id']} != Int64"
+    assert base.schema["player_id"] == right.schema["player_id"], f"{name}: join-key dtype mismatch"
+    assert right["player_id"].n_unique() == right.height, f"{name}: duplicate player_id rows"
     joined = base.join(right, on="player_id", how="left")
-    assert joined.height == base.height, (
-        f"{name}: join changed height {base.height} -> {joined.height}"
-    )
+    assert joined.height == base.height, f"{name}: join changed height {base.height} -> {joined.height}"
     return joined
 
 
@@ -158,9 +151,7 @@ def _blend_by_poss(
         exprs.append(
             pl.when(total == 0)
             .then(v_rs.fill_null(v_po))
-            .otherwise(
-                (v_rs.fill_null(0) * w_rs + v_po.fill_null(0) * w_po) / total
-            )
+            .otherwise((v_rs.fill_null(0) * w_rs + v_po.fill_null(0) * w_po) / total)
             .alias(c)
         )
     exprs.append(total.alias(weight_col))
@@ -233,18 +224,14 @@ def _write_model_card(
         "possession_pipeline_version": PIPELINE_VERSION,
         "lineup_source": lineup_source,
         "seasons": [{"season": r["season"], "rows": r["rows"]} for r in results],
-        "generated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(
-            timespec="seconds"
-        ),
+        "generated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
     }
     path = out_dir / "nba_player_impact_card.json"
     path.write_text(json.dumps(card, indent=2))
     return path
 
 
-def _proxied(
-    wrapper: Callable[..., Any], provider: Optional[ProxyProvider]
-) -> Callable[..., Any]:
+def _proxied(wrapper: Callable[..., Any], provider: Optional[ProxyProvider]) -> Callable[..., Any]:
     """Wrap an ``nba_stats_*`` callable so each call draws a fresh proxy from *provider*.
 
     ``nba_box_logs`` / ``nba_player_positions`` / ``nba_player_ages`` each take a
@@ -261,6 +248,86 @@ def _proxied(
     return _f
 
 
+def _slug(value: str) -> str:
+    """Season-type / per-mode value -> the raw scraper's variant slug component."""
+    return str(value).lower().replace(" ", "-")
+
+
+def _store_variant(endpoint: str, kwargs: dict) -> Optional[str]:
+    """Committed-capture variant slug for a season-level call, or ``None`` when the
+    store cannot honestly serve it.
+
+    The ``-raw`` scraper writes season-level captures as
+    ``{endpoint}/{season}/{variant}.json`` (swept parameters) or
+    ``{endpoint}/{season}.json`` (unparameterized). This maps a live call's kwargs
+    onto that layout so the committed payload is served instead of the network.
+
+    Returns the sentinel ``""`` for an unparameterized endpoint (bare season file),
+    ``None`` when the call does NOT match what was captured -- the caller must then
+    fall back to live rather than serve a mismatched payload.
+    """
+    if endpoint == "playerindex":
+        return ""  # unparameterized: {endpoint}/{season}.json
+    stype = _slug(kwargs.get("season_type_all_star") or "Regular Season")
+    if endpoint == "leaguedashplayerbiostats":
+        per_mode = _slug(kwargs.get("per_mode_simple") or "Totals")
+        return f"{stype}_{per_mode}"
+    if endpoint == "leaguegamelog":
+        # The sweep captured only the wrapper's DEFAULT player_or_team="T" (team
+        # rows: no PLAYER_ID). Serving those for a "P" call would feed team rows
+        # into player-log processing -- silent corruption -- so a player-log call
+        # must fall through to live until the raw sweep also captures the "P"
+        # variant. Team rows still serve game discovery, which needs only game ids.
+        if (kwargs.get("player_or_team_abbreviation") or "T") != "T":
+            return None
+        return stype
+    return None
+
+
+def _store_backed(
+    endpoint: str,
+    wrapper: Callable[..., Any],
+    provider: Optional[ProxyProvider],
+    raw_store_dir: Optional[str],
+) -> Callable[..., Any]:
+    """Season-level ``fetch=`` seam that reads the committed raw store first.
+
+    Makes the build clone-free/offline in CI: the committed capture (a local
+    ``-raw`` checkout OR an ``http(s)://`` base such as raw.githubusercontent /
+    a CDN) is parsed and returned; only a genuine miss touches stats.nba.com,
+    through the proxied wrapper. With no store configured this IS ``_proxied``.
+    """
+    proxied = _proxied(wrapper, provider)
+    if not raw_store_dir:
+        return proxied
+
+    def _f(*args: Any, **kwargs: Any) -> Any:
+        variant = _store_variant(endpoint, kwargs)
+        season = _season_end_year(kwargs.get("season"))
+        if variant is not None and season is not None:
+            frame = nba_raw_store_season_frame(endpoint, season, variant or None, raw_store_dir=raw_store_dir)
+            if frame is not None:
+                return frame
+        return proxied(*args, **kwargs)
+
+    return _f
+
+
+def _season_end_year(season: Any) -> Optional[int]:
+    """``"2023-24"`` -> ``2024`` (the store's END-year season directory).
+
+    The stats API takes the START-year hyphenated label while the store is keyed
+    by end year, so every season-level store lookup crosses this boundary.
+    Returns ``None`` for anything unparseable, which routes the call to live.
+    """
+    if isinstance(season, int):
+        return season
+    text = str(season or "")
+    if len(text) >= 4 and text[:4].isdigit():
+        return int(text[:4]) + 1
+    return None
+
+
 def build_nba_player_impact(
     seasons: list[int],
     out_dir,
@@ -271,6 +338,7 @@ def build_nba_player_impact(
     season_types: Sequence[str] = ("Regular Season", "Playoffs"),
     replacement_level: float = DEFAULT_REPLACEMENT_LEVEL,
     proxy_provider: Optional[ProxyProvider] = None,
+    raw_store_dir: Optional[str] = None,
 ) -> list[dict]:
     """Build per-season consolidated player-impact tables and write parquet.
 
@@ -314,6 +382,16 @@ def build_nba_player_impact(
             boxscoretraditionalv3) AND leaguegamelog, playerindex, and
             leaguedashplayerbiostats. Proxying only the compile would leave the
             other three fetching from the host's real IP and hang the run.
+        raw_store_dir: Committed ``-raw`` JSON store to read instead of the live
+            API — a local ``hoopR-nba-stats-raw/nba_stats/json`` checkout OR an
+            ``http(s)://`` base (raw.githubusercontent / a CDN). With it set the
+            build is clone-free and needs no proxy: per-game payloads and the
+            season-level captures are served from the committed tree, and only a
+            genuine miss touches stats.nba.com. This is what makes a GitHub
+            Actions run viable at all (stats.nba.com hangs on cloud IPs).
+            NOTE: the sweep captured leaguegamelog only for the wrapper default
+            ``player_or_team="T"``, so ``nba_box_logs``' player-log call still
+            falls through to live until the raw sweep adds the ``"P"`` variant.
 
     Returns:
         List of ``{"season": int, "rows": int, "path": str}`` dicts, one per
@@ -353,9 +431,14 @@ def build_nba_player_impact(
     # Every stats.nba.com surface this builder touches must be proxied, not just
     # the possession compile -- an unproxied leaguegamelog/playerindex call hangs
     # the whole run on a datacenter host.
-    _leaguegamelog = _proxied(nba_stats_leaguegamelog, proxy_provider)
-    _playerindex = _proxied(nba_stats_playerindex, proxy_provider)
-    _biostats = _proxied(nba_stats_leaguedashplayerbiostats, proxy_provider)
+    # Store-backed when raw_store_dir is set (committed -raw captures, local dir or
+    # URL base) so a CI build needs neither a proxy nor a clone; identical to the
+    # plain proxied form when it is not.
+    _leaguegamelog = _store_backed("leaguegamelog", nba_stats_leaguegamelog, proxy_provider, raw_store_dir)
+    _playerindex = _store_backed("playerindex", nba_stats_playerindex, proxy_provider, raw_store_dir)
+    _biostats = _store_backed(
+        "leaguedashplayerbiostats", nba_stats_leaguedashplayerbiostats, proxy_provider, raw_store_dir
+    )
 
     for end_year in sorted(seasons):
         season = end_year - 1  # start-year drives the internal DARKO domain + _season_str
@@ -394,6 +477,10 @@ def build_nba_player_impact(
                 cache_dir=cache_dir,
                 delay_s=delay_s,
                 proxy_provider=proxy_provider,
+                raw_store_dir=raw_store_dir,
+                # Pure consumer: the -raw repo's own sweep is the only writer, so
+                # a store miss never persists back (and a URL store cannot).
+                raw_store_readonly=True if raw_store_dir else None,
             )
             if poss.height == 0:
                 if stype == "Regular Season":
@@ -426,9 +513,7 @@ def build_nba_player_impact(
 
             rapm = nba_rapm(poss)
             if stype == "Regular Season":
-                assert rapm.height > 0, (
-                    f"impact: season={season} {stype} RAPM came back empty"
-                )
+                assert rapm.height > 0, f"impact: season={season} {stype} RAPM came back empty"
             elif rapm.height == 0:
                 # Same pattern as a6ae584e's empty-RS-compile handling, but for
                 # a season-local RAPM anomaly on the PLAYOFF path specifically:
@@ -492,12 +577,8 @@ def build_nba_player_impact(
                 adj.select("player_id", "o_adj_rapm", "d_adj_rapm", "adj_rapm"),
                 "adj_rapm",
             )
-            impact = _join_on_player(
-                impact, spm.select("player_id", "ospm", "dspm", "spm", "min", "gp"), "spm"
-            )
-            impact = _join_on_player(
-                impact, bpm.select("player_id", "obpm", "dbpm", "bpm"), "bpm"
-            )
+            impact = _join_on_player(impact, spm.select("player_id", "ospm", "dspm", "spm", "min", "gp"), "spm")
+            impact = _join_on_player(impact, bpm.select("player_id", "obpm", "dbpm", "bpm"), "bpm")
             impact = _join_on_player(impact, war, "war")
             impact = impact.with_columns(
                 # OUTPUT season is the end year; internal joins below (adj-RAPM
@@ -540,9 +621,7 @@ def build_nba_player_impact(
             )
         )
         age_frames.append(
-            nba_player_ages(s_str, fetch=_biostats).with_columns(
-                pl.lit(season, dtype=pl.Int64).alias("season")
-            )
+            nba_player_ages(s_str, fetch=_biostats).with_columns(pl.lit(season, dtype=pl.Int64).alias("season"))
         )
         panel = pl.concat(panel_frames)
         if panel["season"].n_unique() >= 2:
@@ -564,9 +643,7 @@ def build_nba_player_impact(
             if darko_season is not None:
                 f = _join_on_player(f, darko_season, "darko")
             else:
-                f = f.with_columns(
-                    [pl.lit(None, dtype=pl.Float64).alias(c) for c in _DARKO_COLS]
-                )
+                f = f.with_columns([pl.lit(None, dtype=pl.Float64).alias(c) for c in _DARKO_COLS])
             out_frames.append(f)
         impact = pl.concat(out_frames, how="vertical")
 
@@ -594,9 +671,7 @@ def build_nba_player_impact(
             # doesn't carry a possession count, so minutes is used as a
             # defensible proxy here. Not a bug; see _blend_by_poss's docstring
             # for the possession-weighted case (the DARKO panel blend above).
-            prev_spm = _blend_by_poss(
-                spm_rs, spm_po, ["ospm", "dspm", "spm"], "min"
-            )
+            prev_spm = _blend_by_poss(spm_rs, spm_po, ["ospm", "dspm", "spm"], "min")
         else:
             prev_spm = spm_rs
 
