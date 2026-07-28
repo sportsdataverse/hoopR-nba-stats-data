@@ -175,6 +175,30 @@ def test_master_upsert_preserves_other_seasons(tmp_path):
     assert new_row["POSS"] is False and new_row["PBP_V3"] is True
 
 
+def test_master_upsert_first_run_no_prior_flag_columns(tmp_path):
+    """Real-world master predates the v3 flag feature -- none of the 5 flag columns
+    exist yet, so the join produces zero collisions and every flag column arrives
+    from new_slice unsuffixed (not f"{c}_v3new"). Regression for the exact crash hit
+    on the live 2025-26 dry-run: ColumnNotFoundError on "PBP_V3_v3new"."""
+    prior = pl.DataFrame({"game_id": ["0022200001"], "season": ["2022-23"], "PBP": [True]})
+    new_season = pl.DataFrame(
+        {
+            "game_id": ["0022300001"],
+            "PBP_V3": [True],
+            "BOX_V3": [False],
+            "BOX_PERIODS": [False],
+            "POSS": [False],
+            "LINEUP": [False],
+        }
+    )
+    merged = pipeline_cli._upsert_master_flags(prior, new_season)
+    old_row = merged.filter(pl.col("game_id") == "0022200001").to_dicts()[0]
+    assert old_row["PBP"] is True
+    assert old_row["PBP_V3"] is None  # never computed for this row
+    new_row = merged.filter(pl.col("game_id") == "0022300001").to_dicts()[0]
+    assert new_row["PBP_V3"] is True and new_row["POSS"] is False
+
+
 def test_publish_stages_explicit_path_and_commits_preserved_subject(tmp_path):
     """_publish never uses a blind `git add -A`; subject matches the R producer's convention."""
     calls = []

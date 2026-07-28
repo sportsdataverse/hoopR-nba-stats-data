@@ -240,17 +240,26 @@ def _upsert_master_flags(
     new_slice = flagged_season.select(["game_id", *flag_cols])
 
     # Rows the master already has: left join updates just the flag columns, in place.
+    # polars only applies `suffix` to columns that actually collide between the two
+    # frames -- a flag column existing has never seen before (first run computing it)
+    # arrives from new_slice unsuffixed, already correctly named; only a genuine
+    # repeat-column collision produces the f"{c}_v3new" name.
     joined = existing.join(new_slice, on="game_id", how="left", suffix="_v3new")
-    exprs = []
-    for c in flag_cols:
-        new_c = f"{c}_v3new"
-        if c in existing.columns:
-            exprs.append(pl.coalesce([pl.col(new_c), pl.col(c)]).alias(c))
-        else:
-            exprs.append(pl.col(new_c).alias(c))
-    joined = joined.with_columns(exprs).drop(
-        [f"{c}_v3new" for c in flag_cols if f"{c}_v3new" in joined.columns]
-    )
+    # polars only suffixes columns that actually COLLIDE between the two frames.
+    # A flag column the master has never carried -- the first run that computes it --
+    # therefore arrives from new_slice already correctly named, and asking for
+    # f"{c}_v3new" raises ColumnNotFoundError. The real 36,748-row master predates
+    # this feature and carries only the legacy PBP column, so every v3 flag hits
+    # that path. Coalesce only the genuine collisions; the rest are already in place.
+    exprs = [
+        pl.coalesce([pl.col(f"{c}_v3new"), pl.col(c)]).alias(c)
+        for c in flag_cols
+        if f"{c}_v3new" in joined.columns
+    ]
+    if exprs:
+        joined = joined.with_columns(exprs).drop(
+            [f"{c}_v3new" for c in flag_cols if f"{c}_v3new" in joined.columns]
+        )
 
     # Rows this run discovered that the master never had at all -- append, don't drop.
     brand_new = flagged_season.filter(~pl.col("game_id").is_in(list(existing_ids)))
