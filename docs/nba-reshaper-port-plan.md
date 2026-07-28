@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: use superpowers:executing-plans (or subagent-driven-development) to implement this task-by-task. Steps use `- [ ]` checkboxes.
 
-**Goal:** Rebuild every classic `nba_stats_*` release dataset from the unified NBA raw store using Python producers reading the **v3** API endpoints, for the **full 1996–2026** history, replacing the R-era output.
+**Goal:** Rebuild every classic `nba_stats_*` release dataset from the unified NBA raw store using Python producers reading the **v3** API endpoints, for the **full 1996–2025 start-year** history (2026-27 is unplayed), replacing the R-era output.
 
 **Architecture:** A new `python/nba_data_build/reshape/` subpackage mirroring the proven WNBA reshaper (`wehoop-wnba-stats-data/python/wnba_data_build/`), adapted for NBA's season convention and the `hoopR_data` stamp. Reuses the repo's existing tag-agnostic `publish.py`. Kept clear of the existing v3-rollup/modeling code (`process/`, `build.py`), which is untouched.
 
@@ -13,7 +13,7 @@
 - **Full replacement, not parity.** The v3 schema is the new contract; matching the old R column set is NOT a goal. Old R content is overwritten.
 - **Classic tag names survive**, carrying v3 content. Retire the redundant `nba_stats_pbpv3` (folded into `nba_stats_pbp`). No hoopR SDK loader repoint. `nba_stats_possessions_v3` / `nba_stats_lineups_v3` (no classic twin) are untouched.
 - **Draft source = `drafthistory`** (OQ1 resolved) — but it has **0 files** in the store today, so it must be captured in `-raw` first (Phase 3).
-- **Full history 1996–2026**, complete rebuild (clobber all seasons), not incremental.
+- **Full history 1996–2025 start-year** (2026-27 unplayed; probed only as an empty boundary), complete rebuild (clobber all seasons), not incremental.
 
 ## Global Constraints
 

@@ -63,17 +63,22 @@ for i in $(seq "${START_YEAR}" "${END_YEAR}"); do
     LOGFILE="${REPO_DIR}/logs/hoopr_nba_stats_python_logfile_${i}.log"
     OUT_DIR="$(mktemp -d "/tmp/nba_stats_build_${i}.XXXXXX")"
     echo "=== Building NBA stats (python) for season ${i} ==="
-    {
+    # A SUBSHELL, not a brace group: a group's status is its LAST command, so the
+    # trailing echo masked a failing build -- PIPESTATUS[0] was always 0 and every
+    # season reported success. The subshell exits with python's status instead.
+    (
         echo "=== season ${i} started $(date -u +'%F %T')Z ==="
         "${PYBIN}" -m nba_data_build.reshape \
             --root "${RAW_ROOT}" \
             --seasons "${i}" \
             --out "${OUT_DIR}" \
             --publish
-        echo "EXIT=$?"
+        py_rc=$?
+        echo "EXIT=${py_rc}"
         echo "=== season ${i} finished $(date -u +'%F %T')Z ==="
-    } 2>&1 | tee -a "${LOGFILE}"
-    # tee hides python's exit status behind its own; recover it from PIPESTATUS[0].
+        exit "${py_rc}"
+    ) 2>&1 | tee -a "${LOGFILE}"
+    # tee hides the subshell's exit status behind its own; recover it from PIPESTATUS[0].
     rc=${PIPESTATUS[0]}
     rm -rf "${OUT_DIR}"
     [ "${rc}" -ne 0 ] && { echo "season ${i} FAILED (rc=${rc})"; ANY_FAILED=1; }

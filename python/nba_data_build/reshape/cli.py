@@ -32,6 +32,7 @@ are passed.
 from __future__ import annotations
 
 import argparse
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -43,6 +44,7 @@ from nba_data_build.publish import upload_artifacts
 from . import build as _build
 from .datasets import BY_KEY, DATASETS, Dataset
 from .io import write_release_formats
+from .raw import _is_url
 
 _REPO = "sportsdataverse/sportsdataverse-data"
 
@@ -122,7 +124,11 @@ def build_dataset(
 
 def main(argv: Optional[list[str]] = None) -> int:
     args = build_parser().parse_args(argv)
-    root = Path(args.root)
+    # Keep a URL root a STRING. Path("https://host/x") collapses the double slash
+    # (and flips separators on Windows) to "https:/host/x", which raw._is_url no
+    # longer recognises -- the build then silently falls through to filesystem
+    # reads against a path that cannot exist.
+    root: str | Path = args.root if _is_url(args.root) else Path(args.root)
     out = Path(args.out)
     seasons = sorted(set(args.seasons))
     datasets = _resolve_datasets(args.datasets)
@@ -161,6 +167,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 f"built {dataset.key} {season}: {df.height} rows -> {paths['parquet'].name}"
             )
 
+    failed_uploads: list[tuple[str, list]] = []
     if args.publish or args.dry_run:
         for tag in sorted(built_tags):
             # All three formats ship to the tag: hoopR::load_nba_*() reads the
@@ -176,6 +183,22 @@ def main(argv: Optional[list[str]] = None) -> int:
                 dry_run=args.dry_run,
             )
             print(f"publish {tag}: {result}")
+            # upload_artifacts is best-effort per file, so a parquet can land while
+            # the .rds/.csv beside it fail. Reporting success there would leave the
+            # tag half-populated while every downstream freshness check reads it as
+            # complete -- consumers of the missing formats then silently see the
+            # PREVIOUS season's asset. Surface it as a failed run.
+            if result.get("failed"):
+                failed_uploads.append((tag, list(result["failed"])))
     else:
         print("no --publish/--dry-run: artifacts written locally, nothing uploaded")
+
+    if failed_uploads:
+        for tag, assets in failed_uploads:
+            print(
+                f"ERROR: {tag} is INCOMPLETE -- {len(assets)} asset(s) failed to upload: "
+                f"{', '.join(assets)}",
+                file=sys.stderr,
+            )
+        return 1
     return 0

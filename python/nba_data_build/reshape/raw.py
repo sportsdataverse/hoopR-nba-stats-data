@@ -82,7 +82,11 @@ def _read_json(root: str | Path, rel: str) -> Any | None:
         return None
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
+    except (OSError, json.JSONDecodeError):
+        # Match the HTTP branch's failure semantics: a transient read error or an
+        # unreadable file is a soft miss, not an exception that aborts a whole
+        # season mid-build. Without OSError here the two roots diverge, and a
+        # permissions blip on one file kills the run.
         return None
 
 
@@ -139,6 +143,22 @@ def available_games(root: str | Path, endpoint: str, season: int) -> list[str]:
     return sorted(p.stem for p in d.glob("*.json"))
 
 
+def _result_sets(payload: Any) -> list:
+    """The envelope's result sets, however it spells them.
+
+    stats.nba.com returns ``resultSets`` (plural, a list) on most endpoints but
+    ``resultSet`` (singular, sometimes a bare object) on others. Readers that
+    know only the plural form silently see zero rows on the singular shape, so
+    both spellings are normalised here and every reader routes through it.
+    """
+    if not isinstance(payload, dict):
+        return []
+    sets = payload.get("resultSets") or payload.get("resultSet") or []
+    if isinstance(sets, dict):
+        sets = [sets]
+    return [rs for rs in sets if isinstance(rs, dict)]
+
+
 def season_game_ids(root: str | Path, season: int) -> list[str]:
     """Every game id for ``season`` from the captured ``leaguegamelog`` payloads.
 
@@ -149,9 +169,7 @@ def season_game_ids(root: str | Path, season: int) -> list[str]:
     out: set[str] = set()
     for stype in ("regular-season", "playoffs"):
         payload = read_season(root, "leaguegamelog", season, stype)
-        if not isinstance(payload, dict):
-            continue
-        for rs in payload.get("resultSets") or []:
+        for rs in _result_sets(payload):
             headers = [str(h).upper() for h in rs.get("headers") or []]
             if "GAME_ID" not in headers:
                 continue
@@ -192,14 +210,7 @@ def result_set(
     Empty/malformed payloads give ``([], [])`` rather than raising, so callers can
     build a zero-row frame with the documented schema instead of null-checking.
     """
-    if not isinstance(payload, dict):
-        return [], []
-    sets = payload.get("resultSets") or payload.get("resultSet") or []
-    if isinstance(sets, dict):
-        sets = [sets]
-    for rs in sets:
-        if not isinstance(rs, dict):
-            continue
+    for rs in _result_sets(payload):
         if name is not None and str(rs.get("name")) != name:
             continue
         headers = [str(h) for h in rs.get("headers") or []]

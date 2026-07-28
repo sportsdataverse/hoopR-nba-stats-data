@@ -96,6 +96,19 @@ def build_season_dataset(
     variants: list[tuple[str | None, Any]] = []
     if single is not None:
         variants.append((None, single))
+    elif raw._is_url(root):
+        # Variant names are a combinatorial sweep slug
+        # ({season_type}_{measure}_{per_mode}, ...) and plain HTTP cannot list a
+        # directory, so they cannot be discovered from a URL root. Silently
+        # returning an empty frame here would publish a dataset that merely LOOKS
+        # like the season had no data -- refuse instead, and point at the local
+        # root that does work.
+        raise ValueError(
+            f"{dataset.key}: season {season} is variant-backed ({dataset.endpoint} has no "
+            f"bare {season}.json), and its variants cannot be enumerated over HTTP. "
+            "Use a local raw-store root -- scripts/hydrate_raw_store.sh materialises one "
+            "from the published season bundles -- or pass --root to a checkout."
+        )
     elif base.is_dir():
         for path in sorted(base.glob("*.json")):
             payload = raw.read_season(root, dataset.endpoint, season, path.stem)

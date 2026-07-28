@@ -100,6 +100,19 @@ def season_dir(root: Path, endpoint: str, season: int) -> Path:
     return root / endpoint / str(dir_year)
 
 
+def _positive_int(value: str) -> int:
+    """``--sample`` must be >= 1.
+
+    ``0`` divides by zero on a non-empty directory, and a negative value samples
+    nothing while still reporting the season as empty -- a false floor fed
+    straight into release gating.
+    """
+    n = int(value)
+    if n < 1:
+        raise argparse.ArgumentTypeError(f"--sample must be >= 1, got {n}")
+    return n
+
+
 @dataclass
 class SeasonProbe:
     season: int
@@ -108,6 +121,11 @@ class SeasonProbe:
     sampled: int = 0
     populated: int = 0
     empty: int = 0
+    #: Files that could not be parsed at all. Kept apart from ``empty`` on
+    #: purpose: an unreadable capture is an unknown, not a confirmed absence of
+    #: data, and folding it into ``empty`` understates coverage and can push a
+    #: season floor later than it belongs -- these floors gate releases.
+    unreadable: int = 0
 
     @property
     def is_populated(self) -> bool:
@@ -151,7 +169,7 @@ def probe_season(root: Path, endpoint: str, season: int, sample: int) -> SeasonP
         try:
             rows = payload_rows(json.loads(path.read_text()))
         except (json.JSONDecodeError, OSError):
-            sp.empty += 1
+            sp.unreadable += 1
             continue
         sp.sampled += 1
         if rows > 0:
@@ -220,6 +238,7 @@ def render_markdown(probes: list[EndpointProbe], root: Path, sample: int) -> str
             lines.append(
                 f"| {sp.season} | {sp.dir_year} | {sp.files} | {sp.sampled} | "
                 f"{sp.populated} | {sp.empty} |{mark}"
+                + (f"  <!-- {sp.unreadable} unreadable -->" if sp.unreadable else "")
             )
         lines.append("")
     return "\n".join(lines) + "\n"
@@ -235,7 +254,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument(
         "--sample",
-        type=int,
+        type=_positive_int,
         default=20,
         help="max files parsed per (endpoint, season) (default: 20)",
     )

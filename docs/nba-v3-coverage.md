@@ -71,7 +71,7 @@ from `playbyplayv3`; `draft` has no data until the Phase 3 capture.
 
 | season (start) | dir | files | sampled | populated | empty |
 |---|---|---|---|---|---|
-| 1996 | 1997 | 1261 | 20 | 20 | 0 | ◀ floor
+| **1996** ◀ floor | 1997 | 1261 | 20 | 20 | 0 |
 | 1997 | 1998 | 1260 | 20 | 20 | 0 |
 | 1998 | 1999 | 791 | 20 | 20 | 0 |
 | 1999 | 2000 | 1264 | 20 | 20 | 0 |
@@ -110,7 +110,7 @@ from `playbyplayv3`; `draft` has no data until the Phase 3 capture.
 
 | season (start) | dir | files | sampled | populated | empty |
 |---|---|---|---|---|---|
-| 1996 | 1997 | 1261 | 20 | 20 | 0 | ◀ floor
+| **1996** ◀ floor | 1997 | 1261 | 20 | 20 | 0 |
 | 1997 | 1998 | 1260 | 20 | 20 | 0 |
 | 1998 | 1999 | 791 | 20 | 20 | 0 |
 | 1999 | 2000 | 1264 | 20 | 20 | 0 |
@@ -149,7 +149,7 @@ from `playbyplayv3`; `draft` has no data until the Phase 3 capture.
 
 | season (start) | dir | files | sampled | populated | empty |
 |---|---|---|---|---|---|
-| 1996 | 1997 | 1261 | 20 | 20 | 0 | ◀ floor
+| **1996** ◀ floor | 1997 | 1261 | 20 | 20 | 0 |
 | 1997 | 1998 | 1260 | 20 | 20 | 0 |
 | 1998 | 1999 | 791 | 20 | 20 | 0 |
 | 1999 | 2000 | 1264 | 20 | 20 | 0 |
@@ -188,7 +188,7 @@ from `playbyplayv3`; `draft` has no data until the Phase 3 capture.
 
 | season (start) | dir | files | sampled | populated | empty |
 |---|---|---|---|---|---|
-| 1996 | 1996 | 2 | 2 | 1 | 1 | ◀ floor
+| **1996** ◀ floor | 1996 | 2 | 2 | 1 | 1 |
 | 1997 | 1997 | 2 | 2 | 1 | 1 |
 | 1998 | 1998 | 2 | 2 | 1 | 1 |
 | 1999 | 1999 | 2 | 2 | 1 | 1 |
@@ -227,7 +227,7 @@ from `playbyplayv3`; `draft` has no data until the Phase 3 capture.
 
 | season (start) | dir | files | sampled | populated | empty |
 |---|---|---|---|---|---|
-| 1996 | 1996 | 28 | 20 | 15 | 5 | ◀ floor
+| **1996** ◀ floor | 1996 | 28 | 20 | 15 | 5 |
 | 1997 | 1997 | 28 | 20 | 14 | 6 |
 | 1998 | 1998 | 28 | 20 | 16 | 4 |
 | 1999 | 1999 | 28 | 20 | 14 | 6 |
@@ -266,7 +266,7 @@ from `playbyplayv3`; `draft` has no data until the Phase 3 capture.
 
 | season (start) | dir | files | sampled | populated | empty |
 |---|---|---|---|---|---|
-| 1996 | 1996 | 28 | 20 | 18 | 2 | ◀ floor
+| **1996** ◀ floor | 1996 | 28 | 20 | 18 | 2 |
 | 1997 | 1997 | 28 | 20 | 18 | 2 |
 | 1998 | 1998 | 28 | 20 | 18 | 2 |
 | 1999 | 1999 | 28 | 20 | 18 | 2 |
@@ -316,7 +316,7 @@ from `playbyplayv3`; `draft` has no data until the Phase 3 capture.
 | 2004 | 2004 | 28 | 20 | 0 | 20 |
 | 2005 | 2005 | 28 | 20 | 0 | 20 |
 | 2006 | 2006 | 28 | 20 | 0 | 20 |
-| 2007 | 2007 | 28 | 20 | 20 | 0 | ◀ floor
+| **2007** ◀ floor | 2007 | 28 | 20 | 20 | 0 |
 | 2008 | 2008 | 28 | 20 | 20 | 0 |
 | 2009 | 2009 | 28 | 20 | 20 | 0 |
 | 2010 | 2010 | 28 | 20 | 20 | 0 |
@@ -344,7 +344,7 @@ from `playbyplayv3`; `draft` has no data until the Phase 3 capture.
 
 | season (start) | dir | files | sampled | populated | empty |
 |---|---|---|---|---|---|
-| 1996 | 1996 | 29 | 20 | 20 | 0 | ◀ floor
+| **1996** ◀ floor | 1996 | 29 | 20 | 20 | 0 |
 | 1997 | 1997 | 29 | 20 | 20 | 0 |
 | 1998 | 1998 | 29 | 20 | 20 | 0 |
 | 1999 | 1999 | 29 | 20 | 20 | 0 |
@@ -383,7 +383,7 @@ from `playbyplayv3`; `draft` has no data until the Phase 3 capture.
 
 | season (start) | dir | files | sampled | populated | empty |
 |---|---|---|---|---|---|
-| 1996 | 1996 | 2 | 2 | 2 | 0 | ◀ floor
+| **1996** ◀ floor | 1996 | 2 | 2 | 2 | 0 |
 | 1997 | 1997 | 2 | 2 | 2 | 0 |
 | 1998 | 1998 | 2 | 2 | 2 | 0 |
 | 1999 | 1999 | 2 | 2 | 2 | 0 |
