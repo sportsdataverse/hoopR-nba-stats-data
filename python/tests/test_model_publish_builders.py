@@ -160,6 +160,13 @@ def stubbed(monkeypatch):
 
 EXPECTED_COLS = {
     "player_id",
+    # Human-readable identity: without these the published table is a wall of
+    # player_ids and every consumer has to rebuild the same crosswalk.
+    "player_name",
+    "team_id",
+    "team_abbreviation",
+    "team_name",
+    "teams",
     "season",
     "season_type",
     "o_rapm",
@@ -417,8 +424,10 @@ def test_blend_by_poss_player_in_one_frame_only():
 
 def test_blend_by_poss_empty_playoffs_returns_rs_unchanged():
     rs = pl.DataFrame({"player_id": [1], "rating": [2.0], "poss": [900]})
-    empty = pl.DataFrame({"player_id": [], "rating": [], "poss": []},
-                         schema={"player_id": pl.Int64, "rating": pl.Float64, "poss": pl.Int64})
+    empty = pl.DataFrame(
+        {"player_id": [], "rating": [], "poss": []},
+        schema={"player_id": pl.Int64, "rating": pl.Float64, "poss": pl.Int64},
+    )
     assert B._blend_by_poss(rs, empty, ["rating"], "poss")["rating"].to_list() == [2.0]
     assert B._blend_by_poss(rs, None, ["rating"], "poss")["rating"].to_list() == [2.0]
 
@@ -463,9 +472,14 @@ def _darko(panel: pl.DataFrame) -> pl.DataFrame:
 
 
 def test_impact_emits_a_row_per_season_type(tmp_path, stubbed):
-    out = B.build_nba_player_impact([2024], tmp_path, season_types=["Regular Season", "Playoffs"])
+    out = B.build_nba_player_impact(
+        [2024], tmp_path, season_types=["Regular Season", "Playoffs"]
+    )
     df = pl.read_parquet(out[0]["path"])
-    assert sorted(df["season_type"].unique().to_list()) == ["Playoffs", "Regular Season"]
+    assert sorted(df["season_type"].unique().to_list()) == [
+        "Playoffs",
+        "Regular Season",
+    ]
     # grain is (player_id, season, season_type) -- no dupes
     assert df.select("player_id", "season", "season_type").is_duplicated().sum() == 0
     # EXPECTED_COLS equality was only ever checked on an RS-only build
@@ -475,23 +489,39 @@ def test_impact_emits_a_row_per_season_type(tmp_path, stubbed):
     assert set(df.columns) == EXPECTED_COLS
 
 
-def test_playoffs_reuse_the_rs_fitted_coef_and_pts_per_win(tmp_path, monkeypatch, stubbed):
+def test_playoffs_reuse_the_rs_fitted_coef_and_pts_per_win(
+    tmp_path, monkeypatch, stubbed
+):
     """The fitted quantities must be fit ONCE on RS -- a ~15-game playoff sample
     would train noise on noise."""
     train_calls, ppw_calls, spm_coefs = [], [], []
-    monkeypatch.setattr(B, "train_spm", lambda bf, target, **kw: (train_calls.append(1), "COEF_RS")[1])
-    monkeypatch.setattr(B, "calibrate_pts_per_win", lambda ts: (ppw_calls.append(1), 33.0)[1])
+    monkeypatch.setattr(
+        B, "train_spm", lambda bf, target, **kw: (train_calls.append(1), "COEF_RS")[1]
+    )
+    monkeypatch.setattr(
+        B, "calibrate_pts_per_win", lambda ts: (ppw_calls.append(1), 33.0)[1]
+    )
     real_spm = B.nba_spm
-    monkeypatch.setattr(B, "nba_spm", lambda bf, coef, **kw: (spm_coefs.append(coef), real_spm(bf, coef))[1])
+    monkeypatch.setattr(
+        B,
+        "nba_spm",
+        lambda bf, coef, **kw: (spm_coefs.append(coef), real_spm(bf, coef))[1],
+    )
 
-    B.build_nba_player_impact([2024], tmp_path, season_types=["Regular Season", "Playoffs"])
+    B.build_nba_player_impact(
+        [2024], tmp_path, season_types=["Regular Season", "Playoffs"]
+    )
 
     assert len(train_calls) == 1, "SPM coef must be fitted once, on the regular season"
-    assert len(ppw_calls) == 1, "pts_per_win must be calibrated once, on the regular season"
+    assert len(ppw_calls) == 1, (
+        "pts_per_win must be calibrated once, on the regular season"
+    )
     assert spm_coefs == ["COEF_RS", "COEF_RS"], "the PO pass must reuse the RS coef"
 
 
-def test_season_with_no_playoffs_emits_rs_only_and_does_not_raise(tmp_path, monkeypatch, stubbed):
+def test_season_with_no_playoffs_emits_rs_only_and_does_not_raise(
+    tmp_path, monkeypatch, stubbed
+):
     def _compile(season, **kw):
         if kw.get("season_type") == "Playoffs":
             return _poss(season).clear()  # empty, correct schema
@@ -503,11 +533,17 @@ def test_season_with_no_playoffs_emits_rs_only_and_does_not_raise(tmp_path, monk
     assert df["season_type"].unique().to_list() == ["Regular Season"]
 
 
-def test_compile_is_called_once_per_season_type_with_the_right_string(tmp_path, monkeypatch, stubbed):
+def test_compile_is_called_once_per_season_type_with_the_right_string(
+    tmp_path, monkeypatch, stubbed
+):
     seen = []
     monkeypatch.setattr(
-        B, "compile_nba_season",
-        lambda season, **kw: (seen.append((season, kw.get("season_type"))), _poss(season))[1],
+        B,
+        "compile_nba_season",
+        lambda season, **kw: (
+            seen.append((season, kw.get("season_type"))),
+            _poss(season),
+        )[1],
     )
     B.build_nba_player_impact([2024], tmp_path)
     # compile_nba_season receives the (end-year) input value directly.
@@ -528,7 +564,10 @@ def test_box_logs_is_called_once_per_season_type_with_the_right_string(
     monkeypatch.setattr(
         B,
         "nba_box_logs",
-        lambda s, **kw: (seen.append((s, kw.get("season_type"))), real_box_logs(s, **kw))[1],
+        lambda s, **kw: (
+            seen.append((s, kw.get("season_type"))),
+            real_box_logs(s, **kw),
+        )[1],
     )
     B.build_nba_player_impact([2024], tmp_path)
     assert seen == [
@@ -542,7 +581,8 @@ def test_darko_panel_stays_one_row_per_player_season(tmp_path, monkeypatch, stub
     playoff time step would double-apply aging and mis-scale the filter."""
     panels = []
     monkeypatch.setattr(
-        B, "nba_darko",
+        B,
+        "nba_darko",
         lambda panel, ages, **kw: (panels.append(panel), _darko(panel))[1],
     )
     B.build_nba_player_impact([2023, 2024], tmp_path)
@@ -564,7 +604,8 @@ def test_darko_panel_and_last_season_join_stay_start_year_under_the_end_year_fli
     start-year build (the join would silently miss and null out instead)."""
     panels = []
     monkeypatch.setattr(
-        B, "nba_darko",
+        B,
+        "nba_darko",
         lambda panel, ages, **kw: (panels.append(panel.clone()), _darko(panel))[1],
     )
     out = B.build_nba_player_impact([2023, 2024], tmp_path)
@@ -594,7 +635,9 @@ def test_both_season_type_rows_carry_the_same_darko_projection(tmp_path, stubbed
     assert per_player["n"].max() == 1
 
 
-def test_forward_prior_is_the_blend_not_the_playoff_estimate(tmp_path, monkeypatch, stubbed):
+def test_forward_prior_is_the_blend_not_the_playoff_estimate(
+    tmp_path, monkeypatch, stubbed
+):
     """Pure chronological carry would make each RS prior a ~15-game playoff
     estimate -- that would degrade every regular-season row."""
     blends = []
@@ -658,7 +701,9 @@ def test_forward_prior_is_the_blend_not_the_playoff_estimate(tmp_path, monkeypat
     raw_po_spm = _spm(players).with_columns((pl.col("ospm") * 5).alias("ospm"))
     expected_prior = B.AdjRapmModel.from_spm(carried_blend).prior
     raw_po_prior = B.AdjRapmModel.from_spm(raw_po_spm).prior
-    assert expected_prior != raw_po_prior  # sanity: the two are actually distinguishable
+    assert (
+        expected_prior != raw_po_prior
+    )  # sanity: the two are actually distinguishable
 
     # priors recorded in order: [2022 RS (empty), 2022 PO, 2023 RS, 2023 PO]
     threaded_prior = stubbed["priors"][2]
@@ -697,7 +742,9 @@ def test_rs_only_build_reproduces_the_pre_playoffs_behavior(tmp_path, stubbed):
         .sort("player_id")
     )
     cols = sorted(a.columns)
-    assert a.select(cols).equals(b.select(cols)), "the Playoffs pass moved the RS numbers"
+    assert a.select(cols).equals(b.select(cols)), (
+        "the Playoffs pass moved the RS numbers"
+    )
 
 
 # ---------------------------------------------------------------------------

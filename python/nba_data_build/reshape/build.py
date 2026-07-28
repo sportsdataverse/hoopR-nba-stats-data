@@ -275,8 +275,13 @@ def boxscore_rows(payload: Any, *, team_level: bool) -> list[dict[str, Any]]:
             continue
         common = {
             "team_id": team.get("teamId"),
+            # teamName alone is the nickname ("Pacers"), so without teamCity a
+            # consumer cannot render or match on the full club name; the payload
+            # carries both and dropping the city loses information for free.
+            "team_city": team.get("teamCity"),
             "team_name": team.get("teamName"),
             "team_tricode": team.get("teamTricode"),
+            "team_slug": team.get("teamSlug"),
             "side": "home" if side == "homeTeam" else "away",
         }
         if team_level:
