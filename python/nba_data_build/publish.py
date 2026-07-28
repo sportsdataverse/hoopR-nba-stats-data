@@ -44,21 +44,29 @@ def plan_uploads(
     seasons: Optional[Iterable[int]] = None,
     *,
     pattern: str = "*.parquet",
+    exts: tuple[str, ...] = ("parquet",),
 ) -> list[Path]:
-    """Return the files under *artifacts_dir* matching *pattern* (sorted).
+    """Return the files under *artifacts_dir* to upload (sorted).
 
-    ``seasons``, when given, scopes this to only files ending in
-    ``_{season}.parquet`` for one of the given seasons -- otherwise every
-    prior season's files sitting in the same directory get globbed in too,
-    which turns a single-season publish call into an ever-growing re-upload
-    of the whole backfill-to-date (O(n^2) across a multi-season backfill).
-    Season scoping only makes sense for the default parquet pattern; a
-    non-parquet *pattern* (e.g. a model-card ``*.json``) is returned unscoped.
+    Two selection modes:
+
+    * default (``pattern="*.parquet"``): glob each extension in *exts* and,
+      when *seasons* is given, keep only files ending in ``_{season}.{ext}``
+      for one of those seasons. *exts* defaults to ``("parquet",)`` so existing
+      callers (the v3/modeling tags) are parquet-only exactly as before; the
+      reshaper passes ``("parquet","rds","csv")`` because ``hoopR::load_nba_*()``
+      reads the ``.rds`` and the release is the only channel that ships it.
+      Season scoping avoids re-uploading the whole backfill-to-date on every
+      single-season call (O(n^2) across a multi-season run).
+    * custom *pattern* (e.g. a model-card ``*_card.json`` sidecar): returned
+      unscoped, *exts* ignored.
     """
-    files = sorted(Path(artifacts_dir).glob(pattern))
-    if seasons is None or pattern != "*.parquet":
+    if pattern != "*.parquet":
+        return sorted(Path(artifacts_dir).glob(pattern))
+    files = sorted(f for ext in exts for f in Path(artifacts_dir).glob(f"*.{ext}"))
+    if seasons is None:
         return files
-    suffixes = tuple(f"_{s}.parquet" for s in seasons)
+    suffixes = tuple(f"_{s}.{ext}" for s in seasons for ext in exts)
     return [f for f in files if f.name.endswith(suffixes)]
 
 
@@ -107,6 +115,7 @@ def upload_artifacts(
     *,
     seasons: Optional[Iterable[int]] = None,
     pattern: str = "*.parquet",
+    exts: tuple[str, ...] = ("parquet",),
     notes: Optional[str] = None,
     dry_run: bool = False,
     runner: Optional[Runner] = None,
@@ -135,7 +144,7 @@ def upload_artifacts(
     # FIX 4: drop needless lambda — _gh_runner already matches the Runner signature.
     run = runner or _gh_runner
     exists = exists_check or _gh_release_exists
-    files = plan_uploads(artifacts_dir, seasons, pattern=pattern)
+    files = plan_uploads(artifacts_dir, seasons, pattern=pattern, exts=exts)
     if dry_run:
         return {"uploaded": 0, "failed": [], "files": [f.name for f in files]}
     if not exists(tag, repo):

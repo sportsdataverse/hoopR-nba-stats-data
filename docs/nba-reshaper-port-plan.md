@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: use superpowers:executing-plans (or subagent-driven-development) to implement this task-by-task. Steps use `- [ ]` checkboxes.
 
-**Goal:** Rebuild every classic `nba_stats_*` release dataset from the unified NBA raw store using Python producers reading the **v3** API endpoints, for the **full 1996–2026** history, replacing the R-era output.
+**Goal:** Rebuild every classic `nba_stats_*` release dataset from the unified NBA raw store using Python producers reading the **v3** API endpoints, for the **full 1996–2025 start-year** history (2026-27 is unplayed), replacing the R-era output.
 
 **Architecture:** A new `python/nba_data_build/reshape/` subpackage mirroring the proven WNBA reshaper (`wehoop-wnba-stats-data/python/wnba_data_build/`), adapted for NBA's season convention and the `hoopR_data` stamp. Reuses the repo's existing tag-agnostic `publish.py`. Kept clear of the existing v3-rollup/modeling code (`process/`, `build.py`), which is untouched.
 
@@ -13,13 +13,14 @@
 - **Full replacement, not parity.** The v3 schema is the new contract; matching the old R column set is NOT a goal. Old R content is overwritten.
 - **Classic tag names survive**, carrying v3 content. Retire the redundant `nba_stats_pbpv3` (folded into `nba_stats_pbp`). No hoopR SDK loader repoint. `nba_stats_possessions_v3` / `nba_stats_lineups_v3` (no classic twin) are untouched.
 - **Draft source = `drafthistory`** (OQ1 resolved) — but it has **0 files** in the store today, so it must be captured in `-raw` first (Phase 3).
-- **Full history 1996–2026**, complete rebuild (clobber all seasons), not incremental.
+- **Full history 1996–2025 start-year** (2026-27 unplayed; probed only as an empty boundary), complete rebuild (clobber all seasons), not incremental.
 
 ## Global Constraints
 
 - **polars 1.x modern API only** (`group_by`, `with_row_index`, `pl.len()`, `how="full", coalesce=True`; bool masks explicit; no lookaround regex).
 - **uv** for everything (`uv run pytest|ruff`); no `pip`/`requirements.txt`. Venv interpreter by absolute path in shell wrappers (systemd PATH lacks `/root/.local/bin`).
-- **Season labels use START year** (1996 = 1996-97); **store game-endpoint dirs use END year** (`season_of(game_id) = start+1`, verified: game `0021300001` → dir `2014`). Season-level endpoints are stored under the dir the scraper wrote — confirm per endpoint in Task 1.1.
+- **Season labels use START year** (1996 = 1996-97). **The store dir convention is SPLIT (verified in Phase 0):** game endpoints (playbyplayv3, boxscoresummaryv2, boxscoretraditionalv3) key by **END year** — `dir = season + 1` (game `0021300001` → `/2014/`); the six league endpoints (leaguestandingsv3, leaguedash*, leaguegamelog, commonteamroster, drafthistory) key by **START year** — `dir = season`. Task 1.1 hardcodes exactly this split; there is nothing left to "confirm per endpoint".
+- **History range = 1996–2025 start-year** (verified in Phase 0): 2026-27 is unplayed, so a 2026 build yields nothing. `seq 1996 2025`, not 2026.
 - **ID/join-key dtype discipline:** one dtype per id at the boundary; assert `left.schema[k] == right.schema[k]` before any join; `game_id` is zero-padded to 10; never a float→Utf8 id cast.
 - **RDS stamp** = `("hoopR_data","tbl_df","tbl","data.table","data.frame")` + `hoopR_timestamp` (POSIXct) + `hoopR_type` (per `hoopR/R/utils.R:634`).
 - **Commits:** Conventional Commits; branch + PR (this is a code/library repo, not a data repo); **never** an AI co-author trailer. The `-raw` capture in Phase 3 targets `main` directly (data repo) with the load-bearing `NBA Stats Update (Start: YYYY End: YYYY)` subject.
@@ -34,7 +35,7 @@ Mirrors the WNBA 15. Endpoint = v3 where one exists.
 | standings | leaguestandingsv3 | — | nba_stats_standings | NEW |
 | player_season_stats | leaguedashplayerstats | — | nba_stats_player_season_stats | NEW¹ |
 | team_season_stats | leaguedashteamstats | — | nba_stats_team_season_stats | NEW¹ |
-| lineups | leaguedashlineups | — | nba_stats_lineups | NEW² |
+| lineups | leaguedashlineups | — | nba_stats_lineups | NEW² (floor 2007) |
 | rosters | commonteamroster | CommonTeamRoster | nba_stats_rosters | NEW |
 | coaches | commonteamroster | Coaches | nba_stats_coaches | NEW |
 | draft | drafthistory | — | nba_stats_draft | NEW (needs capture) |
@@ -57,7 +58,7 @@ Mirrors the WNBA 15. Endpoint = v3 where one exists.
 ### Task 0.1: Tag manifest (create / rebuild / retire)
 **Files:** Create `docs/nba-tag-manifest.md`.
 - [ ] Enumerate live `nba_stats_*` tags (`gh release list`) and cross-check against the 15 target tags.
-- [ ] Decide per tag: create / rebuild / leave. Confirm `nba_stats_leaguedash` disposition (fold into the three leaguedash datasets, or keep as a combined legacy tag).
+- [ ] Decide per tag: create / rebuild / leave. **RESOLVED in Phase 0:** `nba_stats_leaguedash` is LEFT ALONE — it is a 794-asset combined legacy dump carrying `player_bio`, twelve `player_tracking_*` families, and `*_master` rollups that are NOT in the target 15; folding/deleting would drop live content. Porting those extra families is future work, out of scope here.
 - [ ] Record the one retirement: `nba_stats_pbpv3` → delete after `nba_stats_pbp` is rebuilt and verified.
 - [ ] Commit the manifest.
 
@@ -143,7 +144,7 @@ Mirrors the WNBA 15. Endpoint = v3 where one exists.
 ## Phase 5 — full-history rebuild + publish
 
 ### Task 5.1: local full build (dry-run)
-- [ ] `python -m nba_data_build.reshape --root <store> --seasons $(seq 1996 2026) --out <tmp> --dry-run`.
+- [ ] `python -m nba_data_build.reshape --root <store> --seasons $(seq 1996 2025) --out <tmp> --dry-run` (2026-27 unplayed — see Global Constraints).
 - [ ] Cross-check per-dataset season coverage against the Task 0.2 floors; confirm no season below a floor produced an artifact, and every season above it did. Record row counts.
 
 ### Task 5.2: publish (create / rebuild / retire)
