@@ -17,7 +17,7 @@ dependencies = [
 dev = ["pytest>=8.0"]
 
 [tool.setuptools.packages.find]
-include = ["nba_data_build*"]
+include = ["nba_data_build*", "nba_model_publish*"]
 
 [build-system]
 requires = ["setuptools>=68"]

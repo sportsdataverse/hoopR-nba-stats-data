@@ -25,7 +25,7 @@ from typing import Iterable, Optional, Union
 
 import polars as pl
 
-from ..scrape.raw_store import raw_path
+from ..scrape.raw_store import resolve_raw_path
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +119,13 @@ def compute_flags(
     game_ids = schedule["game_id"].cast(pl.Utf8).to_list()
 
     new_cols = [
-        pl.Series(out_col, [raw_path(root, kind, gid).exists() for gid in game_ids], dtype=pl.Boolean)
+        pl.Series(
+            out_col,
+            # resolve_ rather than raw_path: a capture in either store layout counts
+            # as present, or legacy captures would report missing after the migration.
+            [resolve_raw_path(root, kind, gid) is not None for gid in game_ids],
+            dtype=pl.Boolean,
+        )
         for out_col, kind in _RAW_FLAGS
     ]
     new_cols.append(pl.Series("POSS", [gid in poss_ids for gid in game_ids], dtype=pl.Boolean))

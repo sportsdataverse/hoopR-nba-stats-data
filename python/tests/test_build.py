@@ -33,18 +33,38 @@ def _synthetic_season(season: int) -> pl.DataFrame:
 
 def test_build_season_produces_possessions_and_rapm(monkeypatch: object) -> None:
     monkeypatch.setattr(B, "compile_nba_season", lambda season, **kw: _synthetic_season(season))
-    res = B.build_season(2023)
-    assert res.season == 2023 and res.n_possessions == res.possessions.height > 0
+    res = B.build_season(2024)
+    assert res.season == 2024 and res.n_possessions == res.possessions.height > 0
     # rapm has RAPM_SCHEMA columns + a season column
     assert {"player_id", "o_rapm", "d_rapm", "rapm", "off_poss", "def_poss", "season"} <= set(res.rapm.columns)
-    assert res.rapm["season"].unique().to_list() == [2023]
+    assert res.rapm["season"].unique().to_list() == [2024]
+
+
+def test_build_season_passes_end_year_through_with_no_conversion(monkeypatch: object) -> None:
+    """Locks in the Task 7 chain unification: build_season's input IS the
+    compile_nba_season input verbatim -- no internal ``season + 1``. A stray +1
+    was briefly introduced in build_season during this migration and later
+    removed; the actual pre-existing off-by-one was most_recent_nba_season()
+    (end-year) being fed into a --through slot still documented/treated as
+    start-year, fixed by making --through end-year to match rather than by
+    adjusting build_season."""
+    seen: dict[str, int] = {}
+
+    def _fake_compile(season, **kw):
+        seen["season"] = season
+        return _synthetic_season(season)
+
+    monkeypatch.setattr(B, "compile_nba_season", _fake_compile)
+    res = B.build_season(2026)
+    assert seen["season"] == 2026
+    assert res.season == 2026
 
 
 def test_build_writes_artifacts_and_card(tmp_path: Path, monkeypatch: object) -> None:
     monkeypatch.setattr(B, "compile_nba_season", lambda season, **kw: _synthetic_season(season))
-    results = B.build([2022, 2023], out_dir=tmp_path)
-    assert (tmp_path / "rapm" / "nba_rapm_2023.parquet").exists()
-    assert (tmp_path / "possessions" / "nba_possessions_2023.parquet").exists()
+    results = B.build([2023, 2024], out_dir=tmp_path)
+    assert (tmp_path / "rapm" / "nba_rapm_2024.parquet").exists()
+    assert (tmp_path / "possessions" / "nba_possessions_2024.parquet").exists()
     card = tmp_path / "nba_rapm_validation_report.md"
     assert card.exists() and "plain_rapm" in card.read_text(encoding="utf-8")
     assert len(results) == 2

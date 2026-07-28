@@ -9,28 +9,30 @@ guarded by :func:`~nba_data_build.cache_guard.assert_pipeline_version`):
 
 Quarter-box lineup seam
 ------------------------
-The on-court reconstruction is meant to use sdv-py's quarter-box lineup
-engine (``players_on_court_from_quarter_boxscores``, built from the
-``boxv3_periods`` raw capture). That function is a **Tasks 1-3 sdv-py-side
-deliverable that has not landed on the pinned rev yet** (grepped clean
-against the installed ``sportsdataverse.nba.nba_lineups`` at the time this
-module was written). Rather than block on it, :func:`_quarter_box_oncourt`
-is a seam: it imports the upstream function opportunistically and falls back
-to the already-shipped, gamerotation-free ``players_on_court_from_pbp``
-(boxscore starters + play-by-play substitutions only -- no ``boxv3_periods``
-needed) when the upstream symbol is absent. The ``boxv3_periods`` payload is
-still read from disk and threaded through the seam so the swap-over at the
-next pin bump is a one-line change, not a rewrite.
+The on-court reconstruction uses sdv-py's quarter-box lineup engine
+(``players_on_court_from_quarter_boxscores``, built from the ``boxv3_periods``
+raw capture). It was written before that function landed upstream, so
+:func:`_quarter_box_oncourt` is a seam: it imports the upstream function
+opportunistically and falls back to the gamerotation-free
+``players_on_court_from_pbp`` (boxscore starters + play-by-play substitutions
+only -- no ``boxv3_periods`` needed) when the symbol is absent.
+
+**The symbol has since landed**, so the preferred quarter-box path is what
+actually runs today and the fallback is dormant. The seam is deliberately kept:
+``sportsdataverse`` is pinned to ``@main`` (a FLOATING git dep), so the branch
+taken here is decided by whatever upstream happens to ship. That is precisely
+why the label must stay derived, never hardcoded.
 
 **Provenance**: :func:`_quarter_box_oncourt` returns ``(oncourt_frame, used)``
 and :func:`process_game` stamps ``lineup_source`` from the threaded *used*
 value -- ``"quarter_box"`` when the upstream import resolved and ran,
 ``"pbp_fallback"`` when the ``ImportError`` fallback path ran (mirrors the
-``used`` pattern in sdv-py's ``nba_possessions.nba_possessions``). On the
-current pinned rev the upstream symbol is absent, so every possession is
-currently stamped ``"pbp_fallback"`` -- an honest label, not a hardcoded
-``"quarter_box"`` constant. See
-``.superpowers/sdd/pipeline/task-7-report.md`` for the full writeup.
+``used`` pattern in sdv-py's ``nba_possessions.nba_possessions``). Because the
+dep floats, ``lineup_source`` is the *only* record of which engine produced a
+given row -- it is a real provenance column, not a debug flag. Both branches are
+pinned by tests (``test_process_from_raw.py``); if upstream ever drops the
+symbol, published lineups silently change source and those tests are what catch
+it. See ``.superpowers/sdd/pipeline/task-7-report.md`` for the full writeup.
 """
 
 from __future__ import annotations
@@ -43,7 +45,7 @@ from typing import Any, Union
 import polars as pl
 
 from ..cache_guard import assert_pipeline_version
-from ..scrape.raw_store import raw_path
+from ..scrape.raw_store import read_raw
 
 
 @dataclass
@@ -68,8 +70,13 @@ class ProcessedGame:
 
 
 def _load_raw_json(root: Union[str, Path], kind: str, game_id: str) -> Any:
-    """Read one verbatim raw capture from disk (never fetches)."""
-    return json.loads(raw_path(root, kind, game_id).read_text(encoding="utf-8"))
+    """Read one verbatim raw capture from disk (never fetches).
+
+    Delegates to :func:`~nba_data_build.scrape.raw_store.read_raw`, which resolves
+    either store layout -- so this reads hoopR-nba-stats-raw's shared tree as
+    happily as the legacy one here, and reassembles split per-period boxscores.
+    """
+    return read_raw(root, kind, game_id)
 
 
 def _quarter_box_oncourt(
@@ -113,9 +120,13 @@ def _quarter_box_oncourt(
     except ImportError:
         from sportsdataverse.nba.nba_lineups import players_on_court_from_pbp
 
-        oc = players_on_court_from_pbp(enh, box_raw, home_team_id=home_team_id, away_team_id=away_team_id)
+        oc = players_on_court_from_pbp(
+            enh, box_raw, home_team_id=home_team_id, away_team_id=away_team_id
+        )
         return oc, "pbp_fallback"
-    oc = players_on_court_from_quarter_boxscores(enh, periods, home_team_id=home_team_id, away_team_id=away_team_id)
+    oc = players_on_court_from_quarter_boxscores(
+        enh, periods, home_team_id=home_team_id, away_team_id=away_team_id
+    )
     return oc, "quarter_box"
 
 
@@ -137,16 +148,29 @@ def _attach_running_possession(enh: pl.DataFrame, poss: pl.DataFrame) -> pl.Data
         *enh* with ``possession_number``, ``off_player_1..5``, and
         ``def_player_1..5`` appended (nullable -- unmatched events are null).
     """
-    lineup_cols = [f"off_player_{i}" for i in range(1, 6)] + [f"def_player_{i}" for i in range(1, 6)]
+    lineup_cols = [f"off_player_{i}" for i in range(1, 6)] + [
+        f"def_player_{i}" for i in range(1, 6)
+    ]
     attach_cols = ["possession_number", *lineup_cols]
 
-    poss_for_join = poss.select(["start_order_index", "end_order_index", *attach_cols]).sort("start_order_index")
+    poss_for_join = poss.select(
+        ["start_order_index", "end_order_index", *attach_cols]
+    ).sort("start_order_index")
     enh_sorted = enh.sort("order_index")
 
-    joined = enh_sorted.join_asof(poss_for_join, left_on="order_index", right_on="start_order_index")
+    joined = enh_sorted.join_asof(
+        poss_for_join, left_on="order_index", right_on="start_order_index"
+    )
 
-    out_of_range = pl.col("end_order_index").is_null() | (pl.col("order_index") > pl.col("end_order_index"))
-    joined = joined.with_columns([pl.when(out_of_range).then(None).otherwise(pl.col(c)).alias(c) for c in attach_cols])
+    out_of_range = pl.col("end_order_index").is_null() | (
+        pl.col("order_index") > pl.col("end_order_index")
+    )
+    joined = joined.with_columns(
+        [
+            pl.when(out_of_range).then(None).otherwise(pl.col(c)).alias(c)
+            for c in attach_cols
+        ]
+    )
     return joined.drop(["start_order_index", "end_order_index"])
 
 
@@ -184,7 +208,10 @@ def process_game(root: Union[str, Path], game_id: str) -> ProcessedGame:
 
     from sportsdataverse.nba.nba_enhanced_pbp import enhanced_pbp_from_payload
     from sportsdataverse.nba.nba_lineups import boxscore_home_away
-    from sportsdataverse.nba.nba_possessions import attach_possession_lineups, build_possessions
+    from sportsdataverse.nba.nba_possessions import (
+        attach_possession_lineups,
+        build_possessions,
+    )
 
     pbpv3 = _load_raw_json(root, "pbpv3", game_id)
     boxv3 = _load_raw_json(root, "boxv3", game_id)
@@ -194,11 +221,13 @@ def process_game(root: Union[str, Path], game_id: str) -> ProcessedGame:
 
     enh = enhanced_pbp_from_payload(pbpv3)
     home, away = boxscore_home_away(boxv3)
-    oc, used = _quarter_box_oncourt(enh, periods, boxv3, home_team_id=home, away_team_id=away)
-
-    poss = attach_possession_lineups(build_possessions(enh), oc, enh, home_team_id=home).with_columns(
-        pl.lit(used).alias("lineup_source")
+    oc, used = _quarter_box_oncourt(
+        enh, periods, boxv3, home_team_id=home, away_team_id=away
     )
+
+    poss = attach_possession_lineups(
+        build_possessions(enh), oc, enh, home_team_id=home
+    ).with_columns(pl.lit(used).alias("lineup_source"))
 
     enriched_pbp = _attach_running_possession(enh, poss)
 

@@ -1,0 +1,156 @@
+"""Hermetic tests for the nba_model_publish CLI (no network, no sportsdataverse import)."""
+
+import argparse
+
+import pytest
+
+import nba_model_publish.cli as cli
+from nba_model_publish.cli import _parse_seasons, main
+
+
+def test_parse_seasons_range_and_single():
+    assert _parse_seasons("2022:2024") == [2022, 2023, 2024]
+    assert _parse_seasons("2023") == [2023]
+
+
+def test_parse_seasons_rejects_inverted_and_malformed():
+    with pytest.raises(argparse.ArgumentTypeError):
+        _parse_seasons("2024:2022")
+    with pytest.raises(argparse.ArgumentTypeError):
+        _parse_seasons("twenty:twentytwo")
+
+
+def test_upload_subcommand_dry_run_is_network_free(tmp_path, capsys):
+    (tmp_path / "nba_player_impact_2023.parquet").write_bytes(b"i23")
+    (tmp_path / "nba_player_impact_2024.parquet").write_bytes(b"i24")
+    (tmp_path / "unrelated.txt").write_text("ignored")
+    rc = main(
+        [
+            "upload",
+            "--dir",
+            str(tmp_path),
+            "--tag",
+            "nba_player_impact",
+            "--dry-run",
+        ]
+    )
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "uploaded=0" in out  # dry-run uploads nothing
+    assert "files=2" in out  # only the two parquet files matched
+
+
+def test_upload_subcommand_pattern_selects_card(tmp_path, capsys):
+    (tmp_path / "nba_player_impact_2023.parquet").write_bytes(b"i23")
+    (tmp_path / "nba_player_impact_card.json").write_text("{}")
+    rc = main(
+        [
+            "upload",
+            "--dir",
+            str(tmp_path),
+            "--tag",
+            "nba_player_impact",
+            "--pattern",
+            "*_card.json",
+            "--dry-run",
+        ]
+    )
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "files=1" in out
+
+
+# ---------------------------------------------------------------------------
+# Proxy resolution. Refusing to start beats hanging: an unattended run that
+# silently lost its proxy would stall for hours on stats.nba.com, not error.
+# ---------------------------------------------------------------------------
+
+
+def test_resolve_proxy_provider_refuses_to_start_with_an_empty_pool(monkeypatch):
+    monkeypatch.setattr("nba_data_build.scrape.proxy.load_proxies", lambda: [])
+    with pytest.raises(SystemExit, match="no proxies available"):
+        cli._resolve_proxy_provider(no_proxy=False)
+
+
+def test_resolve_proxy_provider_rotates_the_pool(monkeypatch):
+    monkeypatch.setattr(
+        "nba_data_build.scrape.proxy.load_proxies",
+        lambda: [
+            {"ip": "1.1.1.1", "port": 8000, "login": "u", "password": "p"},
+            {"ip": "2.2.2.2", "port": 8000, "login": "u", "password": "p"},
+        ],
+    )
+    nxt = cli._resolve_proxy_provider(no_proxy=False)
+    assert nxt() != nxt()  # successive calls hand out different exit IPs
+
+
+def test_no_proxy_opts_out_explicitly():
+    assert cli._resolve_proxy_provider(no_proxy=True) is None
+
+
+def test_impact_delay_s_flag_and_env_default(monkeypatch):
+    ns = cli.build_parser().parse_args(
+        ["impact", "--seasons", "2023", "--out", "o", "--delay-s", "1.5"]
+    )
+    assert ns.delay_s == 1.5
+    # env default is read at parser-build time, so re-build after setting it
+    monkeypatch.setenv("SDV_NBA_DELAY_S", "7")
+    ns = cli.build_parser().parse_args(["impact", "--seasons", "2023", "--out", "o"])
+    assert ns.delay_s == 7.0
+
+
+# ---------------------------------------------------------------------------
+# --season-types. Only "Regular Season" and "Playoffs" are supported;
+# "PlayIn" is a real third stats.nba.com SeasonType but deliberately out of
+# scope -- see docs/superpowers/specs/2026-07-17-nba-player-impact-playoffs-design.md.
+# ---------------------------------------------------------------------------
+
+
+def test_season_types_defaults_to_both():
+    args = cli.build_parser().parse_args(["impact", "--seasons", "2023", "--out", "o"])
+    assert args.season_types == ["Regular Season", "Playoffs"]
+
+
+def test_season_types_accepts_rs_only_for_regression_diffing():
+    args = cli.build_parser().parse_args(
+        ["impact", "--seasons", "2023", "--out", "o", "--season-types", "Regular Season"]
+    )
+    assert args.season_types == ["Regular Season"]
+
+
+def test_season_types_rejects_unknown_value():
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args(
+            ["impact", "--seasons", "2023", "--out", "o", "--season-types", "PlayIn"]
+        )
+
+
+def test_season_types_canonicalizes_regardless_of_input_order():
+    # The loop's correctness depends on RS being built before PO (fit-once,
+    # reuse), so out-of-order input must still canonicalize to RS-then-PO.
+    args = cli.build_parser().parse_args(
+        [
+            "impact",
+            "--seasons",
+            "2023",
+            "--out",
+            "o",
+            "--season-types",
+            "Playoffs,Regular Season",
+        ]
+    )
+    assert args.season_types == ["Regular Season", "Playoffs"]
+
+
+def test_season_types_rejects_playoffs_without_regular_season(capsys):
+    # A Playoffs pass reuses the RS-fitted SPM coef/pts_per_win, so it
+    # structurally cannot run alone -- reject at parse time rather than
+    # let it reach the bare `assert coef is not None` deep in the build
+    # (asserts vanish under `python -O`). argparse turns a type=
+    # callback's ArgumentTypeError into a SystemExit, same as the
+    # unknown-value case above.
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args(
+            ["impact", "--seasons", "2023", "--out", "o", "--season-types", "Playoffs"]
+        )
+    assert "requires 'Regular Season'" in capsys.readouterr().err

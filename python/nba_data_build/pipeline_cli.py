@@ -57,6 +57,7 @@ _FINISHED_STATUS = 3
 _GIT_TIMEOUT = 600
 
 Runner = Callable[[list[str]], str]
+ExistsCheck = Callable[[str, str], bool]
 
 
 def build_pipeline_parser() -> argparse.ArgumentParser:
@@ -130,7 +131,9 @@ def build_pipeline_parser() -> argparse.ArgumentParser:
         default=None,
         help="per-game resumability cache root (default: {root}/.nba_pipeline_cache)",
     )
-    ap.add_argument("--repo", default=_DEFAULT_REPO, help="release repo for --target release")
+    ap.add_argument(
+        "--repo", default=_DEFAULT_REPO, help="release repo for --target release"
+    )
     return ap
 
 
@@ -194,10 +197,18 @@ def _finished_game_ids(rows: Sequence[Mapping[str, Any]]) -> list[str]:
 
 def _season_snapshot_path(root: Union[str, Path], season: int) -> Path:
     """Per-season v3 discovery+flags snapshot path (does NOT touch the R-authored ``schedules/`` dir)."""
-    return Path(root) / "nba_stats" / "schedule_v3" / "parquet" / f"nba_schedule_v3_{season}.parquet"
+    return (
+        Path(root)
+        / "nba_stats"
+        / "schedule_v3"
+        / "parquet"
+        / f"nba_schedule_v3_{season}.parquet"
+    )
 
 
-def _upsert_master_flags(existing: Optional[pl.DataFrame], flagged_season: pl.DataFrame) -> pl.DataFrame:
+def _upsert_master_flags(
+    existing: Optional[pl.DataFrame], flagged_season: pl.DataFrame
+) -> pl.DataFrame:
     """Merge one season's freshly-computed v3 flags onto the schedule master, preserving history.
 
     Only rows whose ``game_id`` appears in *flagged_season* get their flag columns
@@ -234,13 +245,21 @@ def _upsert_master_flags(existing: Optional[pl.DataFrame], flagged_season: pl.Da
     # arrives from new_slice unsuffixed, already correctly named; only a genuine
     # repeat-column collision produces the f"{c}_v3new" name.
     joined = existing.join(new_slice, on="game_id", how="left", suffix="_v3new")
+    # polars only suffixes columns that actually COLLIDE between the two frames.
+    # A flag column the master has never carried -- the first run that computes it --
+    # therefore arrives from new_slice already correctly named, and asking for
+    # f"{c}_v3new" raises ColumnNotFoundError. The real 36,748-row master predates
+    # this feature and carries only the legacy PBP column, so every v3 flag hits
+    # that path. Coalesce only the genuine collisions; the rest are already in place.
     exprs = [
         pl.coalesce([pl.col(f"{c}_v3new"), pl.col(c)]).alias(c)
         for c in flag_cols
         if f"{c}_v3new" in joined.columns
     ]
     if exprs:
-        joined = joined.with_columns(exprs).drop([f"{c}_v3new" for c in flag_cols if f"{c}_v3new" in joined.columns])
+        joined = joined.with_columns(exprs).drop(
+            [f"{c}_v3new" for c in flag_cols if f"{c}_v3new" in joined.columns]
+        )
 
     # Rows this run discovered that the master never had at all -- append, don't drop.
     brand_new = flagged_season.filter(~pl.col("game_id").is_in(list(existing_ids)))
@@ -249,7 +268,9 @@ def _upsert_master_flags(existing: Optional[pl.DataFrame], flagged_season: pl.Da
     return joined
 
 
-def _write_schedule(root: Union[str, Path], season: int, flagged: pl.DataFrame) -> tuple[Path, Path]:
+def _write_schedule(
+    root: Union[str, Path], season: int, flagged: pl.DataFrame
+) -> tuple[Path, Path]:
     """Write the per-season v3 snapshot and upsert flags into the committed schedule master.
 
     Args:
@@ -277,7 +298,12 @@ def _write_schedule(root: Union[str, Path], season: int, flagged: pl.DataFrame) 
 def _git_runner(args: list[str], *, cwd: Path) -> str:
     """Run ``git <args>`` in *cwd*, returning stdout. Raises on non-zero exit."""
     return subprocess.run(
-        ["git", *args], cwd=str(cwd), check=True, capture_output=True, text=True, timeout=_GIT_TIMEOUT
+        ["git", *args],
+        cwd=str(cwd),
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=_GIT_TIMEOUT,
     ).stdout
 
 
@@ -289,6 +315,7 @@ def _publish(
     repo: str = _DEFAULT_REPO,
     runner: Optional[Runner] = None,
     git_runner: Optional[Runner] = None,
+    exists_check: Optional[ExistsCheck] = None,
 ) -> dict[str, Any]:
     """Stage + commit ``nba_stats/*`` (and, for ``target="release"``, mirror to release tags).
 
@@ -307,6 +334,9 @@ def _publish(
         runner: Injectable ``gh`` command runner (see
             :mod:`~nba_data_build.publish`), for tests.
         git_runner: Injectable ``git`` command runner, for tests.
+        exists_check: Injectable "does this release tag exist?" probe, for tests.
+            Must be injected alongside ``runner`` to keep a test hermetic -- the
+            default probe shells out to a real ``gh release view``.
 
     Returns:
         A dict describing what happened: ``{"committed": bool, ...}``. ``committed`` is
@@ -317,7 +347,11 @@ def _publish(
 
     status = git(["status", "--porcelain", "--", "nba_stats"])
     if not status.strip():
-        return {"committed": False, "reason": "no changes under nba_stats/", "target": target}
+        return {
+            "committed": False,
+            "reason": "no changes under nba_stats/",
+            "target": target,
+        }
 
     subject = f"NBA Stats Update (Start: {min(seasons)} End: {max(seasons)})"
     git(["add", "nba_stats"])
@@ -333,7 +367,11 @@ def _publish(
             "nba_stats_lineups_v3": root / "nba_stats" / "lineups" / "parquet",
         }
         result["release_mirror"] = {
-            tag: upload_artifacts(d, tag, repo, runner=runner) for tag, d in mirrors.items() if d.exists()
+            tag: upload_artifacts(
+                d, tag, repo, runner=runner, exists_check=exists_check
+            )
+            for tag, d in mirrors.items()
+            if d.exists()
         }
     return result
 
@@ -359,7 +397,9 @@ def main(argv: Optional[list[str]] = None) -> int:
     assert_pipeline_version()
 
     root = Path(args.root)
-    cache_root = Path(args.cache_dir) if args.cache_dir else root / ".nba_pipeline_cache"
+    cache_root = (
+        Path(args.cache_dir) if args.cache_dir else root / ".nba_pipeline_cache"
+    )
     client: Optional[V3Client] = None
 
     for season in sorted(args.seasons):
@@ -371,9 +411,15 @@ def main(argv: Optional[list[str]] = None) -> int:
                 client = _make_client()
             scrape_finished_games(client, root, rows, rescrape=args.rescrape)
 
-        rollup_paths = rollup_season(root, season, game_ids, cache_root=cache_root) if game_ids else {}
+        rollup_paths = (
+            rollup_season(root, season, game_ids, cache_root=cache_root)
+            if game_ids
+            else {}
+        )
 
-        schedule = pl.DataFrame(rows) if rows else pl.DataFrame(schema={"game_id": pl.Utf8})
+        schedule = (
+            pl.DataFrame(rows) if rows else pl.DataFrame(schema={"game_id": pl.Utf8})
+        )
         flagged = compute_flags(root, schedule)
         season_path, master_path = _write_schedule(root, season, flagged)
 
@@ -394,6 +440,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         result = _publish(root, args.seasons, target=args.target, repo=args.repo)
         print(f"pipeline: publish -> {result}")
     else:
-        print("pipeline: dry-run / no --publish -- nothing committed, nothing pushed, nothing uploaded")
+        print(
+            "pipeline: dry-run / no --publish -- nothing committed, nothing pushed, nothing uploaded"
+        )
 
     return 0
