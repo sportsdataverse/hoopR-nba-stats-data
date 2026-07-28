@@ -159,3 +159,40 @@ def test_store_backed_without_store_is_plain_proxied():
         return pl.DataFrame({"x": [1]})
 
     assert B._store_backed("playerindex", live, None, None) is live
+
+
+# --- proxy resolution vs the raw store --------------------------------------
+
+
+def test_store_backed_run_survives_missing_proxy_credentials(monkeypatch, capsys):
+    """A GitHub Actions build is exactly: committed captures, no PROXY_* secrets.
+
+    Proxy resolution runs before the builder can touch the store, so demanding
+    credentials up front aborted the very runs --raw-store-dir exists to enable.
+    With a store configured, missing proxies must warn and continue.
+    """
+    from nba_model_publish import cli
+
+    monkeypatch.setattr(
+        "nba_data_build.scrape.proxy.load_proxies", lambda *a, **k: [], raising=False
+    )
+    provider = cli._resolve_proxy_provider(False, "https://cdn/x/nba_stats/json")
+    assert provider is None
+    out = capsys.readouterr().out
+    assert "--raw-store-dir is set" in out
+    # the warning must not overclaim: a store miss still reaches the network
+    assert "hang" in out.lower()
+
+
+def test_missing_proxy_still_fatal_without_a_store(monkeypatch):
+    """Without a store the old guard stands: stats.nba.com hangs rather than
+    errors on a datacenter IP, so refusing to start beats stalling for hours."""
+    import pytest as _pytest
+
+    from nba_model_publish import cli
+
+    monkeypatch.setattr(
+        "nba_data_build.scrape.proxy.load_proxies", lambda *a, **k: [], raising=False
+    )
+    with _pytest.raises(SystemExit):
+        cli._resolve_proxy_provider(False, None)

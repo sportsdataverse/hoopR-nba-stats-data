@@ -246,12 +246,19 @@ def _print_result(res: dict, repo: str, tag: str, dry_run: bool) -> None:
     )
 
 
-def _resolve_proxy_provider(no_proxy: bool):
+def _resolve_proxy_provider(no_proxy: bool, raw_store_dir: str | None = None):
     """Build the rotating proxy provider, or ``None`` for a direct (residential) run.
 
     Proxy is the DEFAULT: stats.nba.com hangs rather than errors on datacenter IPs,
     so an unattended run that silently forgot its proxy would stall for hours instead
     of failing. Refusing to start beats hanging. ``--no-proxy`` is the explicit opt-out.
+
+    A configured ``raw_store_dir`` is the other opt-out, and the one CI uses. The
+    store answers the fetches, so demanding proxy credentials up front would abort
+    exactly the runs this exists to enable -- a GitHub Actions build with the
+    committed captures and no ``PROXY_*`` secrets. Missing proxies therefore warn
+    instead of exiting; a genuine store miss still needs the network, so the
+    warning says so rather than implying the run is guaranteed offline.
     """
     if no_proxy:
         print(
@@ -262,11 +269,19 @@ def _resolve_proxy_provider(no_proxy: bool):
     from nba_data_build.scrape.proxy import RoundRobin, load_proxies
 
     proxies = load_proxies()
+    if not proxies and raw_store_dir:
+        print(
+            "impact: no proxies configured -- proceeding because --raw-store-dir is set, "
+            "so the committed captures serve the fetches. A season MISSING from the store "
+            "would fall through to stats.nba.com unproxied and hang on a datacenter IP."
+        )
+        return None
     if not proxies:
         raise SystemExit(
             "impact: no proxies available (PROXY_ENDPOINT / PROXY_KEY / PROXY_PKG unset "
             "or the vendor API is unreachable). stats.nba.com HANGS on datacenter IPs, so "
-            "this would stall rather than fail. Set the proxy env vars, or pass --no-proxy "
+            "this would stall rather than fail. Set the proxy env vars, pass --raw-store-dir "
+            "to serve the fetches from committed captures, or pass --no-proxy "
             "if you are on a residential IP."
         )
     print(f"impact: rotating through {len(proxies)} proxies")
@@ -281,7 +296,7 @@ def main(argv=None) -> int:
         built = build_nba_player_impact(
             args.seasons,
             args.out,
-            proxy_provider=_resolve_proxy_provider(args.no_proxy),
+            proxy_provider=_resolve_proxy_provider(args.no_proxy, args.raw_store_dir),
             lineup_source=args.lineup_source,
             cache_dir=args.cache_dir,
             delay_s=args.delay_s,
