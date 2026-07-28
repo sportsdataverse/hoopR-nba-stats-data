@@ -30,6 +30,14 @@ mkdir -p "$DEST" "$TMP" || { echo "FATAL: cannot create $DEST" >&2; exit 1; }
 lo="${SEASONS%%:*}"; hi="${SEASONS##*:}"
 ok=0; missing=0; failed=0
 
+# GNU tar reads `host:path` in -f as a REMOTE archive, so a Windows drive-letter
+# path ("C:/Users/...") is parsed as host "C" and the extraction dies with a
+# misleading "gzip: stdin: unexpected end of file" even though the archive is
+# perfectly valid. --force-local disables that parsing. bsdtar (macOS) has no
+# such syntax and no such flag, so probe before using it.
+TAR_LOCAL=""
+if tar --force-local --version >/dev/null 2>&1; then TAR_LOCAL="--force-local"; fi
+
 for season in $(seq "$lo" "$hi"); do
   # A season is already hydrated if any endpoint dir for it exists. Marker file
   # rather than a content check: bundles are whole-season, so partial extraction
@@ -44,7 +52,7 @@ for season in $(seq "$lo" "$hi"); do
   fi
   # Archive paths are store-relative ({endpoint}/{season}/...), so every season
   # extracts into the SAME root and the result is a complete store.
-  if tar -xzf "$TMP/$asset" -C "$DEST"; then
+  if tar $TAR_LOCAL -xzf "$TMP/$asset" -C "$DEST"; then
     touch "$marker"; rm -f "$TMP/$asset"
     echo "season $season: hydrated"
     ok=$((ok + 1))
