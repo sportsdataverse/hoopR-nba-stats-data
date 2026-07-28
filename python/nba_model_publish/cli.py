@@ -200,6 +200,17 @@ def build_parser() -> argparse.ArgumentParser:
         "datacenter/cloud IPs, so an unattended/droplet run without a proxy will stall, "
         "not fail loudly. Default: rotate through the pool (PROXY_ENDPOINT/_KEY/_PKG).",
     )
+    imp.add_argument(
+        "--raw-store-dir",
+        default=os.environ.get("SDV_PY_NBA_RAW_JSON_DIR"),
+        metavar="DIR_OR_URL",
+        help="Read committed hoopR-nba-stats-raw JSON instead of the live API: a local "
+        "nba_stats/json checkout OR an http(s):// base such as "
+        "https://raw.githubusercontent.com/sportsdataverse/hoopR-nba-stats-raw/main/nba_stats/json "
+        "(or a CDN mirror). Makes a GitHub Actions run viable -- no proxy and no ~1GB "
+        "clone; only a genuine miss touches stats.nba.com. "
+        "Defaults to $SDV_PY_NBA_RAW_JSON_DIR.",
+    )
     imp.add_argument("--tag", default="nba_player_impact", help="GitHub release tag.")
     _add_repo_dry(imp)
 
@@ -274,6 +285,7 @@ def main(argv=None) -> int:
             delay_s=args.delay_s,
             season_types=args.season_types,
             replacement_level=args.replacement_level,
+            raw_store_dir=args.raw_store_dir,
         )
         total_rows = sum(b["rows"] for b in built)
         res = upload_artifacts(
