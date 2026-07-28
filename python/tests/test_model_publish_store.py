@@ -19,17 +19,19 @@ from nba_model_publish import builders as B
 @pytest.mark.parametrize(
     "season,expected",
     [
-        ("2023-24", 2024),
-        ("1996-97", 1997),
+        ("2023-24", 2023),
+        ("1996-97", 1996),
         (2024, 2024),
         (None, None),
         ("", None),
         ("junk", None),
     ],
 )
-def test_season_end_year(season, expected):
-    """The API takes the START-year label; the store is keyed by END year."""
-    assert B._season_end_year(season) == expected
+def test_season_store_year(season, expected):
+    """Season-level captures are filed under the START year -- the leading
+    year of the API label. The per-game half uses the END year; confusing them
+    silently reads a neighbouring season."""
+    assert B._season_store_year(season) == expected
 
 
 # --- variant mapping --------------------------------------------------------
@@ -102,7 +104,7 @@ def test_store_backed_serves_committed_capture(monkeypatch):
     assert out.equals(frame)
     assert seen == {
         "endpoint": "leaguedashplayerbiostats",
-        "season": 2024,
+        "season": 2023,
         "variant": "regular-season_totals",
         "root": "https://cdn/x",
     }
