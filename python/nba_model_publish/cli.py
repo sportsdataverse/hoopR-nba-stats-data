@@ -64,9 +64,13 @@ def _parse_seasons(spec: str) -> list[int]:
         else:
             lo = hi = int(spec)
     except ValueError as exc:
-        raise argparse.ArgumentTypeError(f"invalid --seasons {spec!r}: expected 'YYYY' or 'YYYY:YYYY'") from exc
+        raise argparse.ArgumentTypeError(
+            f"invalid --seasons {spec!r}: expected 'YYYY' or 'YYYY:YYYY'"
+        ) from exc
     if hi < lo:
-        raise argparse.ArgumentTypeError(f"invalid --seasons {spec!r}: end {hi} precedes start {lo}")
+        raise argparse.ArgumentTypeError(
+            f"invalid --seasons {spec!r}: end {hi} precedes start {lo}"
+        )
     return list(range(lo, hi + 1))
 
 
@@ -95,7 +99,9 @@ def _parse_season_types(spec: str) -> list[str]:
         raise argparse.ArgumentTypeError("--season-types must not be empty")
     unknown = [p for p in parts if p not in SEASON_TYPES]
     if unknown:
-        raise argparse.ArgumentTypeError(f"invalid --season-types {unknown!r}: expected any of {list(SEASON_TYPES)}")
+        raise argparse.ArgumentTypeError(
+            f"invalid --season-types {unknown!r}: expected any of {list(SEASON_TYPES)}"
+        )
     # canonical order: the PO pass reuses fitted values from the RS pass
     canonical = [t for t in SEASON_TYPES if t in parts]
     if "Playoffs" in canonical and "Regular Season" not in canonical:
@@ -201,12 +207,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="Read committed hoopR-nba-stats-raw JSON instead of the live API: a local "
         "nba_stats/json checkout OR an http(s):// base such as "
         "https://raw.githubusercontent.com/sportsdataverse/hoopR-nba-stats-raw/main/nba_stats/json "
-        "(or a CDN mirror). Removes the ~1GB clone and serves per-game payloads, game "
-        "discovery, playerindex and biostats from the committed tree. "
-        "NOT yet fully proxy-free: the raw sweep captured leaguegamelog only for "
-        "player_or_team='T', so nba_box_logs' player-log call still goes live and can "
-        "hang on a cloud runner -- keep a proxy configured (or run from a residential "
-        "host) until the 'P' variant is captured. "
+        "(or a CDN mirror). Removes the ~1GB clone and serves every season-level "
+        "surface from the committed tree -- per-game payloads, game discovery, "
+        "playerindex, biostats, and both the team and player leaguegamelog captures "
+        "-- so a cloud runner needs no proxy for a season already in the store. "
         "Defaults to $SDV_PY_NBA_RAW_JSON_DIR.",
     )
     imp.add_argument("--tag", default="nba_player_impact", help="GitHub release tag.")
@@ -237,28 +241,47 @@ def _print_result(res: dict, repo: str, tag: str, dry_run: bool) -> None:
     suffix = " (dry-run)" if dry_run else ""
     failed = res.get("failed") or []
     failed_part = f" failed={len(failed)}" if failed else ""
-    print(f"publish: uploaded={res['uploaded']} files={len(res['files'])}{failed_part} -> {repo}:{tag}{suffix}")
+    print(
+        f"publish: uploaded={res['uploaded']} files={len(res['files'])}{failed_part} -> {repo}:{tag}{suffix}"
+    )
 
 
-def _resolve_proxy_provider(no_proxy: bool):
+def _resolve_proxy_provider(no_proxy: bool, raw_store_dir: str | None = None):
     """Build the rotating proxy provider, or ``None`` for a direct (residential) run.
 
     Proxy is the DEFAULT: stats.nba.com hangs rather than errors on datacenter IPs,
     so an unattended run that silently forgot its proxy would stall for hours instead
     of failing. Refusing to start beats hanging. ``--no-proxy`` is the explicit opt-out.
+
+    A configured ``raw_store_dir`` is the other opt-out, and the one CI uses. The
+    store answers the fetches, so demanding proxy credentials up front would abort
+    exactly the runs this exists to enable -- a GitHub Actions build with the
+    committed captures and no ``PROXY_*`` secrets. Missing proxies therefore warn
+    instead of exiting; a genuine store miss still needs the network, so the
+    warning says so rather than implying the run is guaranteed offline.
     """
     if no_proxy:
-        print("impact: --no-proxy -- fetching stats.nba.com directly (residential IP only)")
+        print(
+            "impact: --no-proxy -- fetching stats.nba.com directly (residential IP only)"
+        )
         return None
 
     from nba_data_build.scrape.proxy import RoundRobin, load_proxies
 
     proxies = load_proxies()
+    if not proxies and raw_store_dir:
+        print(
+            "impact: no proxies configured -- proceeding because --raw-store-dir is set, "
+            "so the committed captures serve the fetches. A season MISSING from the store "
+            "would fall through to stats.nba.com unproxied and hang on a datacenter IP."
+        )
+        return None
     if not proxies:
         raise SystemExit(
             "impact: no proxies available (PROXY_ENDPOINT / PROXY_KEY / PROXY_PKG unset "
             "or the vendor API is unreachable). stats.nba.com HANGS on datacenter IPs, so "
-            "this would stall rather than fail. Set the proxy env vars, or pass --no-proxy "
+            "this would stall rather than fail. Set the proxy env vars, pass --raw-store-dir "
+            "to serve the fetches from committed captures, or pass --no-proxy "
             "if you are on a residential IP."
         )
     print(f"impact: rotating through {len(proxies)} proxies")
@@ -273,7 +296,7 @@ def main(argv=None) -> int:
         built = build_nba_player_impact(
             args.seasons,
             args.out,
-            proxy_provider=_resolve_proxy_provider(args.no_proxy),
+            proxy_provider=_resolve_proxy_provider(args.no_proxy, args.raw_store_dir),
             lineup_source=args.lineup_source,
             cache_dir=args.cache_dir,
             delay_s=args.delay_s,

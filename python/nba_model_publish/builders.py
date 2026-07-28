@@ -273,14 +273,13 @@ def _store_variant(endpoint: str, kwargs: dict) -> Optional[str]:
         per_mode = _slug(kwargs.get("per_mode_simple") or "Totals")
         return f"{stype}_{per_mode}"
     if endpoint == "leaguegamelog":
-        # The sweep captured only the wrapper's DEFAULT player_or_team="T" (team
-        # rows: no PLAYER_ID). Serving those for a "P" call would feed team rows
-        # into player-log processing -- silent corruption -- so a player-log call
-        # must fall through to live until the raw sweep also captures the "P"
-        # variant. Team rows still serve game discovery, which needs only game ids.
-        if (kwargs.get("player_or_team_abbreviation") or "T") != "T":
-            return None
-        return stype
+        # Two captures per season type, and they are NOT interchangeable: team
+        # rows carry no PLAYER_ID, so serving them to a player-log call would push
+        # team rows into player-log processing. The original sweep's default
+        # (player_or_team="T") kept the bare ``{season_type}.json`` name, and the
+        # player top-up landed additively beside it as ``{season_type}_p.json``.
+        pt = str(kwargs.get("player_or_team_abbreviation") or "T").upper()
+        return stype if pt == "T" else f"{stype}_p"
     return None
 
 
@@ -303,7 +302,7 @@ def _store_backed(
 
     def _f(*args: Any, **kwargs: Any) -> Any:
         variant = _store_variant(endpoint, kwargs)
-        season = _season_end_year(kwargs.get("season"))
+        season = _season_store_year(kwargs.get("season"))
         if variant is not None and season is not None:
             frame = nba_raw_store_season_frame(endpoint, season, variant or None, raw_store_dir=raw_store_dir)
             if frame is not None:
@@ -313,18 +312,24 @@ def _store_backed(
     return _f
 
 
-def _season_end_year(season: Any) -> Optional[int]:
-    """``"2023-24"`` -> ``2024`` (the store's END-year season directory).
+def _season_store_year(season: Any) -> Optional[int]:
+    """``"2023-24"`` -> ``2023``: the directory a SEASON-LEVEL capture lives in.
 
-    The stats API takes the START-year hyphenated label while the store is keyed
-    by end year, so every season-level store lookup crosses this boundary.
-    Returns ``None`` for anything unparseable, which routes the call to live.
+    The raw store's two halves are keyed differently and neither errors when
+    confused -- the per-game half by season END year (derived from the game id),
+    the season-level half by START year (the year the sweep passed to the API).
+    These fetchers are season-level, and the API label they receive is already
+    start-year, so the directory is just its leading year. An ``int`` is taken
+    as the directory verbatim.
+
+    Returns ``None`` for anything unparseable, routing that call to live rather
+    than guessing at a directory.
     """
     if isinstance(season, int):
         return season
     text = str(season or "")
     if len(text) >= 4 and text[:4].isdigit():
-        return int(text[:4]) + 1
+        return int(text[:4])
     return None
 
 
@@ -389,9 +394,9 @@ def build_nba_player_impact(
             season-level captures are served from the committed tree, and only a
             genuine miss touches stats.nba.com. This is what makes a GitHub
             Actions run viable at all (stats.nba.com hangs on cloud IPs).
-            NOTE: the sweep captured leaguegamelog only for the wrapper default
-            ``player_or_team="T"``, so ``nba_box_logs``' player-log call still
-            falls through to live until the raw sweep adds the ``"P"`` variant.
+            Every season-level surface this builder touches is now covered,
+            including ``nba_box_logs``' player-log call (the raw store carries
+            both the team and the ``_p`` player ``leaguegamelog`` captures).
 
     Returns:
         List of ``{"season": int, "rows": int, "path": str}`` dicts, one per
@@ -437,7 +442,10 @@ def build_nba_player_impact(
     _leaguegamelog = _store_backed("leaguegamelog", nba_stats_leaguegamelog, proxy_provider, raw_store_dir)
     _playerindex = _store_backed("playerindex", nba_stats_playerindex, proxy_provider, raw_store_dir)
     _biostats = _store_backed(
-        "leaguedashplayerbiostats", nba_stats_leaguedashplayerbiostats, proxy_provider, raw_store_dir
+        "leaguedashplayerbiostats",
+        nba_stats_leaguedashplayerbiostats,
+        proxy_provider,
+        raw_store_dir,
     )
 
     for end_year in sorted(seasons):
@@ -577,7 +585,11 @@ def build_nba_player_impact(
                 adj.select("player_id", "o_adj_rapm", "d_adj_rapm", "adj_rapm"),
                 "adj_rapm",
             )
-            impact = _join_on_player(impact, spm.select("player_id", "ospm", "dspm", "spm", "min", "gp"), "spm")
+            impact = _join_on_player(
+                impact,
+                spm.select("player_id", "ospm", "dspm", "spm", "min", "gp"),
+                "spm",
+            )
             impact = _join_on_player(impact, bpm.select("player_id", "obpm", "dbpm", "bpm"), "bpm")
             impact = _join_on_player(impact, war, "war")
             impact = impact.with_columns(
