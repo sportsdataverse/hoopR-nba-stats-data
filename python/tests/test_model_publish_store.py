@@ -50,10 +50,11 @@ def test_variant_biostats_combines_season_type_and_per_mode():
     )
 
 
-def test_variant_leaguegamelog_team_serves_player_does_not():
-    """The sweep captured only player_or_team="T" (team rows, no PLAYER_ID).
-    Serving those for a "P" call would push team rows into player-log
-    processing, so the player call MUST decline the store and go live."""
+def test_variant_leaguegamelog_team_and_player_are_distinct_captures():
+    """Team rows carry no PLAYER_ID, so the two variants are NOT interchangeable.
+    The team capture keeps the bare name; the player top-up sits beside it as
+    `_p`. Mapping a "P" call onto the team file would push team rows into
+    player-log processing."""
     assert B._store_variant("leaguegamelog", {}) == "regular-season"
     assert (
         B._store_variant("leaguegamelog", {"player_or_team_abbreviation": "T"})
@@ -64,7 +65,15 @@ def test_variant_leaguegamelog_team_serves_player_does_not():
         == "playoffs"
     )
     assert (
-        B._store_variant("leaguegamelog", {"player_or_team_abbreviation": "P"}) is None
+        B._store_variant("leaguegamelog", {"player_or_team_abbreviation": "P"})
+        == "regular-season_p"
+    )
+    assert (
+        B._store_variant(
+            "leaguegamelog",
+            {"player_or_team_abbreviation": "P", "season_type_all_star": "Playoffs"},
+        )
+        == "playoffs_p"
     )
 
 
@@ -125,19 +134,20 @@ def test_store_backed_falls_back_to_live_on_miss(monkeypatch):
     assert out.height == 1 and len(calls) == 1
 
 
-def test_store_backed_player_log_call_bypasses_store(monkeypatch):
-    """A "P" leaguegamelog call must go live even with a store configured."""
-    monkeypatch.setattr(
-        B,
-        "nba_raw_store_season_frame",
-        lambda *a, **k: pytest.fail("store must not serve P"),
-    )
-    calls = []
-    fetch = B._store_backed(
-        "leaguegamelog", lambda **kw: calls.append(kw) or pl.DataFrame(), None, "/store"
-    )
+def test_store_backed_player_and_team_read_different_captures(monkeypatch):
+    """Both leaguegamelog calls are served offline, each from its OWN capture --
+    a "P" call must never be handed the team file (no PLAYER_ID in it)."""
+    seen: list = []
+
+    def fake_reader(endpoint, season, variant, *, raw_store_dir):
+        seen.append(variant)
+        return pl.DataFrame({"player_id": [1]})
+
+    monkeypatch.setattr(B, "nba_raw_store_season_frame", fake_reader)
+    fetch = B._store_backed("leaguegamelog", _live_boom, None, "/store")
     fetch(season="2023-24", player_or_team_abbreviation="P")
-    assert len(calls) == 1
+    fetch(season="2023-24", player_or_team_abbreviation="T")
+    assert seen == ["regular-season_p", "regular-season"]
 
 
 def test_store_backed_without_store_is_plain_proxied():
