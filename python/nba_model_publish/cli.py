@@ -64,13 +64,9 @@ def _parse_seasons(spec: str) -> list[int]:
         else:
             lo = hi = int(spec)
     except ValueError as exc:
-        raise argparse.ArgumentTypeError(
-            f"invalid --seasons {spec!r}: expected 'YYYY' or 'YYYY:YYYY'"
-        ) from exc
+        raise argparse.ArgumentTypeError(f"invalid --seasons {spec!r}: expected 'YYYY' or 'YYYY:YYYY'") from exc
     if hi < lo:
-        raise argparse.ArgumentTypeError(
-            f"invalid --seasons {spec!r}: end {hi} precedes start {lo}"
-        )
+        raise argparse.ArgumentTypeError(f"invalid --seasons {spec!r}: end {hi} precedes start {lo}")
     return list(range(lo, hi + 1))
 
 
@@ -99,9 +95,7 @@ def _parse_season_types(spec: str) -> list[str]:
         raise argparse.ArgumentTypeError("--season-types must not be empty")
     unknown = [p for p in parts if p not in SEASON_TYPES]
     if unknown:
-        raise argparse.ArgumentTypeError(
-            f"invalid --season-types {unknown!r}: expected any of {list(SEASON_TYPES)}"
-        )
+        raise argparse.ArgumentTypeError(f"invalid --season-types {unknown!r}: expected any of {list(SEASON_TYPES)}")
     # canonical order: the PO pass reuses fitted values from the RS pass
     canonical = [t for t in SEASON_TYPES if t in parts]
     if "Playoffs" in canonical and "Regular Season" not in canonical:
@@ -241,9 +235,7 @@ def _print_result(res: dict, repo: str, tag: str, dry_run: bool) -> None:
     suffix = " (dry-run)" if dry_run else ""
     failed = res.get("failed") or []
     failed_part = f" failed={len(failed)}" if failed else ""
-    print(
-        f"publish: uploaded={res['uploaded']} files={len(res['files'])}{failed_part} -> {repo}:{tag}{suffix}"
-    )
+    print(f"publish: uploaded={res['uploaded']} files={len(res['files'])}{failed_part} -> {repo}:{tag}{suffix}")
 
 
 def _resolve_proxy_provider(no_proxy: bool, raw_store_dir: str | None = None):
@@ -261,9 +253,7 @@ def _resolve_proxy_provider(no_proxy: bool, raw_store_dir: str | None = None):
     warning says so rather than implying the run is guaranteed offline.
     """
     if no_proxy:
-        print(
-            "impact: --no-proxy -- fetching stats.nba.com directly (residential IP only)"
-        )
+        print("impact: --no-proxy -- fetching stats.nba.com directly (residential IP only)")
         return None
 
     from nba_data_build.scrape.proxy import RoundRobin, load_proxies
@@ -310,6 +300,9 @@ def main(argv=None) -> int:
             args.tag,
             args.repo,
             seasons=[b["season"] for b in built],
+            # all three formats ship to the tag (2026-07 decision; was
+            # parquet-only at launch)
+            exts=("parquet", "rds", "csv"),
             notes=_IMPACT_RELEASE_NOTES,
             dry_run=args.dry_run,
         )

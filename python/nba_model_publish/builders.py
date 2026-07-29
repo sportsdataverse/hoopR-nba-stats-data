@@ -63,12 +63,15 @@ from sportsdataverse.nba import (
 
 # nba_rapm is NOT re-exported from the sportsdataverse.nba package (verified on
 # main) — it lives in the nba_rapm submodule.
+from sportsdataverse._rds import write_rds
 from sportsdataverse.nba.nba_rapm import nba_rapm
 from sportsdataverse.nba.nba_stats import (
     nba_stats_leaguedashplayerbiostats,
     nba_stats_leaguegamelog,
     nba_stats_playerindex,
 )
+
+from nba_data_build.reshape.io import RDS_CLASS
 
 #: Zero-arg callable yielding a proxy URL (``RoundRobin.next`` matches this).
 ProxyProvider = Callable[[], Optional[str]]
@@ -93,19 +96,11 @@ def _join_on_player(base: pl.DataFrame, right: pl.DataFrame, name: str) -> pl.Da
     did not change the base height (a duplicate-key explosion or key-dtype
     mismatch would).
     """
-    assert right.schema["player_id"] == pl.Int64, (
-        f"{name}: player_id dtype {right.schema['player_id']} != Int64"
-    )
-    assert base.schema["player_id"] == right.schema["player_id"], (
-        f"{name}: join-key dtype mismatch"
-    )
-    assert right["player_id"].n_unique() == right.height, (
-        f"{name}: duplicate player_id rows"
-    )
+    assert right.schema["player_id"] == pl.Int64, f"{name}: player_id dtype {right.schema['player_id']} != Int64"
+    assert base.schema["player_id"] == right.schema["player_id"], f"{name}: join-key dtype mismatch"
+    assert right["player_id"].n_unique() == right.height, f"{name}: duplicate player_id rows"
     joined = base.join(right, on="player_id", how="left")
-    assert joined.height == base.height, (
-        f"{name}: join changed height {base.height} -> {joined.height}"
-    )
+    assert joined.height == base.height, f"{name}: join changed height {base.height} -> {joined.height}"
     return joined
 
 
@@ -233,18 +228,14 @@ def _write_model_card(
         "possession_pipeline_version": PIPELINE_VERSION,
         "lineup_source": lineup_source,
         "seasons": [{"season": r["season"], "rows": r["rows"]} for r in results],
-        "generated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(
-            timespec="seconds"
-        ),
+        "generated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
     }
     path = out_dir / "nba_player_impact_card.json"
     path.write_text(json.dumps(card, indent=2))
     return path
 
 
-def _proxied(
-    wrapper: Callable[..., Any], provider: Optional[ProxyProvider]
-) -> Callable[..., Any]:
+def _proxied(wrapper: Callable[..., Any], provider: Optional[ProxyProvider]) -> Callable[..., Any]:
     """Wrap an ``nba_stats_*`` callable so each call draws a fresh proxy from *provider*.
 
     ``nba_box_logs`` / ``nba_player_positions`` / ``nba_player_ages`` each take a
@@ -317,9 +308,7 @@ def _store_backed(
         variant = _store_variant(endpoint, kwargs)
         season = _season_store_year(kwargs.get("season"))
         if variant is not None and season is not None:
-            frame = nba_raw_store_season_frame(
-                endpoint, season, variant or None, raw_store_dir=raw_store_dir
-            )
+            frame = nba_raw_store_season_frame(endpoint, season, variant or None, raw_store_dir=raw_store_dir)
             if frame is not None:
                 return frame
         return proxied(*args, **kwargs)
@@ -454,12 +443,8 @@ def build_nba_player_impact(
     # Store-backed when raw_store_dir is set (committed -raw captures, local dir or
     # URL base) so a CI build needs neither a proxy nor a clone; identical to the
     # plain proxied form when it is not.
-    _leaguegamelog = _store_backed(
-        "leaguegamelog", nba_stats_leaguegamelog, proxy_provider, raw_store_dir
-    )
-    _playerindex = _store_backed(
-        "playerindex", nba_stats_playerindex, proxy_provider, raw_store_dir
-    )
+    _leaguegamelog = _store_backed("leaguegamelog", nba_stats_leaguegamelog, proxy_provider, raw_store_dir)
+    _playerindex = _store_backed("playerindex", nba_stats_playerindex, proxy_provider, raw_store_dir)
     _biostats = _store_backed(
         "leaguedashplayerbiostats",
         nba_stats_leaguedashplayerbiostats,
@@ -468,9 +453,7 @@ def build_nba_player_impact(
     )
 
     for end_year in sorted(seasons):
-        season = (
-            end_year - 1
-        )  # start-year drives the internal DARKO domain + _season_str
+        season = end_year - 1  # start-year drives the internal DARKO domain + _season_str
         s_str = _season_str(season)
         # End-year label for OUTPUT only (parquet "season" column, filename,
         # results/model-card season fields) and for the compile_nba_season
@@ -542,9 +525,7 @@ def build_nba_player_impact(
 
             rapm = nba_rapm(poss)
             if stype == "Regular Season":
-                assert rapm.height > 0, (
-                    f"impact: season={season} {stype} RAPM came back empty"
-                )
+                assert rapm.height > 0, f"impact: season={season} {stype} RAPM came back empty"
             elif rapm.height == 0:
                 # Same pattern as a6ae584e's empty-RS-compile handling, but for
                 # a season-local RAPM anomaly on the PLAYOFF path specifically:
@@ -568,18 +549,12 @@ def build_nba_player_impact(
                 # Fitted ONCE, on the regular season; the playoff pass reuses both.
                 coef = train_spm(bf, rapm.select("player_id", "o_rapm", "d_rapm"))
                 pts_per_win = calibrate_pts_per_win(_team_season(logs["team"]))
-                prior = (
-                    AdjRapmModel.from_spm(prev_spm).prior
-                    if prev_spm is not None
-                    else {}
-                )
+                prior = AdjRapmModel.from_spm(prev_spm).prior if prev_spm is not None else {}
             else:
                 assert coef is not None, "playoff pass requires the regular-season coef"
                 # Within the season, the playoff fit is anchored on the RS estimate --
                 # that prior is what makes a ~15-game sample usable at all.
-                prior = (
-                    AdjRapmModel.from_spm(spm_rs).prior if spm_rs is not None else {}
-                )
+                prior = AdjRapmModel.from_spm(spm_rs).prior if spm_rs is not None else {}
 
             spm = nba_spm(bf, coef)
 
@@ -619,17 +594,13 @@ def build_nba_player_impact(
                 spm.select("player_id", "ospm", "dspm", "spm", "min", "gp"),
                 "spm",
             )
-            impact = _join_on_player(
-                impact, bpm.select("player_id", "obpm", "dbpm", "bpm"), "bpm"
-            )
+            impact = _join_on_player(impact, bpm.select("player_id", "obpm", "dbpm", "bpm"), "bpm")
             impact = _join_on_player(impact, war, "war")
             # Human-readable identity. Keyed only on player_id, a leaderboard reads
             # "1628983" and every consumer has to run its own lookup; these come
             # from THIS season's logs, so the team is the one he actually played
             # for that year and a mid-season trade stays visible in `teams`.
-            impact = _join_on_player(
-                impact, nba_player_identity(logs["player"]), "identity"
-            )
+            impact = _join_on_player(impact, nba_player_identity(logs["player"]), "identity")
             impact = impact.with_columns(
                 # OUTPUT season is the end year; internal joins below (adj-RAPM
                 # prior threading, the DARKO panel/last_season join) never see
@@ -654,9 +625,7 @@ def build_nba_player_impact(
                 )
                 if c in impact.columns
             ]
-            impact = impact.select(
-                *_lead, *[c for c in impact.columns if c not in _lead]
-            )
+            impact = impact.select(*_lead, *[c for c in impact.columns if c not in _lead])
             frames.append(impact)
 
         if not frames:
@@ -691,9 +660,7 @@ def build_nba_player_impact(
             )
         )
         age_frames.append(
-            nba_player_ages(s_str, fetch=_biostats).with_columns(
-                pl.lit(season, dtype=pl.Int64).alias("season")
-            )
+            nba_player_ages(s_str, fetch=_biostats).with_columns(pl.lit(season, dtype=pl.Int64).alias("season"))
         )
         panel = pl.concat(panel_frames)
         if panel["season"].n_unique() >= 2:
@@ -715,9 +682,7 @@ def build_nba_player_impact(
             if darko_season is not None:
                 f = _join_on_player(f, darko_season, "darko")
             else:
-                f = f.with_columns(
-                    [pl.lit(None, dtype=pl.Float64).alias(c) for c in _DARKO_COLS]
-                )
+                f = f.with_columns([pl.lit(None, dtype=pl.Float64).alias(c) for c in _DARKO_COLS])
             out_frames.append(f)
         impact = pl.concat(out_frames, how="vertical")
 
@@ -730,6 +695,15 @@ def build_nba_player_impact(
 
         path = out_dir / f"nba_player_impact_{season_end}.parquet"
         impact.write_parquet(path)
+        # csv + rds ship alongside the parquet -- every released dataset in the
+        # family carries all three formats (2026-07 decision; the tag launched
+        # parquet-only, since converged with the loader-dataset convention).
+        impact.write_csv(out_dir / f"nba_player_impact_{season_end}.csv")
+        write_rds(
+            impact,
+            out_dir / f"nba_player_impact_{season_end}.rds",
+            cls=list(RDS_CLASS),
+        )
         results.append({"season": season_end, "rows": impact.height, "path": str(path)})
         print(
             f"impact: season={season} (output season={season_end}) rows={impact.height} "
