@@ -52,11 +52,11 @@ if [[ "${RAW_ROOT}" != http*://* && ! -d "${RAW_ROOT}/playbyplayv3" ]]; then
 fi
 
 if [ ! -x "${PYBIN}" ]; then
-    echo "::error ::python venv not found at ${PYBIN} -- run 'uv sync' in ${REPO_DIR}/python"
+    echo "::error ::python venv not found at ${PYBIN} -- run 'uv sync' in ${REPO_DIR}"
     exit 1
 fi
 
-cd "${REPO_DIR}/python" || exit 1
+cd "${REPO_DIR}" || exit 1
 mkdir -p "${REPO_DIR}/logs"
 
 ANY_FAILED=0

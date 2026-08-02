@@ -1,5 +1,12 @@
 name: Update NBA Stats Data
 
+# Python-only since 2026-08-02. The scrape lives in hoopR-nba-stats-raw (its
+# droplet cron owns filling the raw store); this job only COMPILES + PUBLISHES:
+# it reads the raw store over raw.githubusercontent.com, builds parquet+rds+csv,
+# and uploads to the nba_stats_* release tags. No stats.nba.com calls, no
+# commits -- release-only artifacts. The retired R chain scraped v2 pbp and
+# committed raw JSON into this repo, both of which are now the raw repo's job
+# (and the committed JSON was purged in 02341942).
 on:
   schedule:
     - cron: '0 7 18-31 10 *'
@@ -14,66 +21,47 @@ on:
       end_year:
         required: false
         type: string
-      rescrape:
-        required: false
-        default: true
-        type: boolean
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+permissions:
+  contents: write   # release uploads
 
 jobs:
-  update_nba_stats_data:
-    runs-on: ${{ matrix.config.os }}
-    name: Update NBA Stats Data ${{ inputs.start_year }}-${{ inputs.end_year }} (Rescrape? ${{ inputs.rescrape }})
-    strategy:
-      fail-fast: false
-      matrix:
-        config:
-          - {os: ubuntu-latest,   r: 'release'}
-
+  build_publish:
+    runs-on: ubuntu-latest
     env:
-      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
-      PROXY_KEY: ${{ secrets.PROXY_KEY }}
-      PROXY_PKG: ${{ secrets.PROXY_PKG }}
-      PROXY_ENDPOINT: ${{ secrets.PROXY_ENDPOINT }}
-      R_KEEP_PKG_SOURCE: yes
-      START_YEAR: ${{ inputs.start_year }}
-      END_YEAR: ${{ inputs.end_year }}
-      RESCRAPE: ${{ inputs.rescrape }}
-      # Shared stats.nba.com rate budget (R/utils.R rate_limit()). Tune here
-      # without code changes. STATS_RATE_MAX requests per STATS_RATE_WINDOW
-      # seconds; each pbp game is budgeted as STATS_RATE_HITS endpoint hits.
-      STATS_RATE_MAX: "250"
-      STATS_RATE_WINDOW: "600"
-      STATS_RATE_HITS: "3"
-
+      GH_TOKEN: ${{ secrets.SDV_GH_TOKEN }}
+      GITHUB_PAT: ${{ secrets.SDV_GH_TOKEN }}
+      HOOPR_NBA_STATS_RAW_ROOT: https://raw.githubusercontent.com/sportsdataverse/hoopR-nba-stats-raw/main/nba_stats/json
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v5
-      - name: Setting up R
-        uses: r-lib/actions/setup-r@v2
-        with:
-          r-version: ${{ matrix.config.r }}
-          http-user-agent: ${{ matrix.config.http-user-agent }}
-          use-public-rspm: true
-      - uses: r-lib/actions/setup-pandoc@v2
-      - name: Setting up R dependencies
-        uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          cache-version: 1
-          extra-packages: |
-            sportsdataverse/hoopR
-            sportsdataverse/sportsdataverse-data
-            ropensci/piggyback
+      - uses: actions/checkout@v5
 
-      - name: Check for Inputs
-        if: ${{ env.START_YEAR == ''}}
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.12'
+          cache-dependency-glob: uv.lock
+
+      - name: Install
+        run: uv sync --frozen --dev
+
+      - name: Default season window
+        if: ${{ inputs.start_year == '' }}
+        # NBA season-year rollover is October (month <= 9 -> previous year);
+        # replaces the retired Rscript/hoopR lookup with the same rule.
         run: |
-            echo START_YEAR=$(Rscript -e "cat(hoopR::most_recent_nba_season())") >> $GITHUB_ENV
-            echo END_YEAR=$(Rscript -e "cat(hoopR::most_recent_nba_season())") >> $GITHUB_ENV
-      - name: Run Python and R Process scripts
-        env:
-          GITHUB_PAT: ${{ secrets.SDV_GH_TOKEN }}
+          y=$(date -u +%Y); m=$(date -u +%m)
+          if [ "$((10#$m))" -le 9 ]; then y=$((y - 1)); fi
+          season=$((y + 1))   # repo convention: season labeled by end year
+          echo "START_YEAR=$season" >> "$GITHUB_ENV"
+          echo "END_YEAR=$season" >> "$GITHUB_ENV"
+
+      - name: Inputs override
+        if: ${{ inputs.start_year != '' }}
         run: |
-          bash scripts/daily_nba_stats_scraper.sh -s ${{ env.START_YEAR }} -e ${{ env.END_YEAR }} -r ${{ env.RESCRAPE }}
+          echo "START_YEAR=${{ inputs.start_year }}" >> "$GITHUB_ENV"
+          echo "END_YEAR=${{ inputs.end_year || inputs.start_year }}" >> "$GITHUB_ENV"
+
+      - name: Build + publish
+        run: |
+          HOOPR_NBA_STATS_PYBIN="$(pwd)/.venv/bin/python" \
+            bash scripts/daily_nba_stats_python_processor.sh -s "$START_YEAR" -e "$END_YEAR"
