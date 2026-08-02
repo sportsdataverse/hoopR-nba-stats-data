@@ -84,6 +84,10 @@ is a valid cadence but must be stated explicitly.
   backfill (`.done_<season>` sentinels, publishes after every season); run directly
   from a residential terminal. Referenced by nothing in-repo by design — it is a
   user-executed runbook, not pipeline wiring.
+- `scripts/hydrate_raw_store.sh` — clone-free raw-store hydrate from the
+  `nba-stats-raw-json` per-season release bundles (~30 tarballs instead of ~120k
+  per-file URL reads); the CI-friendly way to run a FULL-history impact build.
+  Idempotent + resumable (already-extracted seasons skip). Landed with #19/#20.
 - `python/warm_possession_cache.py` — pre-backfill runbook stage despite the
   one-off-looking name: `scripts/P0_DROPLET_RUNBOOK.md` §4a "Parallel cache warm"
   runs it to warm the per-game possession cache so the sequential impact build
