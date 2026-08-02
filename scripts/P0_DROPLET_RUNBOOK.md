@@ -104,8 +104,8 @@ smoke is what makes it safe.
 >
 > Requests were never the scarce resource; **wall-clock latency per game** is.
 > The probes are committed — rerun them rather than trusting either number:
-> `python/probe_stats_rate_limit.py` (per-IP vs per-source) and
-> `python/probe_stats_ceiling.py` (concurrency ramp).
+> `ops/oneoff/probe_stats_rate_limit.py` (per-IP vs per-source) and
+> `ops/oneoff/probe_stats_ceiling.py` (concurrency ramp).
 >
 > **Use the parallel cache warm instead** (§4a). It runs ~5.6× faster and the
 > per-game cache is the same checkpoint, so a warm cache makes the sequential
@@ -219,7 +219,7 @@ Season arg = start year (`2025` = 2025-26); bump it each October. Check
   re-measured against the proxy pool. `python/warm_possession_cache.py`
   parallelizes deliberately; the *model build* stays sequential for the
   earliest→latest prior chain, which is a correctness constraint, not a rate one.
-  Re-run `python/probe_stats_ceiling.py` before trusting either claim.
+  Re-run `ops/oneoff/probe_stats_ceiling.py` before trusting either claim.
 - The proxy env trio is the same `PROXY_ENDPOINT`/`PROXY_KEY`/`PROXY_PKG` the
   R workflows use (GitHub secrets) — never commit them, never echo them.
 - WNBA repeats this runbook later via `wehoop-wnba-stats-data`

@@ -143,7 +143,7 @@ enrichment of the same possession frame and rides this cache for nearly free.
 
 - stats.nba.com has **no detectable per-source budget** — 1,707 req/min at
   concurrency 32, zero rejections. The backfill is latency-bound, not
-  request-bound. Re-run `scripts/probe_stats_ceiling.py` to re-confirm.
+  request-bound. Re-run `ops/oneoff/probe_stats_ceiling.py` to re-confirm.
 - The backfill is **86%... no, CPU is only 26% under parallelism — it is
   network/latency-bound per game**; parallel warm is the lever, not `delay_s`.
 - **Never pass `cache_dir=` to `compile_nba_season`** — it bypasses the
