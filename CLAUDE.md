@@ -78,6 +78,17 @@ is a valid cadence but must be stated explicitly.
 |---|---|---|---|---|---|---|---|
 | `nba_player_impact` (RAPM / adj-RAPM / SPM / BPM / DARKO / WAR; one row per player-season-season_type, Regular Season + Playoffs, PlayIn excluded) | `nba_player_impact_{season}.parquet` + `.csv` + `.rds` per season, plus `nba_player_impact_card.json` model card | `nba_player_impact` on `sportsdataverse/sportsdataverse-data` | 1997–2026 END-years (30 seasons): stats.nba.com possessions + player game logs, built offline from the committed `hoopR-nba-stats-raw` store (`--raw-store-dir`, PRs #19/#21) | `python/nba_model_publish/builders.py` (`build_nba_player_impact`) via `python -m nba_model_publish impact`; launcher `scripts/run_impact_backfill.sh` | TODO — no formal in-repo gate; the model card attests seasons/rows actually built (upstream validation lives in sdv-py's model zoo) | 2026-07-28 (full 1997–2026 backfill publish) | manual (droplet/residential runbook — no CI publish workflow) |
 
+## Runbook scripts (not dead code)
+
+- `scripts/leaguedash_backfill.sh` — multi-hour resumable full-history leaguedash
+  backfill (`.done_<season>` sentinels, publishes after every season); run directly
+  from a residential terminal. Referenced by nothing in-repo by design — it is a
+  user-executed runbook, not pipeline wiring.
+- `python/warm_possession_cache.py` — pre-backfill runbook stage despite the
+  one-off-looking name: `scripts/P0_DROPLET_RUNBOOK.md` §4a "Parallel cache warm"
+  runs it to warm the per-game possession cache so the sequential impact build
+  (§4b) is CPU-only.
+
 ## Gotchas — NBA Stats headers / rate-limit / proxy
 
 - `R/utils.R` `rate_limit()` is a **trailing-window token bucket** over the shared
