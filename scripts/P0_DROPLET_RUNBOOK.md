@@ -51,7 +51,7 @@ df -h /data 2>/dev/null || df -h "$HOME"
 
 ```bash
 . ~/.config/sdv/env
-cd ~/hoopR-nba-stats-data/python && uv run python ../scripts/canary_stats_egress.py
+cd ~/hoopR-nba-stats-data && uv run python python/canary_stats_egress.py
 ```
 
 Probes the exact call the backfill makes, three ways, each under a 45s hang
@@ -104,8 +104,8 @@ smoke is what makes it safe.
 >
 > Requests were never the scarce resource; **wall-clock latency per game** is.
 > The probes are committed — rerun them rather than trusting either number:
-> `scripts/probe_stats_rate_limit.py` (per-IP vs per-source) and
-> `scripts/probe_stats_ceiling.py` (concurrency ramp).
+> `python/probe_stats_rate_limit.py` (per-IP vs per-source) and
+> `python/probe_stats_ceiling.py` (concurrency ramp).
 >
 > **Use the parallel cache warm instead** (§4a). It runs ~5.6× faster and the
 > per-game cache is the same checkpoint, so a warm cache makes the sequential
@@ -116,7 +116,7 @@ smoke is what makes it safe.
 ```bash
 . ~/.config/sdv/env
 export SDV_PY_NBA_CACHE_DIR=/data/nba_possessions WARM_WORKERS=5
-cd python && uv run python ../scripts/warm_possession_cache.py 2000:2024
+uv run python python/warm_possession_cache.py 2000:2024
 ```
 
 Then run the sequential build (§4b) — it reads the warm cache, so it does no
@@ -163,7 +163,7 @@ SDV_NBA_DELAY_S=7 bash scripts/run_impact_backfill.sh 2000:2024
   no code changes.
 - **Died after build, before upload?** The upload runs once at the end. Recover
   without recomputing:
-  `cd python && uv run python -m nba_model_publish upload --dir build_out/impact --tag nba_player_impact`
+  `uv run python -m nba_model_publish upload --dir build_out/impact --tag nba_player_impact`
 
 Re-enable the R cron when done:
 
@@ -216,10 +216,10 @@ Season arg = start year (`2025` = 2025-26); bump it each October. Check
   multiplies the ceiling; nothing per-source was detectable at any rate probed.
   The rule is correct **for the R scraper**, which only fetches and writes JSON
   and shares one in-process token bucket — it was inherited here without being
-  re-measured against the proxy pool. `scripts/warm_possession_cache.py`
+  re-measured against the proxy pool. `python/warm_possession_cache.py`
   parallelizes deliberately; the *model build* stays sequential for the
   earliest→latest prior chain, which is a correctness constraint, not a rate one.
-  Re-run `scripts/probe_stats_ceiling.py` before trusting either claim.
+  Re-run `python/probe_stats_ceiling.py` before trusting either claim.
 - The proxy env trio is the same `PROXY_ENDPOINT`/`PROXY_KEY`/`PROXY_PKG` the
   R workflows use (GitHub secrets) — never commit them, never echo them.
 - WNBA repeats this runbook later via `wehoop-wnba-stats-data`

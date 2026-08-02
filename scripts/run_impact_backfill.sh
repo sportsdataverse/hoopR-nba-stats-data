@@ -50,7 +50,7 @@ printf 'impact backfill seasons=%s cache=%s delay_s=%s no_proxy_direct=%s\n' \
   "$SEASONS" "$SDV_PY_NBA_CACHE_DIR" "${SDV_NBA_DELAY_S:-0.6(default)}" \
   "${NO_PROXY_DIRECT:-0}" | stamp | tee -a "$LOG"
 
-( cd python && uv run python -m nba_model_publish impact \
+( uv run python -m nba_model_publish impact \
     --seasons "$SEASONS" \
     --out build_out/impact \
     ${EXTRA[@]+"${EXTRA[@]}"} \

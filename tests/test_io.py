@@ -1,6 +1,5 @@
-from pathlib import Path
 import polars as pl
-from nba_data_build.io import write_possessions, write_rapm, write_report
+from nba_data_build.io import write_rapm, write_report
 
 
 def test_write_and_read_parquet(tmp_path):

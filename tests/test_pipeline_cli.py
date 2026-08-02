@@ -9,7 +9,6 @@ import shutil
 
 import polars as pl
 import pytest
-
 from nba_data_build import pipeline_cli
 from nba_data_build.scrape.client import V3Client
 

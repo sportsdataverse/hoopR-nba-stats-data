@@ -8,7 +8,6 @@ from pathlib import Path
 
 import polars as pl
 import pytest
-
 from nba_data_build.reshape import cli
 from nba_data_build.reshape.datasets import DATASETS
 

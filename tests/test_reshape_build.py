@@ -13,7 +13,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from nba_data_build.reshape import build
 from nba_data_build.reshape.datasets import BY_KEY
 

@@ -1,10 +1,9 @@
 """Tests for build.py — mock compile_nba_season, use the real rapm/validate."""
 from pathlib import Path
 
+import nba_data_build.build as B
 import numpy as np
 import polars as pl
-
-import nba_data_build.build as B
 
 _OFF = [f"off_player_{i}" for i in range(1, 6)]
 _DEF = [f"def_player_{i}" for i in range(1, 6)]

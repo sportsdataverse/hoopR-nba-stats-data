@@ -43,14 +43,19 @@ from pathlib import Path
 from typing import Any, Callable, Optional, Sequence
 
 import polars as pl
+from nba_data_build.reshape.io import RDS_CLASS
+
+# nba_rapm is NOT re-exported from the sportsdataverse.nba package (verified on
+# main) — it lives in the nba_rapm submodule.
+from sportsdataverse._rds import write_rds
 from sportsdataverse.nba import (
     AdjRapmModel,
     box_features,
     calibrate_pts_per_win,
     compile_nba_season,
     nba_adj_rapm,
-    nba_bpm,
     nba_box_logs,
+    nba_bpm,
     nba_darko,
     nba_player_ages,
     nba_player_identity,
@@ -60,18 +65,12 @@ from sportsdataverse.nba import (
     nba_war,
     train_spm,
 )
-
-# nba_rapm is NOT re-exported from the sportsdataverse.nba package (verified on
-# main) — it lives in the nba_rapm submodule.
-from sportsdataverse._rds import write_rds
 from sportsdataverse.nba.nba_rapm import nba_rapm
 from sportsdataverse.nba.nba_stats import (
     nba_stats_leaguedashplayerbiostats,
     nba_stats_leaguegamelog,
     nba_stats_playerindex,
 )
-
-from nba_data_build.reshape.io import RDS_CLASS
 
 #: Zero-arg callable yielding a proxy URL (``RoundRobin.next`` matches this).
 ProxyProvider = Callable[[], Optional[str]]

@@ -1,7 +1,6 @@
 import subprocess
 
 import pytest
-
 from nba_data_build.publish import plan_uploads, published_seasons, upload_artifacts
 
 

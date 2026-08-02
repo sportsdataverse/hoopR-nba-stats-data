@@ -1,5 +1,4 @@
 import polars as pl
-
 from nba_data_build.process.availability import compute_flags
 from nba_data_build.scrape.raw_store import write_raw
 

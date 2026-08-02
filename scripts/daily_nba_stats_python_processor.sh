@@ -40,7 +40,8 @@ RAW_ROOT="${HOOPR_NBA_STATS_RAW_ROOT:-${REPOS_ROOT}/hoopR-nba-stats-raw/nba_stat
 
 # Venv interpreter by absolute path, not `uv run`: sdv-orch invokes this from a
 # systemd unit whose PATH excludes /root/.local/bin, so `uv` exits 127 there.
-PYBIN="${HOOPR_NBA_STATS_PYBIN:-${REPO_DIR}/python/.venv/bin/python}"
+# Packaging moved to the repo root (2026-08-02); the venv lives at .venv now.
+PYBIN="${HOOPR_NBA_STATS_PYBIN:-${REPO_DIR}/.venv/bin/python}"
 
 # Fail before doing anything if the raw checkout isn't where we expect. A missing
 # root would build zero rows and "succeed", quietly publishing nothing. A URL

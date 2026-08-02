@@ -1,6 +1,8 @@
 from pathlib import Path
-from tests.conftest import skip_if_no_live
+
 import nba_data_build.build as B
+
+from tests.conftest import skip_if_no_live
 
 
 @skip_if_no_live

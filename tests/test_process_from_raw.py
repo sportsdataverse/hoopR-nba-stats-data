@@ -1,7 +1,6 @@
 import sys
 
 import polars as pl
-
 from nba_data_build.process import from_raw
 from nba_data_build.process.from_raw import process_game
 

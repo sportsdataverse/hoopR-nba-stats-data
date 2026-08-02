@@ -10,10 +10,9 @@ from __future__ import annotations
 
 import json
 
+import nba_model_publish.builders as B
 import polars as pl
 import pytest
-
-import nba_model_publish.builders as B
 
 
 def _poss(season: int) -> pl.DataFrame:

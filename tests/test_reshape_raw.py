@@ -12,7 +12,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from nba_data_build.reshape import raw
 
 REAL_STORE = Path("/mnt/sdv_repos/hoopR-nba-stats-raw/nba_stats/json")

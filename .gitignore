@@ -17,3 +17,22 @@ daily_basketball_scraper.sh
 .nba_pipeline_cache/
 logs/
 python/build_out/
+# --- SDV repo template ---------------------------------------------------
+/*.out
+/*.log
+*.egg-info/
+**/*.egg-info/
+.omc/
+**/.omc/
+.Rproj.user/
+**/.Rproj.user/
+.ruff_cache/
+**/.ruff_cache/
+.pytest_cache/
+**/.pytest_cache/
+.understand-anything/
+**/.understand-anything/
+.superpowers/
+**/.superpowers/
+.venv/
+**/.venv/

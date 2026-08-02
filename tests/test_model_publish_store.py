@@ -9,9 +9,7 @@ from __future__ import annotations
 
 import polars as pl
 import pytest
-
 from nba_model_publish import builders as B
-
 
 # --- season label -> store season directory ---------------------------------
 
@@ -188,7 +186,6 @@ def test_missing_proxy_still_fatal_without_a_store(monkeypatch):
     """Without a store the old guard stands: stats.nba.com hangs rather than
     errors on a datacenter IP, so refusing to start beats stalling for hours."""
     import pytest as _pytest
-
     from nba_model_publish import cli
 
     monkeypatch.setattr(

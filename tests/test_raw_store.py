@@ -2,7 +2,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from nba_data_build.scrape.raw_store import (
     has_raw,
     legacy_raw_path,

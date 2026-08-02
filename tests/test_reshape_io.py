@@ -12,7 +12,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import polars as pl
-
 from nba_data_build.reshape.io import RDS_CLASS, write_release_formats
 
 

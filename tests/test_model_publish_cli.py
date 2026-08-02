@@ -2,9 +2,8 @@
 
 import argparse
 
-import pytest
-
 import nba_model_publish.cli as cli
+import pytest
 from nba_model_publish.cli import _parse_seasons, main
 
 

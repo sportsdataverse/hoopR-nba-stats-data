@@ -1,0 +1,57 @@
+name: tests
+
+# Offline test gate for the build package. The sibling raw repo showed what
+# no-CI costs (a test sat broken for months); these tests touch no network.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # ~40k committed JSON (pre-purge) under nba_stats/. Sparse keeps the
+          # job fast and survives the coming purge unchanged; archive-backed
+          # tests are deselected below.
+          sparse-checkout: |
+            python
+            tests
+            scripts
+            pyproject.toml
+            uv.lock
+          sparse-checkout-cone-mode: false
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.12'
+          cache-dependency-glob: uv.lock
+
+      - name: Install
+        # --frozen: a PR must not silently re-resolve the lockfile. The daily
+        # workflow is the only place that runs `uv lock --upgrade`.
+        run: uv sync --frozen --dev
+
+      - name: Tests
+        # `archive` tests read the committed nba_stats/ + docs/ tree, which is not
+        # checked out here. They run on the runner that already holds it.
+        run: uv run pytest -q -m "not archive"
+
+      - name: Lint
+        run: uv run ruff check python tests
+
+      - name: Shell syntax
+        # scripts/ is bash-only by convention and the scrape entry points are
+        # not otherwise exercised by CI. This catches an unparseable script
+        # before a nightly sweep discovers it at 06:30 UTC.
+        run: |
+          for f in scripts/*.sh; do
+            bash -n "$f" || exit 1
+          done
