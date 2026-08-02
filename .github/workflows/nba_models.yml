@@ -1,0 +1,92 @@
+name: NBA Model Datasets
+
+# Manual-only publisher for the `nba_player_impact` release on
+# sportsdataverse-data: the per-season player-impact suite (RAPM / adj-RAPM /
+# SPM / BPM / DARKO / WAR) built by python/nba_model_publish over the committed
+# hoopR-nba-stats-raw store.
+#
+# NO cron on purpose -- the build is long and rate-budgeted and must never
+# auto-fire; `dry_run` defaults to true so even a stray dispatch publishes
+# nothing. It exists because the 2026-08-02 pipeline audit found this model had
+# no trigger of any kind (its WNBA sibling already had one): a model whose only
+# retrain path is a person remembering a shell command is a decaying asset.
+#
+# Scope: incremental, one or a few seasons. A FULL-history rebuild (1997:2026)
+# reads ~120k payloads and should run from the droplet via
+# `scripts/run_impact_backfill.sh` after `scripts/hydrate_raw_store.sh` -- the
+# per-file URL backend used here is right for a refresh, not a backfill.
+#
+# Credential scoping: the cross-repo publish PAT (SDV_GH_TOKEN) is NOT exported
+# job-wide; it is set only on the build+publish step.
+
+on:
+  workflow_dispatch:
+    inputs:
+      seasons:
+        description: 'Season or inclusive range, END-year convention (2024 = the 2023-24 season). Default: the current season.'
+        required: false
+        type: string
+      dry_run:
+        description: 'Build only; plan the uploads without publishing'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+env:
+  PUBLISH_REPO: sportsdataverse/sportsdataverse-data
+  NBA_RAW_STORE: https://raw.githubusercontent.com/sportsdataverse/hoopR-nba-stats-raw/main/nba_stats/json
+
+jobs:
+  models:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    defaults:
+      run:
+        working-directory: python
+    steps:
+      - name: Checkout nba-stats-data
+        uses: actions/checkout@v6
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.12'
+          cache-dependency-glob: python/uv.lock
+
+      - name: Sync deps
+        run: uv sync --frozen
+
+      # NBA seasons are END-years and roll over in October: October 2025 starts
+      # the 2025-26 season, which the store keys as 2026. (The WNBA sibling
+      # plays inside one calendar year and has no rollover.)
+      - name: Resolve seasons
+        env:
+          # Via env, not `${{ }}` inline in the script: a dispatch input
+          # interpolated straight into `run:` is a shell-injection sink.
+          SEASONS_INPUT: ${{ inputs.seasons }}
+        run: |
+          if [ -n "$SEASONS_INPUT" ]; then
+            SEASONS="$SEASONS_INPUT"
+          else
+            YEAR=$(date -u +%Y)
+            MONTH=$(date -u +%m)
+            if [ "$MONTH" -ge 10 ]; then SEASONS=$((YEAR + 1)); else SEASONS=$YEAR; fi
+          fi
+          echo "SEASONS=$SEASONS" >> "$GITHUB_ENV"
+          echo "building nba_player_impact for seasons: $SEASONS"
+
+      - name: Build + publish nba_player_impact ${{ env.SEASONS }}
+        env:
+          GH_TOKEN: ${{ secrets.SDV_GH_TOKEN }}
+        run: |
+          uv run --no-sync python -m nba_model_publish \
+            --repo "$PUBLISH_REPO" \
+            ${{ inputs.dry_run && '--dry-run' || '' }} \
+            impact \
+            --seasons "$SEASONS" \
+            --out out/nba_player_impact \
+            --raw-store-dir "$NBA_RAW_STORE" \
+            --tag nba_player_impact
