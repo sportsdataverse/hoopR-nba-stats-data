@@ -9,7 +9,7 @@ it finishes. Copy-paste-runnable on the droplet.
 - **Merged:** `sportsdataverse-py#283` (discovery proxy fix, `f80d4909`),
   `hoopR-nba-stats-data#13/#14/#15` (runbook+canary+lock, parallel warm+probes,
   playoffs `season_type`). Main is clean.
-- **Running:** `scripts/warm_possession_cache.py 2000:2024`, 5 workers, in tmux
+- **Running:** `python/warm_possession_cache.py 2000:2024`, 5 workers, in tmux
   session `warm`. Writes the per-game cache under `/data/nba_possessions/possessions/`.
 - **Real total:** 32,096 games (30,025 RS + 2,071 PO). ETA ~2.3 days from the
   write time above.
@@ -47,7 +47,7 @@ A season short of its total = a failed unit. Rerun the warm to fill gaps
 ```bash
 cd /mnt/sdv_repos/hoopR-nba-stats-data/python && . ~/.config/sdv/env
 SDV_PY_NBA_CACHE_DIR=/data/nba_possessions WARM_WORKERS=5 \
-  uv run python ../scripts/warm_possession_cache.py 2000:2024
+  uv run python warm_possession_cache.py 2000:2024
 ```
 
 ### 2. Sequential model build off the warm cache (CPU-only, fast)

@@ -2,16 +2,24 @@
 
 ## Project Context
 
-This repo is the R-side NBA Stats API scrape + persistence stage for the
-hoopR ecosystem. It hits `stats.nba.com` directly (through a rotating
-proxy pool), writes per-season schedules and per-game play-by-play to
-disk under `nba_stats/`, and commits the results to `main`. Output here
-is consumed by `hoopR`'s `load_nba_*()` family via
-`sportsdataverse-data` releases.
+This repo is the NBA Stats API **reshape + publish** stage for the hoopR
+ecosystem. It reads the committed raw JSON store in the sibling
+`hoopR-nba-stats-raw`, compiles per-season datasets under `nba_stats/`, and
+commits + publishes them. Output is consumed by `hoopR`'s `load_nba_*()`
+family via `sportsdataverse-data` releases.
 
-- **Package (DESCRIPTION):** `hoopR.nba` v0.0.1
+> **It does not scrape, and it is no longer R.** The producer is
+> `python/nba_data_build/`. `R/` is **empty** —
+> `R/nba_stats_01_scrape_schedules.R`, `02_scrape_pbp.R`,
+> `02_scrape_pbp_to_lineup.R`, `03_scrape_boxscoretraditionalv2.R`,
+> `nba_stats_draftcombinedrillresults.R`, `R/utils.R` and
+> `scripts/daily_nba_stats_scraper.sh` were all deleted at the Python cutover.
+> `hoopR-nba-stats-raw` is **not a placeholder**: it holds the 1996–2026 raw
+> capture this repo reads.
+
+- **Package (DESCRIPTION):** `hoopR.nba` v0.0.1 (vestigial — not an R pipeline)
 - **License:** CC BY 4.0
-- **Pipeline:** `NBA Stats API -> hoopR-nba-stats-data [HERE] -> sportsdataverse-data -> hoopR`
+- **Pipeline:** `NBA Stats API -> hoopR-nba-stats-raw -> hoopR-nba-stats-data [HERE] -> sportsdataverse-data -> hoopR`
 
 Do not confuse with `hoopR-nba-raw` / `hoopR-nba-data` — those are the
 ESPN-sourced sibling repos. NBA Stats is a separate data source with
@@ -20,7 +28,8 @@ different schemas, rate limits, and auth requirements.
 ## Repository Workflow
 
 - Branch from `main`; `main` is the default and release branch.
-- The CI entry point is `scripts/daily_nba_stats_scraper.sh -s <START> -e <END> -r <true|false>`.
+- The CI entry point is `.github/workflows/daily_nba_stats.yml`, which calls
+  `scripts/daily_nba_stats_python_processor.sh -s <START> -e <END>`.
 - The per-season commit subject **must** be `NBA Stats Update (Start: YYYY End: YYYY)` — downstream tooling parses years out of it.
 - The repo is not a CRAN package — no `devtools::document()` flow, no NAMESPACE/man maintenance. `DESCRIPTION` exists for dependency declaration and citation only.
 - Don't reorganize the `nba_stats/` output tree without aligning `hoopR`'s `load_nba_*()` loaders.
@@ -28,18 +37,23 @@ different schemas, rate limits, and auth requirements.
 ## Build & Development Commands
 
 ```sh
-# CI entry point (loops seasons, scrapes schedules + PBP, commits per season)
-bash scripts/daily_nba_stats_scraper.sh -s 2025 -e 2025 -r false
+# Daily flow (the workflow calls this same script; loops seasons, commits per season)
+bash scripts/daily_nba_stats_python_processor.sh -s 2025 -e 2025
 
-# Or run scrapers directly
-Rscript R/nba_stats_01_scrape_schedules.R              -s 2025 -e 2025 -r false
-Rscript R/nba_stats_02_scrape_pbp.R                    -s 2025 -e 2025 -r false
-Rscript R/nba_stats_02_scrape_pbp_to_lineup.R          -s 2025 -e 2025 -r false
-Rscript R/nba_stats_03_scrape_boxscoretraditionalv2.R  -s 2025 -e 2025 -r false
-Rscript R/nba_stats_draftcombinedrillresults.R
+# Direct reshape
+python -m nba_data_build.reshape --root <hoopR-nba-stats-raw>/nba_stats/json --seasons 2025
+
+# Runbook helpers
+bash scripts/hydrate_raw_store.sh                  # clone-free hydrate of the raw store
+bash scripts/leaguedash_backfill.sh                # checkpointed; .done_<season> on rc 0
+bash scripts/run_impact_backfill.sh                # nba_player_impact full-history
+python python/warm_possession_cache.py 2000:2024   # warm the possession cache
 ```
 
-`-r true` forces re-scrape; `-r false` skips files already on disk. Outputs:
+`HOOPR_NBA_STATS_RAW_ROOT` overrides the raw store (a local checkout or a
+raw.githubusercontent URL); `HOOPR_NBA_STATS_PYBIN` the interpreter. The driver
+fails fast when the store has no `playbyplayv3/` — otherwise it would compile
+zero games and report success. Outputs:
 
 - `nba_stats/schedules/{rds,csv,parquet,qs}/nba_stats_schedule_{season}.{ext}`
 - `nba_stats/pbp/{rds,csv,parquet}/nba_stats_pbp_{season}.{ext}`
@@ -48,45 +62,53 @@ Rscript R/nba_stats_draftcombinedrillresults.R
 
 ## Season Encoding
 
-NBA seasons are indexed by **start year** in the CLI flags and on disk
-(`nba_stats_schedule_2024.parquet` = 2024-25). Internally scrapers shift
-via `years_vec <- (opt$s - 1):(opt$e - 1)` to align with NBA Stats' season
-parameter format. That asymmetry is intentional.
+NBA seasons are indexed by **end year** (`2026` = 2025-26) — the workflow
+comment says so explicitly and derives the default with an October rollover
+(`month <= 9` → previous year, then `+1`). This section previously claimed
+**start year**; that inversion is the kind that silently labels a whole season
+wrong, so treat the workflow's rule as the source of truth.
 
-Defaults pull from `hoopR:::most_recent_nba_season()`, so calling a
-scraper without `-s`/`-e` scrapes the current league year.
+Two documented exceptions:
+
+- The **season-level** half of the raw store keys its dirs by start year
+  (`{endpoint}/2023/` holds 2023-24).
+- Several stats.nba.com endpoints require the span spelling `"2023-24"` and
+  return a silent zero-row frame for a bare year. That spelling is owned by the
+  shared engine (`sportsdataverse.scrape.stats`, league-keyed), not here.
+
+Calling the driver without `-s`/`-e` builds the current league year.
 
 ## Code Style
 
-- R 4.0.0+, snake_case, 2-space indent.
-- Legacy magrittr pipes (`%>%`) throughout — match local style.
-- Each `R/nba_stats_*.R` script is a standalone CLI: top-level `library()`
-  calls, `optparse` block, then scrape logic. No package exports.
-- Use `purrr::pluck()` + `%||%` for null-safe JSON parsing.
-- For schema drift, prefer `dplyr::select(dplyr::any_of(...))` over bare
-  selects so dropped columns don't break the script.
+- polars 1.x modern API only; snake_case; typed new modules.
+- Read the raw store, reshape, write — no HTTP in this repo.
+- For schema drift, select defensively so a dropped upstream column doesn't
+  break the build.
 
 ## HTTP / Proxy Layer
 
-`R/utils.R` exposes `get_proxy_ips()` and `select_proxy()`, which pull a
-rotating IP pool from a private endpoint. Wired via GitHub secrets:
+**None here.** Capture belongs to `hoopR-nba-stats-raw`, whose scrape layer is
+the shared `sportsdataverse.scrape.stats` engine. Two facts that matter if you
+are chasing a capture bug there rather than a reshape bug here:
 
-- `PROXY_KEY`, `PROXY_PKG`, `PROXY_ENDPOINT`
+- `stats.nba.com` **TLS/JA3-fingerprint-blocks plain `requests`** — the symptom
+  is a silent timeout, not a refusal. The engine uses `curl_cffi` with
+  `impersonate="chrome"`.
+- The proxy pool and rate knobs are env-only (`STATS_RATE_*`), never hardcoded.
 
-Production NBA Stats calls always route through the proxy (the API
-rate-limits raw GitHub Actions IPs hard). Local dry-runs without the
-secrets fall through to direct calls and will eventually 429. Never
-commit a proxy credential.
+Never commit a proxy credential.
 
 ## Workflow
 
 `.github/workflows/daily_nba_stats.yml` runs every cron-gated day at
 `0 7 UTC` across the NBA in-season windows (late Oct, Nov-Dec, Jan-Jun,
-plus full July for postseason/draft). `workflow_dispatch` inputs:
-`start_year`, `end_year`, `rescrape` (default `true`).
+plus full July for postseason/draft), calling
+`scripts/daily_nba_stats_python_processor.sh`. `workflow_dispatch` inputs:
+`start_year`, `end_year`.
 
-The workflow currently invokes `scripts/daily_wnba_scraper.sh` — a known
-copy-paste artifact. The correct script is `scripts/daily_nba_stats_scraper.sh`.
+`.github/workflows/nba_models.yml` is the separate, dispatch-only model publish
+(`dry_run` defaults true); full-history backfills stay on the droplet runbook
+(`scripts/P0_DROPLET_RUNBOOK.md`). See the model registry in the README.
 
 ## Cross-Repo References
 

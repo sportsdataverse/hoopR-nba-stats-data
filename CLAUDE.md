@@ -1,40 +1,54 @@
 # CLAUDE.md — hoopR-nba-stats-data
 
-R-side scraper + on-disk cache for the **NBA Stats API** (`stats.nba.com`) — schedules
-and per-game play-by-play. Pairs with the placeholder `hoopR-nba-stats-raw` (raw JSON
-would split out there if activated); distinct from the ESPN-sourced `hoopR-nba-raw` /
-`hoopR-nba-data`. Output is consumed downstream by the **hoopR** R package via
-`load_nba_*()` (through `sportsdataverse-data` releases). Package `hoopR.nba` v0.0.1,
-CC BY 4.0. Authors: Saiem Gilani (cre); Jason Lee, Billy Fryer, Ross Drucker (ctb).
+Reshaper + release uploader for the **NBA Stats API** (`stats.nba.com`). Distinct
+from the ESPN-sourced `hoopR-nba-raw` / `hoopR-nba-data`. Output is consumed
+downstream by the **hoopR** R package via `load_nba_*()` (through
+`sportsdataverse-data` releases). Package `hoopR.nba` v0.0.1, CC BY 4.0.
+Authors: Saiem Gilani (cre); Jason Lee, Billy Fryer, Ross Drucker (ctb).
 
-## Commands (verified)
+> **This repo does not scrape, and it is no longer R.** Capture lives in
+> `hoopR-nba-stats-raw` — **not a placeholder**: it holds the committed
+> 1996–2026 raw JSON store this repo reads (that claim inverted long ago and
+> was corrected in that repo's own docs first). The producer here is
+> `python/nba_data_build/`.
+>
+> **`R/` is empty.** `R/nba_stats_01_scrape_schedules.R`,
+> `02_scrape_pbp.R`, `02_scrape_pbp_to_lineup.R`,
+> `03_scrape_boxscoretraditionalv2.R`, `nba_stats_draftcombinedrillresults.R`
+> and `scripts/daily_nba_stats_scraper.sh` were all deleted at the Python
+> cutover; this file listed them under a heading reading "Commands (verified)".
+
+## Commands
 
 ```sh
-# CI entry point: loops seasons, runs schedules then pbp, commits + pushes per script
-bash scripts/daily_nba_stats_scraper.sh -s 2025 -e 2025 -r false
+# Daily flow (the workflow calls this same script)
+bash scripts/daily_nba_stats_python_processor.sh -s 2025 -e 2025
 
-# Direct R entry points (each is a standalone optparse CLI; same -s/-e/-r flags)
-Rscript R/nba_stats_01_scrape_schedules.R              -s 2025 -e 2025 -r false
-Rscript R/nba_stats_02_scrape_pbp.R                    -s 2025 -e 2025 -r false
-Rscript R/nba_stats_02_scrape_pbp_to_lineup.R          -s 2025 -e 2025 -r false
-Rscript R/nba_stats_03_scrape_boxscoretraditionalv2.R  -s 2025 -e 2025 -r false
-Rscript R/nba_stats_draftcombinedrillresults.R         # ad-hoc / annual
+# Direct reshape (RAW_ROOT may be a local checkout or a raw.githubusercontent URL)
+python -m nba_data_build.reshape --root <hoopR-nba-stats-raw>/nba_stats/json --seasons 2025
+
+# Runbook helpers
+bash scripts/hydrate_raw_store.sh          # clone-free hydrate of the raw store
+bash scripts/leaguedash_backfill.sh        # checkpointed; .done_<season> on rc 0 only
+bash scripts/run_impact_backfill.sh        # nba_player_impact full-history backfill
+python python/warm_possession_cache.py 2000:2024   # warm the possession cache
 ```
 
-Flags: `-s`/`-e` start/end year (default `hoopR:::most_recent_nba_season()`),
-`-r`/`--rescrape` (`false` skips on-disk files, `true` re-fetches). R >= 4.0.0.
+Env: `HOOPR_NBA_STATS_RAW_ROOT` overrides the raw store location,
+`HOOPR_NBA_STATS_PYBIN` the interpreter (the workflow sets both). The driver
+fails fast when the raw store has no `playbyplayv3/` rather than compiling zero
+games and reporting success.
 
 ## Conventions
 
-- The scrapers do **not** build stats.nba.com requests themselves — they call
-  `hoopR::nba_schedule()` / `hoopR::nba_pbp()`, which own the UA/referer/headers.
-  This repo adds only the `proxy=` arg and the `rate_limit()` throttle. NBA Stats
-  schema drift is fixed in the **hoopR SDK**, not here.
-- **Season = start year** on disk; scripts shift internally via
-  `years_vec <- (opt$s - 1):(opt$e - 1)` to hit NBA Stats' season-end param. Intentional
-  asymmetry — do not "fix" it.
-- One-file-per-task R scripts: boilerplate `library()` block, `optparse`, then logic.
-  No package exports / no `devtools::document()`. `source("R/utils.R")` for shared helpers.
+- **Seasons are END year** (`2026` = 2025-26), with one documented exception:
+  the season-level half of the raw store keys its dirs by start year. Several
+  stats.nba.com endpoints also need the span spelling `"2023-24"` and return a
+  silent zero-row frame for a bare year — the shared engine owns that spelling.
+- This repo makes no stats.nba.com requests. Capture bugs belong to
+  `sportsdataverse.scrape.stats` (the shared engine behind both stats-raw
+  twins); parsing/schema drift belongs to `sportsdataverse-py`.
+- polars 1.x modern API only; snake_case.
 - Daily commit subject `NBA Stats Update (Start: YYYY End: YYYY)` is **load-bearing** —
   downstream daily-update tooling parses the years out of it (`scraper_commit_format_loadbearing`).
 - Pipe style: magrittr `%>%`, 2-space indent, snake_case. Never add AI co-author trailers to commits.
