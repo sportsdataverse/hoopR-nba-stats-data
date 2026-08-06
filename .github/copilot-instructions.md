@@ -9,11 +9,17 @@ commits + publishes them. Output is consumed by `hoopR`'s `load_nba_*()`
 family via `sportsdataverse-data` releases.
 
 > **It does not scrape, and it is no longer R.** The producer is
-> `python/nba_data_build/`. `R/` is **empty** —
-> `R/nba_stats_01_scrape_schedules.R`, `02_scrape_pbp.R`,
+> `python/nba_data_build/`. `scripts/daily_nba_stats_scraper.sh` was deleted at
+> the Python cutover.
+>
+> `R/` is **not** empty, despite what this file claimed until 2026-08-06:
+> `nba_stats_01_scrape_schedules.R`, `02_scrape_pbp.R`,
 > `02_scrape_pbp_to_lineup.R`, `03_scrape_boxscoretraditionalv2.R`,
-> `nba_stats_draftcombinedrillresults.R`, `R/utils.R` and
-> `scripts/daily_nba_stats_scraper.sh` were all deleted at the Python cutover.
+> `nba_stats_draftcombinedrillresults.R` and `utils.R` are all still tracked.
+> They are **orphaned** — no script, driver, or workflow invokes them, and they
+> are not part of the pipeline. Treat them as dead code pending a deliberate
+> delete, not as stages. Do not wire anything to them.
+>
 > `hoopR-nba-stats-raw` is **not a placeholder**: it holds the 1996–2026 raw
 > capture this repo reads.
 
