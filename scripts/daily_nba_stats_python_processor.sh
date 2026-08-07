@@ -81,8 +81,24 @@ for i in $(seq "${START_YEAR}" "${END_YEAR}"); do
     ) 2>&1 | tee -a "${LOGFILE}"
     # tee hides the subshell's exit status behind its own; recover it from PIPESTATUS[0].
     rc=${PIPESTATUS[0]}
+    if [ "${rc}" -eq 0 ]; then
+        # Stage 99 (spec D34), in-loop half: restamp this season's committed
+        # schedule file's in_* flags from the artifacts just built, BEFORE the
+        # scratch dir goes away. Non-fatal: a stamp failure must not fail the
+        # publish that already happened.
+        "${PYBIN}" python/nba_stats_99_schedule_master_creation.py \
+            --built-dir "${OUT_DIR}" --season "${i}" --stamp-only \
+            2>&1 | tee -a "${LOGFILE}" \
+            || echo "schedule-master stamp failed for season ${i}" | tee -a "${LOGFILE}"
+    fi
     rm -rf "${OUT_DIR}"
     [ "${rc}" -ne 0 ] && { echo "season ${i} FAILED (rc=${rc})"; ANY_FAILED=1; }
 done
+
+# Stage 99, union half: rebuild the master + games_in_data_repo manifest +
+# coverage index from ALL committed season schedules (the whole archive, not
+# just this run's window). Non-fatal for the same reason as above.
+"${PYBIN}" python/nba_stats_99_schedule_master_creation.py \
+    || echo "schedule-master union failed"
 
 exit "${ANY_FAILED}"

@@ -3,8 +3,9 @@ name: Update NBA Stats Data
 # Python-only since 2026-08-02. The scrape lives in hoopR-nba-stats-raw (its
 # droplet cron owns filling the raw store); this job only COMPILES + PUBLISHES:
 # it reads the raw store over raw.githubusercontent.com, builds parquet+rds+csv,
-# and uploads to the nba_stats_* release tags. No stats.nba.com calls, no
-# commits -- release-only artifacts. The retired R chain scraped v2 pbp and
+# and uploads to the nba_stats_* release tags. No stats.nba.com calls; the only
+# commit is the schedule family (master + manifest + coverage, spec D34) --
+# dataset artifacts stay release-only. The retired R chain scraped v2 pbp and
 # committed raw JSON into this repo, both of which are now the raw repo's job
 # (and the committed JSON was purged in 02341942).
 on:
@@ -65,3 +66,20 @@ jobs:
         run: |
           HOOPR_NBA_STATS_PYBIN="$(pwd)/.venv/bin/python" \
             bash scripts/daily_nba_stats_python_processor.sh -s "$START_YEAR" -e "$END_YEAR"
+
+      # The one exception to "no commits": the schedule family (spec D34/D36).
+      # The processor's stage-99 steps restamp the built window's season
+      # schedule flags and rebuild the master + games_in_data_repo manifest +
+      # coverage index; those live in the tree, not on a release tag.
+      - name: Commit schedule master
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- nba_stats/schedules/parquet \
+                     nba_stats/nba_stats_schedule_master.parquet \
+                     nba_stats/nba_stats_games_in_data_repo.parquet \
+                     nba_stats/nba_stats_schedule_coverage.parquet
+          git diff --cached --quiet || {
+            git commit -m "chore(schedule): refresh schedule master + coverage (${START_YEAR}-${END_YEAR})"
+            git push
+          }

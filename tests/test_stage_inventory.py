@@ -99,6 +99,12 @@ def _shims() -> dict[str, tuple[str, Path]]:
         if not m:
             continue
         key, num = m.group("key"), m.group("num")
+        if num == "99":
+            # Stage 99 is reserved for the schedule-master creation script
+            # (spec D16/D34): it builds the master + manifest over EVERY
+            # dataset, so it is deliberately not a per-dataset shim and has
+            # no registry entry.
+            continue
         if key in found:
             dupes.append(key)
         found[key] = (num, path)
