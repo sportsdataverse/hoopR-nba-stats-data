@@ -1,0 +1,3522 @@
+{
+ "load_nba_stats_standings": [
+  {
+   "name": "league_id",
+   "type": "String"
+  },
+  {
+   "name": "season_id",
+   "type": "String"
+  },
+  {
+   "name": "team_id",
+   "type": "Int64"
+  },
+  {
+   "name": "team_city",
+   "type": "String"
+  },
+  {
+   "name": "team_name",
+   "type": "String"
+  },
+  {
+   "name": "team_slug",
+   "type": "String"
+  },
+  {
+   "name": "conference",
+   "type": "String"
+  },
+  {
+   "name": "conference_record",
+   "type": "String"
+  },
+  {
+   "name": "playoff_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "clinch_indicator",
+   "type": "String"
+  },
+  {
+   "name": "division",
+   "type": "String"
+  },
+  {
+   "name": "division_record",
+   "type": "String"
+  },
+  {
+   "name": "division_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "wins",
+   "type": "Int64"
+  },
+  {
+   "name": "losses",
+   "type": "Int64"
+  },
+  {
+   "name": "win_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "league_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "record",
+   "type": "String"
+  },
+  {
+   "name": "home",
+   "type": "String"
+  },
+  {
+   "name": "road",
+   "type": "String"
+  },
+  {
+   "name": "l10",
+   "type": "String"
+  },
+  {
+   "name": "last10_home",
+   "type": "String"
+  },
+  {
+   "name": "last10_road",
+   "type": "String"
+  },
+  {
+   "name": "ot",
+   "type": "String"
+  },
+  {
+   "name": "three_pts_or_less",
+   "type": "String"
+  },
+  {
+   "name": "ten_pts_or_more",
+   "type": "String"
+  },
+  {
+   "name": "long_home_streak",
+   "type": "Int64"
+  },
+  {
+   "name": "str_long_home_streak",
+   "type": "String"
+  },
+  {
+   "name": "long_road_streak",
+   "type": "Int64"
+  },
+  {
+   "name": "str_long_road_streak",
+   "type": "String"
+  },
+  {
+   "name": "long_win_streak",
+   "type": "Int64"
+  },
+  {
+   "name": "long_loss_streak",
+   "type": "Int64"
+  },
+  {
+   "name": "current_home_streak",
+   "type": "Int64"
+  },
+  {
+   "name": "str_current_home_streak",
+   "type": "String"
+  },
+  {
+   "name": "current_road_streak",
+   "type": "Int64"
+  },
+  {
+   "name": "str_current_road_streak",
+   "type": "String"
+  },
+  {
+   "name": "current_streak",
+   "type": "Int64"
+  },
+  {
+   "name": "str_current_streak",
+   "type": "String"
+  },
+  {
+   "name": "conference_games_back",
+   "type": "Float64"
+  },
+  {
+   "name": "division_games_back",
+   "type": "Float64"
+  },
+  {
+   "name": "clinched_conference_title",
+   "type": "Int64"
+  },
+  {
+   "name": "clinched_division_title",
+   "type": "Int64"
+  },
+  {
+   "name": "clinched_playoff_birth",
+   "type": "Int64"
+  },
+  {
+   "name": "clinched_play_in",
+   "type": "Int64"
+  },
+  {
+   "name": "eliminated_conference",
+   "type": "Int64"
+  },
+  {
+   "name": "eliminated_division",
+   "type": "Int64"
+  },
+  {
+   "name": "ahead_at_half",
+   "type": "String"
+  },
+  {
+   "name": "behind_at_half",
+   "type": "String"
+  },
+  {
+   "name": "tied_at_half",
+   "type": "String"
+  },
+  {
+   "name": "ahead_at_third",
+   "type": "String"
+  },
+  {
+   "name": "behind_at_third",
+   "type": "String"
+  },
+  {
+   "name": "tied_at_third",
+   "type": "String"
+  },
+  {
+   "name": "score100_pts",
+   "type": "String"
+  },
+  {
+   "name": "opp_score100_pts",
+   "type": "String"
+  },
+  {
+   "name": "opp_over500",
+   "type": "String"
+  },
+  {
+   "name": "lead_in_fgpct",
+   "type": "String"
+  },
+  {
+   "name": "lead_in_reb",
+   "type": "String"
+  },
+  {
+   "name": "fewer_turnovers",
+   "type": "String"
+  },
+  {
+   "name": "points_pg",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_points_pg",
+   "type": "Float64"
+  },
+  {
+   "name": "diff_points_pg",
+   "type": "Float64"
+  },
+  {
+   "name": "vs_east",
+   "type": "String"
+  },
+  {
+   "name": "vs_atlantic",
+   "type": "String"
+  },
+  {
+   "name": "vs_central",
+   "type": "String"
+  },
+  {
+   "name": "vs_southeast",
+   "type": "String"
+  },
+  {
+   "name": "vs_west",
+   "type": "String"
+  },
+  {
+   "name": "vs_northwest",
+   "type": "String"
+  },
+  {
+   "name": "vs_pacific",
+   "type": "String"
+  },
+  {
+   "name": "vs_southwest",
+   "type": "String"
+  },
+  {
+   "name": "jan",
+   "type": "String"
+  },
+  {
+   "name": "feb",
+   "type": "String"
+  },
+  {
+   "name": "mar",
+   "type": "String"
+  },
+  {
+   "name": "apr",
+   "type": "String"
+  },
+  {
+   "name": "may",
+   "type": "Null"
+  },
+  {
+   "name": "jun",
+   "type": "Null"
+  },
+  {
+   "name": "jul",
+   "type": "Null"
+  },
+  {
+   "name": "aug",
+   "type": "Null"
+  },
+  {
+   "name": "sep",
+   "type": "Null"
+  },
+  {
+   "name": "oct",
+   "type": "String"
+  },
+  {
+   "name": "nov",
+   "type": "String"
+  },
+  {
+   "name": "dec",
+   "type": "String"
+  },
+  {
+   "name": "score_80_plus",
+   "type": "String"
+  },
+  {
+   "name": "opp_score_80_plus",
+   "type": "String"
+  },
+  {
+   "name": "score_below_80",
+   "type": "String"
+  },
+  {
+   "name": "opp_score_below_80",
+   "type": "String"
+  },
+  {
+   "name": "total_points",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_total_points",
+   "type": "Int64"
+  },
+  {
+   "name": "diff_total_points",
+   "type": "Int64"
+  },
+  {
+   "name": "league_games_back",
+   "type": "Float64"
+  },
+  {
+   "name": "playoff_seeding",
+   "type": "Int64"
+  },
+  {
+   "name": "clinched_post_season",
+   "type": "Int64"
+  },
+  {
+   "name": "neutral",
+   "type": "String"
+  },
+  {
+   "name": "season",
+   "type": "Int32"
+  },
+  {
+   "name": "season_type",
+   "type": "String"
+  }
+ ],
+ "load_nba_stats_player_season_stats": [
+  {
+   "name": "player_id",
+   "type": "Int64"
+  },
+  {
+   "name": "player_name",
+   "type": "String"
+  },
+  {
+   "name": "nickname",
+   "type": "String"
+  },
+  {
+   "name": "team_id",
+   "type": "Int64"
+  },
+  {
+   "name": "team_abbreviation",
+   "type": "String"
+  },
+  {
+   "name": "age",
+   "type": "Float64"
+  },
+  {
+   "name": "gp",
+   "type": "Int64"
+  },
+  {
+   "name": "w",
+   "type": "Int64"
+  },
+  {
+   "name": "l",
+   "type": "Int64"
+  },
+  {
+   "name": "w_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "min",
+   "type": "Float64"
+  },
+  {
+   "name": "e_off_rating",
+   "type": "Float64"
+  },
+  {
+   "name": "off_rating",
+   "type": "Float64"
+  },
+  {
+   "name": "sp_work_off_rating",
+   "type": "Float64"
+  },
+  {
+   "name": "e_def_rating",
+   "type": "Float64"
+  },
+  {
+   "name": "def_rating",
+   "type": "Float64"
+  },
+  {
+   "name": "sp_work_def_rating",
+   "type": "Float64"
+  },
+  {
+   "name": "e_net_rating",
+   "type": "Float64"
+  },
+  {
+   "name": "net_rating",
+   "type": "Float64"
+  },
+  {
+   "name": "sp_work_net_rating",
+   "type": "Float64"
+  },
+  {
+   "name": "ast_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "ast_to",
+   "type": "Float64"
+  },
+  {
+   "name": "ast_ratio",
+   "type": "Float64"
+  },
+  {
+   "name": "oreb_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "dreb_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "reb_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "tm_tov_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "e_tov_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "efg_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "ts_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "usg_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "e_usg_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "e_pace",
+   "type": "Float64"
+  },
+  {
+   "name": "pace",
+   "type": "Float64"
+  },
+  {
+   "name": "pace_per40",
+   "type": "Float64"
+  },
+  {
+   "name": "sp_work_pace",
+   "type": "Float64"
+  },
+  {
+   "name": "pie",
+   "type": "Float64"
+  },
+  {
+   "name": "poss",
+   "type": "Int64"
+  },
+  {
+   "name": "fgm",
+   "type": "Float64"
+  },
+  {
+   "name": "fga",
+   "type": "Float64"
+  },
+  {
+   "name": "fgm_pg",
+   "type": "Float64"
+  },
+  {
+   "name": "fga_pg",
+   "type": "Float64"
+  },
+  {
+   "name": "fg_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "gp_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "w_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "l_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "w_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "min_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "e_off_rating_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "off_rating_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "sp_work_off_rating_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "e_def_rating_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "def_rating_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "sp_work_def_rating_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "e_net_rating_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "net_rating_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "sp_work_net_rating_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "ast_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "ast_to_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "ast_ratio_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "oreb_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "dreb_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "reb_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "tm_tov_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "e_tov_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "efg_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "ts_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "usg_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "e_usg_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "e_pace_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pace_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "sp_work_pace_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pie_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "fgm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "fga_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "fgm_pg_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "fga_pg_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "fg_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "team_count",
+   "type": "Int64"
+  },
+  {
+   "name": "season",
+   "type": "Int32"
+  },
+  {
+   "name": "season_type",
+   "type": "String"
+  },
+  {
+   "name": "measure_type",
+   "type": "String"
+  },
+  {
+   "name": "per_mode",
+   "type": "String"
+  },
+  {
+   "name": "fg3m",
+   "type": "Float64"
+  },
+  {
+   "name": "fg3a",
+   "type": "Float64"
+  },
+  {
+   "name": "fg3_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "ftm",
+   "type": "Float64"
+  },
+  {
+   "name": "fta",
+   "type": "Float64"
+  },
+  {
+   "name": "ft_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "oreb",
+   "type": "Float64"
+  },
+  {
+   "name": "dreb",
+   "type": "Float64"
+  },
+  {
+   "name": "reb",
+   "type": "Float64"
+  },
+  {
+   "name": "ast",
+   "type": "Float64"
+  },
+  {
+   "name": "tov",
+   "type": "Float64"
+  },
+  {
+   "name": "stl",
+   "type": "Float64"
+  },
+  {
+   "name": "blk",
+   "type": "Float64"
+  },
+  {
+   "name": "blka",
+   "type": "Float64"
+  },
+  {
+   "name": "pf",
+   "type": "Float64"
+  },
+  {
+   "name": "pfd",
+   "type": "Float64"
+  },
+  {
+   "name": "pts",
+   "type": "Float64"
+  },
+  {
+   "name": "plus_minus",
+   "type": "Float64"
+  },
+  {
+   "name": "nba_fantasy_pts",
+   "type": "Float64"
+  },
+  {
+   "name": "dd2",
+   "type": "Int64"
+  },
+  {
+   "name": "td3",
+   "type": "Int64"
+  },
+  {
+   "name": "wnba_fantasy_pts",
+   "type": "Float64"
+  },
+  {
+   "name": "fg3m_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "fg3a_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "fg3_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "ftm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "fta_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "ft_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "oreb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "dreb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "reb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "ast_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "tov_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "stl_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "blk_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "blka_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pf_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pfd_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pts_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "plus_minus_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "nba_fantasy_pts_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "dd2_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "td3_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "wnba_fantasy_pts_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_dreb",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_stl",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_blk",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_pts_off_tov",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_pts_2nd_chance",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_pts_fb",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_pts_paint",
+   "type": "Float64"
+  },
+  {
+   "name": "def_ws",
+   "type": "Float64"
+  },
+  {
+   "name": "def_ws_raw",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_dreb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_stl_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_blk_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_pts_off_tov_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_pts_2nd_chance_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_pts_fb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_pts_paint_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "def_ws_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pts_off_tov",
+   "type": "Float64"
+  },
+  {
+   "name": "pts_2nd_chance",
+   "type": "Float64"
+  },
+  {
+   "name": "pts_fb",
+   "type": "Float64"
+  },
+  {
+   "name": "pts_paint",
+   "type": "Float64"
+  },
+  {
+   "name": "pts_off_tov_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pts_2nd_chance_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pts_fb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pts_paint_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_fga_2pt",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_fga_3pt",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pts_2pt",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pts_2pt_mr",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pts_3pt",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pts_fb",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pts_ft",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pts_off_tov",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pts_paint",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_ast_2pm",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_uast_2pm",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_ast_3pm",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_uast_3pm",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_ast_fgm",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_uast_fgm",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_fga_2pt_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_fga_3pt_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pts_2pt_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pts_2pt_mr_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pts_3pt_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pts_fb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pts_ft_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pts_off_tov_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pts_paint_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_ast_2pm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_uast_2pm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_ast_3pm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_uast_3pm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_ast_fgm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_uast_fgm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_fgm",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_fga",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_fg3m",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_fg3a",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_ftm",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_fta",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_oreb",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_reb",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_ast",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_tov",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_blka",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pf",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pfd",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pts",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_fgm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_fga_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_fg3m_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_fg3a_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_ftm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_fta_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_oreb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_reb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_ast_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_tov_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_blka_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pf_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pfd_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pts_rank",
+   "type": "Int64"
+  }
+ ],
+ "load_nba_stats_team_season_stats": [
+  {
+   "name": "team_id",
+   "type": "Int64"
+  },
+  {
+   "name": "team_name",
+   "type": "String"
+  },
+  {
+   "name": "gp",
+   "type": "Int64"
+  },
+  {
+   "name": "w",
+   "type": "Int64"
+  },
+  {
+   "name": "l",
+   "type": "Int64"
+  },
+  {
+   "name": "w_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "min",
+   "type": "Float64"
+  },
+  {
+   "name": "e_off_rating",
+   "type": "Float64"
+  },
+  {
+   "name": "off_rating",
+   "type": "Float64"
+  },
+  {
+   "name": "e_def_rating",
+   "type": "Float64"
+  },
+  {
+   "name": "def_rating",
+   "type": "Float64"
+  },
+  {
+   "name": "e_net_rating",
+   "type": "Float64"
+  },
+  {
+   "name": "net_rating",
+   "type": "Float64"
+  },
+  {
+   "name": "ast_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "ast_to",
+   "type": "Float64"
+  },
+  {
+   "name": "ast_ratio",
+   "type": "Float64"
+  },
+  {
+   "name": "oreb_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "dreb_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "reb_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "tm_tov_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "efg_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "ts_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "e_pace",
+   "type": "Float64"
+  },
+  {
+   "name": "pace",
+   "type": "Float64"
+  },
+  {
+   "name": "pace_per40",
+   "type": "Float64"
+  },
+  {
+   "name": "poss",
+   "type": "Int64"
+  },
+  {
+   "name": "pie",
+   "type": "Float64"
+  },
+  {
+   "name": "gp_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "w_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "l_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "w_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "min_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "off_rating_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "def_rating_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "net_rating_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "ast_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "ast_to_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "ast_ratio_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "oreb_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "dreb_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "reb_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "tm_tov_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "efg_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "ts_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pace_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pie_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "season",
+   "type": "Int32"
+  },
+  {
+   "name": "season_type",
+   "type": "String"
+  },
+  {
+   "name": "measure_type",
+   "type": "String"
+  },
+  {
+   "name": "per_mode",
+   "type": "String"
+  },
+  {
+   "name": "fgm",
+   "type": "Float64"
+  },
+  {
+   "name": "fga",
+   "type": "Float64"
+  },
+  {
+   "name": "fg_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "fg3m",
+   "type": "Float64"
+  },
+  {
+   "name": "fg3a",
+   "type": "Float64"
+  },
+  {
+   "name": "fg3_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "ftm",
+   "type": "Float64"
+  },
+  {
+   "name": "fta",
+   "type": "Float64"
+  },
+  {
+   "name": "ft_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "oreb",
+   "type": "Float64"
+  },
+  {
+   "name": "dreb",
+   "type": "Float64"
+  },
+  {
+   "name": "reb",
+   "type": "Float64"
+  },
+  {
+   "name": "ast",
+   "type": "Float64"
+  },
+  {
+   "name": "tov",
+   "type": "Float64"
+  },
+  {
+   "name": "stl",
+   "type": "Float64"
+  },
+  {
+   "name": "blk",
+   "type": "Float64"
+  },
+  {
+   "name": "blka",
+   "type": "Float64"
+  },
+  {
+   "name": "pf",
+   "type": "Float64"
+  },
+  {
+   "name": "pfd",
+   "type": "Float64"
+  },
+  {
+   "name": "pts",
+   "type": "Float64"
+  },
+  {
+   "name": "plus_minus",
+   "type": "Float64"
+  },
+  {
+   "name": "fgm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "fga_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "fg_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "fg3m_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "fg3a_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "fg3_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "ftm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "fta_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "ft_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "oreb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "dreb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "reb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "ast_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "tov_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "stl_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "blk_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "blka_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pf_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pfd_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pts_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "plus_minus_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_pts_off_tov",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_pts_2nd_chance",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_pts_fb",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_pts_paint",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_pts_off_tov_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_pts_2nd_chance_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_pts_fb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_pts_paint_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pts_off_tov",
+   "type": "Float64"
+  },
+  {
+   "name": "pts_2nd_chance",
+   "type": "Float64"
+  },
+  {
+   "name": "pts_fb",
+   "type": "Float64"
+  },
+  {
+   "name": "pts_paint",
+   "type": "Float64"
+  },
+  {
+   "name": "pts_off_tov_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pts_2nd_chance_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pts_fb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pts_paint_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_fgm",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_fga",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_fg_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_fg3m",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_fg3a",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_fg3_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_ftm",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_fta",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_ft_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_oreb",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_dreb",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_reb",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_ast",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_tov",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_stl",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_blk",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_blka",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_pf",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_pfd",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_pts",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_fgm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_fga_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_fg_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_fg3m_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_fg3a_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_fg3_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_ftm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_fta_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_ft_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_oreb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_dreb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_reb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_ast_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_tov_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_stl_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_blk_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_blka_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_pf_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_pfd_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_pts_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_fga_2pt",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_fga_3pt",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pts_2pt",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pts_2pt_mr",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pts_3pt",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pts_fb",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pts_ft",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pts_off_tov",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pts_paint",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_ast_2pm",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_uast_2pm",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_ast_3pm",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_uast_3pm",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_ast_fgm",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_uast_fgm",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_fga_2pt_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_fga_3pt_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pts_2pt_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pts_2pt_mr_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pts_3pt_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pts_fb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pts_ft_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pts_off_tov_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pts_paint_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_ast_2pm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_uast_2pm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_ast_3pm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_uast_3pm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_ast_fgm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_uast_fgm_rank",
+   "type": "Int64"
+  }
+ ],
+ "load_nba_stats_lineups": [
+  {
+   "name": "group_set",
+   "type": "String"
+  },
+  {
+   "name": "group_id",
+   "type": "String"
+  },
+  {
+   "name": "group_name",
+   "type": "String"
+  },
+  {
+   "name": "team_id",
+   "type": "Int64"
+  },
+  {
+   "name": "team_abbreviation",
+   "type": "String"
+  },
+  {
+   "name": "gp",
+   "type": "Int64"
+  },
+  {
+   "name": "w",
+   "type": "Int64"
+  },
+  {
+   "name": "l",
+   "type": "Int64"
+  },
+  {
+   "name": "w_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "min",
+   "type": "Float64"
+  },
+  {
+   "name": "e_off_rating",
+   "type": "Float64"
+  },
+  {
+   "name": "off_rating",
+   "type": "Float64"
+  },
+  {
+   "name": "e_def_rating",
+   "type": "Float64"
+  },
+  {
+   "name": "def_rating",
+   "type": "Float64"
+  },
+  {
+   "name": "e_net_rating",
+   "type": "Float64"
+  },
+  {
+   "name": "net_rating",
+   "type": "Float64"
+  },
+  {
+   "name": "ast_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "ast_to",
+   "type": "Float64"
+  },
+  {
+   "name": "ast_ratio",
+   "type": "Float64"
+  },
+  {
+   "name": "oreb_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "dreb_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "reb_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "tm_tov_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "efg_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "ts_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "e_pace",
+   "type": "Float64"
+  },
+  {
+   "name": "pace",
+   "type": "Float64"
+  },
+  {
+   "name": "pace_per40",
+   "type": "Float64"
+  },
+  {
+   "name": "poss",
+   "type": "Int64"
+  },
+  {
+   "name": "pie",
+   "type": "Float64"
+  },
+  {
+   "name": "gp_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "w_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "l_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "w_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "min_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "off_rating_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "def_rating_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "net_rating_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "ast_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "ast_to_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "ast_ratio_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "oreb_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "dreb_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "reb_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "tm_tov_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "efg_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "ts_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pace_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pie_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "sum_time_played",
+   "type": "Int64"
+  },
+  {
+   "name": "season",
+   "type": "Int32"
+  },
+  {
+   "name": "season_type",
+   "type": "String"
+  },
+  {
+   "name": "measure_type",
+   "type": "String"
+  },
+  {
+   "name": "per_mode",
+   "type": "String"
+  },
+  {
+   "name": "fgm",
+   "type": "Float64"
+  },
+  {
+   "name": "fga",
+   "type": "Float64"
+  },
+  {
+   "name": "fg_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "fg3m",
+   "type": "Float64"
+  },
+  {
+   "name": "fg3a",
+   "type": "Float64"
+  },
+  {
+   "name": "fg3_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "ftm",
+   "type": "Float64"
+  },
+  {
+   "name": "fta",
+   "type": "Float64"
+  },
+  {
+   "name": "ft_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "oreb",
+   "type": "Float64"
+  },
+  {
+   "name": "dreb",
+   "type": "Float64"
+  },
+  {
+   "name": "reb",
+   "type": "Float64"
+  },
+  {
+   "name": "ast",
+   "type": "Float64"
+  },
+  {
+   "name": "tov",
+   "type": "Float64"
+  },
+  {
+   "name": "stl",
+   "type": "Float64"
+  },
+  {
+   "name": "blk",
+   "type": "Float64"
+  },
+  {
+   "name": "blka",
+   "type": "Float64"
+  },
+  {
+   "name": "pf",
+   "type": "Float64"
+  },
+  {
+   "name": "pfd",
+   "type": "Float64"
+  },
+  {
+   "name": "pts",
+   "type": "Float64"
+  },
+  {
+   "name": "plus_minus",
+   "type": "Float64"
+  },
+  {
+   "name": "fgm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "fga_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "fg_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "fg3m_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "fg3a_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "fg3_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "ftm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "fta_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "ft_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "oreb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "dreb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "reb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "ast_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "tov_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "stl_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "blk_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "blka_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pf_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pfd_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pts_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "plus_minus_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pts_off_tov",
+   "type": "Float64"
+  },
+  {
+   "name": "pts_2nd_chance",
+   "type": "Float64"
+  },
+  {
+   "name": "pts_fb",
+   "type": "Float64"
+  },
+  {
+   "name": "pts_paint",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_pts_off_tov",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_pts_2nd_chance",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_pts_fb",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_pts_paint",
+   "type": "Float64"
+  },
+  {
+   "name": "pts_off_tov_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pts_2nd_chance_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pts_fb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pts_paint_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_pts_off_tov_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_pts_2nd_chance_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_pts_fb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_pts_paint_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_fgm",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_fga",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_fg_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_fg3m",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_fg3a",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_fg3_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_ftm",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_fta",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_ft_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_oreb",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_dreb",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_reb",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_ast",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_tov",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_stl",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_blk",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_blka",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_pf",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_pfd",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_pts",
+   "type": "Float64"
+  },
+  {
+   "name": "opp_fgm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_fga_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_fg_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_fg3m_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_fg3a_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_fg3_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_ftm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_fta_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_ft_pct_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_oreb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_dreb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_reb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_ast_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_tov_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_stl_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_blk_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_blka_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_pf_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_pfd_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "opp_pts_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_fga_2pt",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_fga_3pt",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pts_2pt",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pts_2pt_mr",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pts_3pt",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pts_fb",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pts_ft",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pts_off_tov",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_pts_paint",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_ast_2pm",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_uast_2pm",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_ast_3pm",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_uast_3pm",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_ast_fgm",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_uast_fgm",
+   "type": "Float64"
+  },
+  {
+   "name": "pct_fga_2pt_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_fga_3pt_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pts_2pt_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pts_2pt_mr_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pts_3pt_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pts_fb_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pts_ft_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pts_off_tov_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_pts_paint_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_ast_2pm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_uast_2pm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_ast_3pm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_uast_3pm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_ast_fgm_rank",
+   "type": "Int64"
+  },
+  {
+   "name": "pct_uast_fgm_rank",
+   "type": "Int64"
+  }
+ ],
+ "load_nba_stats_rosters": [
+  {
+   "name": "team_id",
+   "type": "Int64"
+  },
+  {
+   "name": "season",
+   "type": "Int32"
+  },
+  {
+   "name": "league_id",
+   "type": "String"
+  },
+  {
+   "name": "player",
+   "type": "String"
+  },
+  {
+   "name": "nickname",
+   "type": "String"
+  },
+  {
+   "name": "player_slug",
+   "type": "String"
+  },
+  {
+   "name": "num",
+   "type": "String"
+  },
+  {
+   "name": "position",
+   "type": "String"
+  },
+  {
+   "name": "height",
+   "type": "String"
+  },
+  {
+   "name": "weight",
+   "type": "String"
+  },
+  {
+   "name": "birth_date",
+   "type": "String"
+  },
+  {
+   "name": "age",
+   "type": "Float64"
+  },
+  {
+   "name": "exp",
+   "type": "String"
+  },
+  {
+   "name": "school",
+   "type": "String"
+  },
+  {
+   "name": "player_id",
+   "type": "Int64"
+  },
+  {
+   "name": "how_acquired",
+   "type": "String"
+  },
+  {
+   "name": "season_type",
+   "type": "String"
+  }
+ ],
+ "load_nba_stats_coaches": [
+  {
+   "name": "team_id",
+   "type": "Int64"
+  },
+  {
+   "name": "season",
+   "type": "Int32"
+  },
+  {
+   "name": "coach_id",
+   "type": "Int64"
+  },
+  {
+   "name": "first_name",
+   "type": "String"
+  },
+  {
+   "name": "last_name",
+   "type": "String"
+  },
+  {
+   "name": "coach_name",
+   "type": "String"
+  },
+  {
+   "name": "is_assistant",
+   "type": "Int64"
+  },
+  {
+   "name": "coach_type",
+   "type": "String"
+  },
+  {
+   "name": "sort_sequence",
+   "type": "Int64"
+  },
+  {
+   "name": "sub_sort_sequence",
+   "type": "Int64"
+  },
+  {
+   "name": "season_type",
+   "type": "String"
+  }
+ ],
+ "load_nba_stats_schedules": [
+  {
+   "name": "season_id",
+   "type": "String"
+  },
+  {
+   "name": "team_id",
+   "type": "Int64"
+  },
+  {
+   "name": "team_abbreviation",
+   "type": "String"
+  },
+  {
+   "name": "team_name",
+   "type": "String"
+  },
+  {
+   "name": "game_id",
+   "type": "String"
+  },
+  {
+   "name": "game_date",
+   "type": "String"
+  },
+  {
+   "name": "matchup",
+   "type": "String"
+  },
+  {
+   "name": "wl",
+   "type": "String"
+  },
+  {
+   "name": "min",
+   "type": "Int64"
+  },
+  {
+   "name": "fgm",
+   "type": "Int64"
+  },
+  {
+   "name": "fga",
+   "type": "Int64"
+  },
+  {
+   "name": "fg_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "fg3m",
+   "type": "Int64"
+  },
+  {
+   "name": "fg3a",
+   "type": "Int64"
+  },
+  {
+   "name": "fg3_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "ftm",
+   "type": "Int64"
+  },
+  {
+   "name": "fta",
+   "type": "Int64"
+  },
+  {
+   "name": "ft_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "oreb",
+   "type": "Int64"
+  },
+  {
+   "name": "dreb",
+   "type": "Int64"
+  },
+  {
+   "name": "reb",
+   "type": "Int64"
+  },
+  {
+   "name": "ast",
+   "type": "Int64"
+  },
+  {
+   "name": "stl",
+   "type": "Int64"
+  },
+  {
+   "name": "blk",
+   "type": "Int64"
+  },
+  {
+   "name": "tov",
+   "type": "Int64"
+  },
+  {
+   "name": "pf",
+   "type": "Int64"
+  },
+  {
+   "name": "pts",
+   "type": "Int64"
+  },
+  {
+   "name": "plus_minus",
+   "type": "Int64"
+  },
+  {
+   "name": "video_available",
+   "type": "Int64"
+  },
+  {
+   "name": "season",
+   "type": "Int32"
+  },
+  {
+   "name": "season_type",
+   "type": "String"
+  }
+ ],
+ "load_nba_stats_player_game_logs": [
+  {
+   "name": "season_id",
+   "type": "String"
+  },
+  {
+   "name": "team_id",
+   "type": "Int64"
+  },
+  {
+   "name": "team_abbreviation",
+   "type": "String"
+  },
+  {
+   "name": "team_name",
+   "type": "String"
+  },
+  {
+   "name": "game_id",
+   "type": "String"
+  },
+  {
+   "name": "game_date",
+   "type": "String"
+  },
+  {
+   "name": "matchup",
+   "type": "String"
+  },
+  {
+   "name": "wl",
+   "type": "String"
+  },
+  {
+   "name": "min",
+   "type": "Int64"
+  },
+  {
+   "name": "fgm",
+   "type": "Int64"
+  },
+  {
+   "name": "fga",
+   "type": "Int64"
+  },
+  {
+   "name": "fg_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "fg3m",
+   "type": "Int64"
+  },
+  {
+   "name": "fg3a",
+   "type": "Int64"
+  },
+  {
+   "name": "fg3_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "ftm",
+   "type": "Int64"
+  },
+  {
+   "name": "fta",
+   "type": "Int64"
+  },
+  {
+   "name": "ft_pct",
+   "type": "Float64"
+  },
+  {
+   "name": "oreb",
+   "type": "Int64"
+  },
+  {
+   "name": "dreb",
+   "type": "Int64"
+  },
+  {
+   "name": "reb",
+   "type": "Int64"
+  },
+  {
+   "name": "ast",
+   "type": "Int64"
+  },
+  {
+   "name": "stl",
+   "type": "Int64"
+  },
+  {
+   "name": "blk",
+   "type": "Int64"
+  },
+  {
+   "name": "tov",
+   "type": "Int64"
+  },
+  {
+   "name": "pf",
+   "type": "Int64"
+  },
+  {
+   "name": "pts",
+   "type": "Int64"
+  },
+  {
+   "name": "plus_minus",
+   "type": "Int64"
+  },
+  {
+   "name": "video_available",
+   "type": "Int64"
+  },
+  {
+   "name": "season",
+   "type": "Int32"
+  },
+  {
+   "name": "season_type",
+   "type": "String"
+  }
+ ],
+ "load_nba_stats_pbp": [
+  {
+   "name": "action_number",
+   "type": "Int64"
+  },
+  {
+   "name": "clock",
+   "type": "String"
+  },
+  {
+   "name": "period",
+   "type": "Int64"
+  },
+  {
+   "name": "team_id",
+   "type": "Int64"
+  },
+  {
+   "name": "team_tricode",
+   "type": "String"
+  },
+  {
+   "name": "person_id",
+   "type": "Int64"
+  },
+  {
+   "name": "player_name",
+   "type": "String"
+  },
+  {
+   "name": "player_name_i",
+   "type": "String"
+  },
+  {
+   "name": "x_legacy",
+   "type": "Int64"
+  },
+  {
+   "name": "y_legacy",
+   "type": "Int64"
+  },
+  {
+   "name": "shot_distance",
+   "type": "Int64"
+  },
+  {
+   "name": "shot_result",
+   "type": "String"
+  },
+  {
+   "name": "is_field_goal",
+   "type": "Int64"
+  },
+  {
+   "name": "score_home",
+   "type": "String"
+  },
+  {
+   "name": "score_away",
+   "type": "String"
+  },
+  {
+   "name": "points_total",
+   "type": "Int64"
+  },
+  {
+   "name": "location",
+   "type": "String"
+  },
+  {
+   "name": "description",
+   "type": "String"
+  },
+  {
+   "name": "action_type",
+   "type": "String"
+  },
+  {
+   "name": "sub_type",
+   "type": "String"
+  },
+  {
+   "name": "video_available",
+   "type": "Int64"
+  },
+  {
+   "name": "shot_value",
+   "type": "Int64"
+  },
+  {
+   "name": "action_id",
+   "type": "Int64"
+  },
+  {
+   "name": "game_id",
+   "type": "String"
+  },
+  {
+   "name": "season",
+   "type": "Int32"
+  }
+ ],
+ "load_nba_stats_game_rosters": [
+  {
+   "name": "player_id",
+   "type": "Int64"
+  },
+  {
+   "name": "first_name",
+   "type": "String"
+  },
+  {
+   "name": "last_name",
+   "type": "String"
+  },
+  {
+   "name": "jersey_num",
+   "type": "String"
+  },
+  {
+   "name": "team_id",
+   "type": "Int64"
+  },
+  {
+   "name": "team_city",
+   "type": "String"
+  },
+  {
+   "name": "team_name",
+   "type": "String"
+  },
+  {
+   "name": "team_abbreviation",
+   "type": "String"
+  },
+  {
+   "name": "season",
+   "type": "Int32"
+  },
+  {
+   "name": "game_id",
+   "type": "String"
+  }
+ ],
+ "load_nba_stats_officials": [
+  {
+   "name": "official_id",
+   "type": "Int64"
+  },
+  {
+   "name": "first_name",
+   "type": "String"
+  },
+  {
+   "name": "last_name",
+   "type": "String"
+  },
+  {
+   "name": "jersey_num",
+   "type": "String"
+  },
+  {
+   "name": "season",
+   "type": "Int32"
+  },
+  {
+   "name": "game_id",
+   "type": "String"
+  }
+ ],
+ "load_nba_stats_player_boxscores": [
+  {
+   "name": "team_id",
+   "type": "Int64"
+  },
+  {
+   "name": "team_name",
+   "type": "String"
+  },
+  {
+   "name": "team_tricode",
+   "type": "String"
+  },
+  {
+   "name": "side",
+   "type": "String"
+  },
+  {
+   "name": "person_id",
+   "type": "Int64"
+  },
+  {
+   "name": "first_name",
+   "type": "String"
+  },
+  {
+   "name": "family_name",
+   "type": "String"
+  },
+  {
+   "name": "name_i",
+   "type": "String"
+  },
+  {
+   "name": "player_slug",
+   "type": "String"
+  },
+  {
+   "name": "position",
+   "type": "String"
+  },
+  {
+   "name": "comment",
+   "type": "String"
+  },
+  {
+   "name": "jersey_num",
+   "type": "String"
+  },
+  {
+   "name": "minutes",
+   "type": "String"
+  },
+  {
+   "name": "field_goals_made",
+   "type": "Int64"
+  },
+  {
+   "name": "field_goals_attempted",
+   "type": "Int64"
+  },
+  {
+   "name": "field_goals_percentage",
+   "type": "Float64"
+  },
+  {
+   "name": "three_pointers_made",
+   "type": "Int64"
+  },
+  {
+   "name": "three_pointers_attempted",
+   "type": "Int64"
+  },
+  {
+   "name": "three_pointers_percentage",
+   "type": "Float64"
+  },
+  {
+   "name": "free_throws_made",
+   "type": "Int64"
+  },
+  {
+   "name": "free_throws_attempted",
+   "type": "Int64"
+  },
+  {
+   "name": "free_throws_percentage",
+   "type": "Float64"
+  },
+  {
+   "name": "rebounds_offensive",
+   "type": "Int64"
+  },
+  {
+   "name": "rebounds_defensive",
+   "type": "Int64"
+  },
+  {
+   "name": "rebounds_total",
+   "type": "Int64"
+  },
+  {
+   "name": "assists",
+   "type": "Int64"
+  },
+  {
+   "name": "steals",
+   "type": "Int64"
+  },
+  {
+   "name": "blocks",
+   "type": "Int64"
+  },
+  {
+   "name": "turnovers",
+   "type": "Int64"
+  },
+  {
+   "name": "fouls_personal",
+   "type": "Int64"
+  },
+  {
+   "name": "points",
+   "type": "Int64"
+  },
+  {
+   "name": "plus_minus_points",
+   "type": "Float64"
+  },
+  {
+   "name": "game_id",
+   "type": "String"
+  },
+  {
+   "name": "season",
+   "type": "Int32"
+  }
+ ],
+ "load_nba_stats_team_boxscores": [
+  {
+   "name": "team_id",
+   "type": "Int64"
+  },
+  {
+   "name": "team_name",
+   "type": "String"
+  },
+  {
+   "name": "team_tricode",
+   "type": "String"
+  },
+  {
+   "name": "side",
+   "type": "String"
+  },
+  {
+   "name": "minutes",
+   "type": "String"
+  },
+  {
+   "name": "field_goals_made",
+   "type": "Int64"
+  },
+  {
+   "name": "field_goals_attempted",
+   "type": "Int64"
+  },
+  {
+   "name": "field_goals_percentage",
+   "type": "Float64"
+  },
+  {
+   "name": "three_pointers_made",
+   "type": "Int64"
+  },
+  {
+   "name": "three_pointers_attempted",
+   "type": "Int64"
+  },
+  {
+   "name": "three_pointers_percentage",
+   "type": "Float64"
+  },
+  {
+   "name": "free_throws_made",
+   "type": "Int64"
+  },
+  {
+   "name": "free_throws_attempted",
+   "type": "Int64"
+  },
+  {
+   "name": "free_throws_percentage",
+   "type": "Float64"
+  },
+  {
+   "name": "rebounds_offensive",
+   "type": "Int64"
+  },
+  {
+   "name": "rebounds_defensive",
+   "type": "Int64"
+  },
+  {
+   "name": "rebounds_total",
+   "type": "Int64"
+  },
+  {
+   "name": "assists",
+   "type": "Int64"
+  },
+  {
+   "name": "steals",
+   "type": "Int64"
+  },
+  {
+   "name": "blocks",
+   "type": "Int64"
+  },
+  {
+   "name": "turnovers",
+   "type": "Int64"
+  },
+  {
+   "name": "fouls_personal",
+   "type": "Int64"
+  },
+  {
+   "name": "points",
+   "type": "Int64"
+  },
+  {
+   "name": "plus_minus_points",
+   "type": "Float64"
+  },
+  {
+   "name": "game_id",
+   "type": "String"
+  },
+  {
+   "name": "season",
+   "type": "Int32"
+  }
+ ],
+ "load_nba_stats_shots": [
+  {
+   "name": "game_id",
+   "type": "String"
+  },
+  {
+   "name": "season",
+   "type": "Int32"
+  },
+  {
+   "name": "period",
+   "type": "Int64"
+  },
+  {
+   "name": "clock",
+   "type": "String"
+  },
+  {
+   "name": "team_id",
+   "type": "Int64"
+  },
+  {
+   "name": "team_tricode",
+   "type": "String"
+  },
+  {
+   "name": "person_id",
+   "type": "Int64"
+  },
+  {
+   "name": "player_name",
+   "type": "String"
+  },
+  {
+   "name": "action_type",
+   "type": "String"
+  },
+  {
+   "name": "sub_type",
+   "type": "String"
+  },
+  {
+   "name": "shot_result",
+   "type": "String"
+  },
+  {
+   "name": "shot_value",
+   "type": "Int64"
+  },
+  {
+   "name": "shot_distance",
+   "type": "Int64"
+  },
+  {
+   "name": "x_legacy",
+   "type": "Int64"
+  },
+  {
+   "name": "y_legacy",
+   "type": "Int64"
+  },
+  {
+   "name": "description",
+   "type": "String"
+  },
+  {
+   "name": "score_home",
+   "type": "String"
+  },
+  {
+   "name": "score_away",
+   "type": "String"
+  }
+ ]
+}
