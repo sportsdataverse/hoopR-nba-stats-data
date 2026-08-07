@@ -36,3 +36,5 @@ python/build_out/
 **/.superpowers/
 .venv/
 **/.venv/
+v3_staging/
+.nba_pipeline_cache/
