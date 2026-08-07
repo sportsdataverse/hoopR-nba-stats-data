@@ -8,17 +8,30 @@ ecosystem. It reads the committed raw JSON store in the sibling
 commits + publishes them. Output is consumed by `hoopR`'s `load_nba_*()`
 family via `sportsdataverse-data` releases.
 
-> **It does not scrape, and it is no longer R.** The producer is
+> **It does not scrape. Python is the primary producer** —
 > `python/nba_data_build/`. `scripts/daily_nba_stats_scraper.sh` was deleted at
-> the Python cutover.
+> the Python cutover and the daily job is Python-only.
 >
-> `R/` is **not** empty, despite what this file claimed until 2026-08-06:
-> `nba_stats_01_scrape_schedules.R`, `02_scrape_pbp.R`,
+> **`R/` is neither empty nor dead — DO NOT DELETE IT.** This file claimed it
+> was emptied (wrong: the six files are tracked), and a 2026-08-06 correction
+> then called them "dead code pending a deliberate delete" (also wrong, and
+> more dangerous). The real history: `0b46970b` retired the R chain,
+> `960bdadf` **reverted that** — *"restore the R stage chain as the
+> methodological twin."* Standing policy (2026-08-03) is that a `-data` repo
+> carries BOTH pipelines: Python primary and getting the work, R maintained
+> alongside as the methodological/language equivalent, both moving together.
+>
+> So `nba_stats_01_scrape_schedules.R`, `02_scrape_pbp.R`,
 > `02_scrape_pbp_to_lineup.R`, `03_scrape_boxscoretraditionalv2.R`,
-> `nba_stats_draftcombinedrillresults.R` and `utils.R` are all still tracked.
-> They are **orphaned** — no script, driver, or workflow invokes them, and they
-> are not part of the pipeline. Treat them as dead code pending a deliberate
-> delete, not as stages. Do not wire anything to them.
+> `nba_stats_draftcombinedrillresults.R` and `utils.R` are the retained R side.
+> No workflow invokes them, and that is the intended state — keeping the twin
+> preserves the METHOD in a second language, it does not re-schedule R. Not
+> being on a cron is not evidence of deadness. If you add or remove a dataset
+> on the Python side, the R side moves with it.
+>
+> **Never run an R stage to inspect its output**: they call
+> `sportsdataverse_save()` with no dry-run gate and publish to the LIVE
+> release.
 >
 > `hoopR-nba-stats-raw` is **not a placeholder**: it holds the 1996–2026 raw
 > capture this repo reads.

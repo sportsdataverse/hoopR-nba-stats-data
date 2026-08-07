@@ -1,9 +1,18 @@
 """Numbered-stage inventory gate.
 
-This repo has NO R dataset chain — the R/ directory holds scrape stages and
-helpers, not dataset builders — so there is nothing to pair across languages.
-The contract here is therefore Python-internal: the ``DATASETS`` registry, the
-numbered shims beside the package, and the stage numbers must agree.
+The R/ directory holds scrape stages and helpers, not dataset builders, so
+there is no R side to pair dataset-for-dataset against *yet*. The contract here
+is therefore Python-internal: the ``DATASETS`` registry, the numbered shims
+beside the package, and the stage numbers must agree.
+
+Read that as a GAP, not a settled state. Standing policy (2026-08-03) is that a
+``-data`` repo carries both pipelines — Python primary, R maintained as the
+methodological equivalent — and a dataset that exists on only one side is a
+parity gap to close, not a simplification. R chains in this family were retired
+outright under an earlier rule and had to be restored, so do NOT read the
+absence of an R *dataset* chain as licence to delete whatever R is present.
+If an R dataset chain is added, this gate should gain an R↔Python
+dataset-parity sibling rather than being replaced.
 
 Why it exists: the registry is the thing the build actually iterates, but the
 directory listing is what a human reads. When those two drift, the listing
