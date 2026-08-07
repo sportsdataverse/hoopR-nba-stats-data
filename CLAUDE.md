@@ -31,6 +31,7 @@ python -m nba_data_build.reshape --root <hoopR-nba-stats-raw>/nba_stats/json --s
 bash scripts/hydrate_raw_store.sh          # clone-free hydrate of the raw store
 bash scripts/leaguedash_backfill.sh        # checkpointed; .done_<season> on rc 0 only
 bash scripts/run_impact_backfill.sh        # nba_player_impact full-history backfill
+bash scripts/run_v3_backfill.sh -s 1997 -e 2026   # Program V v3 backfill (resumable)
 python python/warm_possession_cache.py 2000:2024   # warm the possession cache
 ```
 
@@ -106,6 +107,20 @@ is a valid cadence but must be stated explicitly.
   one-off-looking name: `scripts/P0_DROPLET_RUNBOOK.md` §4a "Parallel cache warm"
   runs it to warm the per-game possession cache so the sequential impact build
   (§4b) is CPU-only.
+- `scripts/run_v3_backfill.sh` — Program V (design §10) v3 dataset backfill:
+  builds `schedule`/`pbp`/`possessions`/`lineups` per season from the committed
+  raw store into `v3_staging/` (which never clobbers the live tree). Resumable —
+  a season whose outputs exist is skipped unless `--rebuild`. Operator-run, not
+  wired to a workflow: it is a multi-hour job and its output is gated before
+  adoption. Verify a run with the §10.3 diff gate, which reconciles v3 against
+  legacy where both exist and against the raw store where they don't:
+
+  ```sh
+  bash scripts/run_v3_backfill.sh -s 1997 -e 2026    # prints its own tail -f watch command
+  PYTHONPATH=python python/.venv/Scripts/python.exe -m nba_data_build.v3_gate -s 1997 -e 2026
+  ```
+
+  The D26d tag swap (retiring the `_v3` tags) is a separate post-gate decision.
 
 ## Gotchas — NBA Stats headers / rate-limit / proxy
 

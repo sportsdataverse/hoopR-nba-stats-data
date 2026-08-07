@@ -53,8 +53,13 @@ python -m nba_data_build.reshape --root <hoopR-nba-stats-raw>/nba_stats/json --s
 bash scripts/hydrate_raw_store.sh                  # clone-free hydrate of the raw store
 bash scripts/leaguedash_backfill.sh                # checkpointed; .done_<season> on rc 0
 bash scripts/run_impact_backfill.sh                # nba_player_impact full-history
+bash scripts/run_v3_backfill.sh -s 1997 -e 2026    # Program V v3 backfill (resumable)
 python python/warm_possession_cache.py 2000:2024   # warm the possession cache
 ```
+
+`scripts/run_v3_backfill.sh` stages v3 `schedule`/`pbp`/`possessions`/`lineups`
+into `v3_staging/` (never clobbering the live tree) and is verified by
+`python -m nba_data_build.v3_gate`; it is operator-run, not workflow-wired.
 
 `HOOPR_NBA_STATS_RAW_ROOT` overrides the raw store (a local checkout or a
 raw.githubusercontent URL); `HOOPR_NBA_STATS_PYBIN` the interpreter. The driver
