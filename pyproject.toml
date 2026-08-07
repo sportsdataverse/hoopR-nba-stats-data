@@ -11,6 +11,8 @@ dependencies = [
     "scipy>=1.10",
     "tqdm>=4.66",
     "curl-cffi>=0.15.0",
+    "pydantic>=2",
+    "pyyaml>=6",
 ]
 
 [dependency-groups]
@@ -41,3 +43,8 @@ line-length = 100
 select = ["E4", "E7", "E9", "F", "I"]
 # Explicit polars bool masks (pl.col(...) == True) are the project convention.
 ignore = ["E712"]
+
+[tool.ruff.lint.per-file-ignores]
+# Generated D39 models mirror the published column names verbatim; standings
+# ships literal `w` / `l` win-loss columns.
+"python/nba_data_build/models.py" = ["E741"]
