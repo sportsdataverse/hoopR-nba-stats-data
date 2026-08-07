@@ -1,0 +1,61 @@
+# `officials`
+
+NBA Stats Officials from hoopR data repository — `boxscoresummaryv2` (game-level).
+
+| | |
+|---|---|
+| **Builder** | [`python/nba_stats_12_officials_creation.py`](../../python/nba_stats_12_officials_creation.py) |
+| **Release tag** | [`nba_stats_officials`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_officials) |
+| **File stem** | `officials_{season}.{parquet,csv,rds}` |
+| **Seasons built** | 1996-97–2025-26 (28 seasons, non-contiguous) |
+| **Last published** | 2026-07-24 (newest release asset) |
+| **Tag created** | 2026-07-24 |
+| **Release assets** | 90 |
+
+## Automation
+
+`.github/workflows/daily_nba_stats.yml` — nightly scrape + reshape + publish. Runs `scripts/daily_nba_stats_python_processor.sh`; the stage-99 schedule master is restamped at the end of every run.
+
+## Columns
+
+| col_name | type | description |
+|---|---|---|
+| `official_id` | Int64 | stats.nba.com person id of the game official. |
+| `first_name` | String |  |
+| `last_name` | String |  |
+| `jersey_num` | String |  |
+| `season` | Int64 | Season the row belongs to. Stats-API span form for NBA ("2023-24") in the released season assets; the schedule master carries the same span form. |
+| `game_id` | String | stats.nba.com game id, zero-padded 10-char string ("0022300001"; the "00" prefix is the NBA league id, so the id must never round-trip through int). |
+
+## Coverage
+
+| season | games built | games known |
+|---:|---:|---:|
+| 1996-97 | 1,261 | 1,261 |
+| 1997-98 | 1,260 | 1,260 |
+| 1998-99 | 791 | 791 |
+| 1999-00 | 1,264 | 1,264 |
+| 2000-01 | 1,260 | 1,260 |
+| 2001-02 | 1,260 | 1,260 |
+| 2002-03 | 1,277 | 1,277 |
+| 2003-04 | 1,271 | 1,271 |
+| 2004-05 | 1,314 | 1,314 |
+| 2005-06 | 1,319 | 1,319 |
+| 2006-07 | 1,309 | 1,309 |
+| 2007-08 | 1,316 | 1,316 |
+| 2008-09 | 1,315 | 1,315 |
+| 2009-10 | 1,312 | 1,312 |
+| 2010-11 | 1,311 | 1,311 |
+| 2011-12 | 1,074 | 1,074 |
+| 2012-13 | 1,314 | 1,314 |
+| 2013-14 | 1,319 | 1,319 |
+| 2014-15 | 1,311 | 1,311 |
+| 2015-16 | 1,316 | 1,316 |
+| 2016-17 | 1,309 | 1,309 |
+| 2017-18 | 1,312 | 1,312 |
+| 2018-19 | 1,312 | 1,312 |
+| 2019-20 | 1,142 | 1,142 |
+| 2020-21 | 1,165 | 1,165 |
+| 2021-22 | 1,317 | 1,317 |
+| 2022-23 | 1,230 | 1,230 |
+| 2025-26 | 1,308 | 1,400 |

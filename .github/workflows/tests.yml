@@ -24,6 +24,9 @@ jobs:
             python
             tests
             scripts
+            docs
+            README.md
+            CLAUDE.md
             pyproject.toml
             uv.lock
           sparse-checkout-cone-mode: false
@@ -46,6 +49,12 @@ jobs:
 
       - name: Lint
         run: uv run ruff check python tests
+
+      - name: Generated docs are in sync
+        # --no-live skips the `gh release view` calls; the check ignores the
+        # volatile publish-status and coverage values, so it compares structure
+        # and columns only.
+        run: uv run python -m nba_data_build.docs --check --no-live
 
       - name: Shell syntax
         # scripts/ is bash-only by convention and the scrape entry points are

@@ -1,0 +1,37 @@
+# `coaches`
+
+NBA Stats Coaches from hoopR data repository — `commonteamroster` (season-level).
+
+| | |
+|---|---|
+| **Builder** | [`python/nba_stats_06_coaches_creation.py`](../../python/nba_stats_06_coaches_creation.py) |
+| **Release tag** | [`nba_stats_coaches`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_coaches) |
+| **File stem** | `coaches_{season}.{parquet,csv,rds}` |
+| **Seasons built** | — |
+| **Last published** | 2026-07-24 (newest release asset) |
+| **Tag created** | 2026-07-24 |
+| **Release assets** | 90 |
+
+## Automation
+
+`.github/workflows/daily_nba_stats.yml` — nightly scrape + reshape + publish. Runs `scripts/daily_nba_stats_python_processor.sh`; the stage-99 schedule master is restamped at the end of every run.
+
+## Columns
+
+| col_name | type | description |
+|---|---|---|
+| `team_id` | Int64 | stats.nba.com team id (Int64, e.g. 1610612737 = Atlanta Hawks). |
+| `season` | Int64 | Season the row belongs to. Stats-API span form for NBA ("2023-24") in the released season assets; the schedule master carries the same span form. |
+| `coach_id` | Int64 |  |
+| `first_name` | String |  |
+| `last_name` | String |  |
+| `coach_name` | String |  |
+| `is_assistant` | Int64 |  |
+| `coach_type` | String |  |
+| `sort_sequence` | Int64 |  |
+| `sub_sort_sequence` | Int64 |  |
+| `season_type` | String | Season type the capture was made under ("Regular Season", "Playoffs", ...). |
+
+## Coverage
+
+_Coverage is tracked per release asset on [`nba_stats_coaches`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_coaches)._
