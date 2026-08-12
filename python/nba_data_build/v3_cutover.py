@@ -658,6 +658,13 @@ def render_manifest(
         lines += ["", "| season:family | verdict | detail |", "|---|---|---|"]
         for f in blocking_findings:
             lines.append(f"| `{f['season']}:{f['family']}` | {f['verdict']} | {f['detail']} |")
+        lines += [
+            "",
+            "Not every blocker is allowlistable. A finding whose `missing_in_v3` games are "
+            "absent from the **raw store** is a capture gap, not a data disagreement: there "
+            "is nothing to compare and nothing to explain, so it is fixed by re-capturing "
+            "the season, never by `--allow-diff`.",
+        ]
 
     lines += ["", "### Allowlisted (explained) diffs", ""]
     if allowlist:
