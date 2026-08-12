@@ -1,0 +1,26 @@
+{
+ "meta": {
+  "version": 1,
+  "request": "http://nba.cloud/games/0022400147/boxscoretraditional?Format=json",
+  "time": "2025-02-17T16:59:45.5945Z"
+ },
+ "boxScoreTraditional": {
+  "gameId": "0022400147",
+  "awayTeamId": 1610612748,
+  "homeTeamId": 1610612764,
+  "homeTeam": {
+   "teamId": 1610612764,
+   "teamCity": "Washington",
+   "teamName": "Wizards",
+   "teamTricode": "WAS",
+   "teamSlug": "wizards"
+  },
+  "awayTeam": {
+   "teamId": 1610612748,
+   "teamCity": "Miami",
+   "teamName": "Heat",
+   "teamTricode": "MIA",
+   "teamSlug": "heat"
+  }
+ }
+}

@@ -1,0 +1,26 @@
+{
+ "meta": {
+  "version": 1,
+  "request": "http://nba.cloud/games/0022401230/boxscoretraditional?Format=json",
+  "time": "2025-02-17T17:01:02.12Z"
+ },
+ "boxScoreTraditional": {
+  "gameId": "0022401230",
+  "awayTeamId": 1610612745,
+  "homeTeamId": 1610612760,
+  "homeTeam": {
+   "teamId": 1610612760,
+   "teamCity": "Oklahoma City",
+   "teamName": "Thunder",
+   "teamTricode": "OKC",
+   "teamSlug": "thunder"
+  },
+  "awayTeam": {
+   "teamId": 1610612745,
+   "teamCity": "Houston",
+   "teamName": "Rockets",
+   "teamTricode": "HOU",
+   "teamSlug": "rockets"
+  }
+ }
+}

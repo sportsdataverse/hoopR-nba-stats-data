@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import polars as pl
@@ -62,6 +63,45 @@ def test_schedule_from_gamelog_pivots_home_away(raw_root: Path) -> None:
     assert reg["season"] == 2006 and reg["season_type"] == "regular-season"
     po = df.filter(pl.col("game_id") == "0040500001").row(0, named=True)
     assert po["season_type"] == "playoffs" and po["home_wl"] == "L"
+
+
+#: Real neutral-site games (both leaguegamelog rows read ``TEAM @ OPP``), with the
+#: official home side taken from the committed boxscoretraditionalv3 slices.
+#: game_id -> (home_abbr, home_pts, away_abbr, away_pts)
+_NEUTRAL_SITE = {
+    "0022400147": ("WAS", 98, "MIA", 118),  # Mexico City Game 2024
+    "0022401230": ("OKC", 111, "HOU", 96),  # NBA Cup final, Las Vegas
+}
+
+FIXTURE_RAW = Path(__file__).parent / "fixtures" / "raw"
+
+
+def test_schedule_from_gamelog_neutral_site_keeps_both_sides() -> None:
+    """Regression: ``@``-on-both-rows games used to null out the whole home side."""
+    df = vb.schedule_from_gamelog(FIXTURE_RAW, 2025)
+    assert df.filter(pl.col("home_pts").is_null() | pl.col("away_pts").is_null()).is_empty()
+    for gid, (h_abbr, h_pts, a_abbr, a_pts) in _NEUTRAL_SITE.items():
+        row = df.filter(pl.col("game_id") == gid).row(0, named=True)
+        assert (row["home_team_abbreviation"], row["home_pts"]) == (h_abbr, h_pts)
+        assert (row["away_team_abbreviation"], row["away_pts"]) == (a_abbr, a_pts)
+    control = df.filter(pl.col("game_id") == "0022400001").row(0, named=True)
+    assert control["home_team_abbreviation"] == "BOS"
+    assert control["matchup"] == "BOS vs. ATL"
+
+
+def test_schedule_from_gamelog_neutral_site_without_boxscore(tmp_path: Path) -> None:
+    """No boxscore to disambiguate still beats dropping a team off the game."""
+    src = FIXTURE_RAW / "nba_stats" / "json" / "leaguegamelog" / "2024"
+    dst = tmp_path / "nba_stats" / "json" / "leaguegamelog" / "2024"
+    dst.mkdir(parents=True)
+    shutil.copy(src / "regular-season.json", dst / "regular-season.json")
+    df = vb.schedule_from_gamelog(tmp_path, 2025)
+    row = df.filter(pl.col("game_id") == "0022400147").row(0, named=True)
+    assert row["home_team_abbreviation"] is not None
+    assert {row["home_team_abbreviation"], row["away_team_abbreviation"]} == {
+        "WAS",
+        "MIA",
+    }
 
 
 def test_schedule_from_gamelog_empty_when_uncaptured(tmp_path: Path) -> None:

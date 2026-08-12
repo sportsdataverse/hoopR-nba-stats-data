@@ -5,6 +5,26 @@ Verbatim raw-store layout (`nba_stats/json/{kind}/{game_id}.json`, matching
 exercise `nba_data_build.process.from_raw.process_game` with zero network
 access.
 
+## `leaguegamelog/2024/regular-season.json` -- neutral-site pivot regression
+
+Real `leaguegamelog` rows sliced verbatim out of
+`hoopR-nba-stats-raw/nba_stats/json/leaguegamelog/2024/regular-season.json`
+(captured 2026-08; headers and `parameters` preserved) for three games:
+
+- `0022400147` -- Mexico City Game 2024 (`WAS @ MIA` / `MIA @ WAS`).
+- `0022401230` -- NBA Cup final, Las Vegas (`OKC @ HOU` / `HOU @ OKC`).
+- `0022400001` -- ordinary home game (`BOS vs. ATL`), the control.
+
+Neutral-site games get `@` on BOTH rows, so `MATCHUP` alone cannot name the
+host and `schedule_from_gamelog` falls back to the boxscore. Paired slices:
+
+- `boxv3/0022400147.json`, `boxv3/0022401230.json` -- the real
+  `boxscoretraditionalv3` payload with the `players` / `statistics` arrays
+  dropped. `boxscore_home_away` reads only `homeTeamId` / `awayTeamId`, and the
+  full captures are ~300 KB apiece.
+
+Exercised by `tests/test_v3_backfill.py::test_schedule_from_gamelog_neutral_site_*`.
+
 ## `0022300001`
 
 - `pbpv3/0022300001.json` -- verbatim copy of sdv-py's

@@ -123,10 +123,39 @@ _SCHEDULE_SCHEMA: dict[str, type[pl.DataType]] = {
 }
 
 
+def boxscore_home_team_id(raw_root: Union[str, Path], game_id: str) -> Optional[int]:
+    """Official home TEAM_ID from the game's ``boxscoretraditionalv3`` capture.
+
+    The fallback for neutral-site games, whose ``leaguegamelog`` rows carry
+    ``TEAM @ OPP`` on BOTH sides so ``MATCHUP`` can't name a host. Returns
+    ``None`` when the boxscore isn't captured or can't be read.
+
+    Args:
+        raw_root: Raw-store root (``hoopR-nba-stats-raw``).
+        game_id: Zero-filled Utf8 game id.
+
+    Returns:
+        The home team id, or ``None`` when unresolvable.
+    """
+    from sportsdataverse.nba.nba_lineups import boxscore_home_away
+
+    path = resolve_raw_path(raw_root, "boxv3", game_id)
+    if path is None:
+        return None
+    try:
+        home, _away = boxscore_home_away(json.loads(Path(path).read_text(encoding="utf-8")))
+        return int(home)
+    except (json.JSONDecodeError, OSError, KeyError, TypeError, ValueError):
+        return None
+
+
 def schedule_from_gamelog(raw_root: Union[str, Path], season_end: int) -> pl.DataFrame:
     """Game-level schedule pivoted from the raw ``leaguegamelog`` team rows.
 
     One row per game; the home side is the team whose MATCHUP contains ``vs.``.
+    Neutral-site games (NBA Cup finals, Mexico City / Paris) get ``@`` on BOTH
+    rows, so those fall back to the boxscore's official home designation --
+    without it the home side of the game is written as all-null.
     Utf8 zero-filled ``game_id``; ``season`` is the END year. Empty frame with
     the documented schema when nothing was captured.
     """
@@ -151,19 +180,44 @@ def schedule_from_gamelog(raw_root: Union[str, Path], season_end: int) -> pl.Dat
                     "season_type": variant,
                     "game_date": None,
                     "matchup": None,
+                    "_sides": [],
                 },
             )
-            matchup = str(col(row, "MATCHUP") or "")
-            side = "home" if " vs. " in matchup else "away"
             rec["game_date"] = rec["game_date"] or col(row, "GAME_DATE")
-            if side == "home":
-                rec["matchup"] = matchup or rec["matchup"]
             pts = col(row, "PTS")
-            rec[f"{side}_team_id"] = col(row, "TEAM_ID")
-            rec[f"{side}_team_abbreviation"] = col(row, "TEAM_ABBREVIATION")
-            rec[f"{side}_team_name"] = col(row, "TEAM_NAME")
-            rec[f"{side}_pts"] = int(pts) if pts is not None else None
-            rec[f"{side}_wl"] = col(row, "WL")
+            rec["_sides"].append(
+                {
+                    "matchup": str(col(row, "MATCHUP") or ""),
+                    "team_id": col(row, "TEAM_ID"),
+                    "team_abbreviation": col(row, "TEAM_ABBREVIATION"),
+                    "team_name": col(row, "TEAM_NAME"),
+                    "pts": int(pts) if pts is not None else None,
+                    "wl": col(row, "WL"),
+                }
+            )
+
+    for gid, rec in games.items():
+        sides = rec.pop("_sides")
+        hosts = [s for s in sides if " vs. " in s["matchup"]]
+        if len(hosts) == 1:
+            home = hosts[0]
+        elif len(sides) > 1:
+            hid = boxscore_home_team_id(raw_root, gid)
+            # ponytail: an unresolvable neutral game still keeps both teams
+            # (row order) rather than nulling a whole side.
+            home = next((s for s in sides if hid is not None and s["team_id"] == hid), sides[0])
+        else:
+            home = None
+        for s in sides:
+            side = "home" if s is home else "away"
+            rec[f"{side}_team_id"] = s["team_id"]
+            rec[f"{side}_team_abbreviation"] = s["team_abbreviation"]
+            rec[f"{side}_team_name"] = s["team_name"]
+            rec[f"{side}_pts"] = s["pts"]
+            rec[f"{side}_wl"] = s["wl"]
+        if home is not None:
+            rec["matchup"] = home["matchup"] or None
+
     rows_out = [
         {k: g.get(k) for k in _SCHEDULE_SCHEMA}
         for g in sorted(games.values(), key=lambda g: str(g["game_id"]))
