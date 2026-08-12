@@ -134,6 +134,14 @@ def _game(gid: str, status: int, h_score: int = 0, a_score: int = 0) -> dict:
     }
 
 
+def _game_without_scores(gid: str, status: int) -> dict:
+    """A payload row that omits ``score`` entirely on both sides."""
+    g = _game(gid, status)
+    g["homeTeam"].pop("score")
+    g["awayTeam"].pop("score")
+    return g
+
+
 def test_season_schedule_adds_non_gamelog_game_types(raw_root: Path) -> None:
     """Preseason / All-Star / play-in / NBA Cup reach the universe via scheduleleaguev2."""
     _write_league_schedule(
@@ -146,6 +154,8 @@ def test_season_schedule_adds_non_gamelog_game_types(raw_root: Path) -> None:
             _game("0050500001", 3, 100, 95),  # play-in
             _game("0060500001", 3, 111, 96),  # NBA Cup final
             _game("0010500002", 1),  # scheduled, never played
+            _game("0010500003", 3),  # "Final" at 0-0 -- cancelled / unscored
+            _game_without_scores("0010500004", 3),  # "Final" with no score key at all
             _game("0090500001", 0),  # arena hold, not a game -- must be dropped
         ],
     )
@@ -156,6 +166,8 @@ def test_season_schedule_adds_non_gamelog_game_types(raw_root: Path) -> None:
     assert dict(zip(df["game_id"], df["season_type"])) == {
         "0010500001": "preseason",
         "0010500002": "preseason",
+        "0010500003": "preseason",
+        "0010500004": "preseason",
         "0020500001": "regular-season",
         "0030500001": "all-star",
         "0040500001": "playoffs",
@@ -171,6 +183,12 @@ def test_season_schedule_adds_non_gamelog_game_types(raw_root: Path) -> None:
     # a scheduled-but-unplayed game carries no fabricated 0-0
     unplayed = df.filter(pl.col("game_id") == "0010500002").row(0, named=True)
     assert unplayed["home_pts"] is None and unplayed["home_wl"] is None
+    # a 0-0 "Final" (cancellation / unscored row) must not invent a loser
+    tied = df.filter(pl.col("game_id") == "0010500003").row(0, named=True)
+    assert tied["home_wl"] is None and tied["away_wl"] is None
+    # an absent score stays null rather than becoming a fabricated 0
+    unscored = df.filter(pl.col("game_id") == "0010500004").row(0, named=True)
+    assert unscored["home_pts"] is None and unscored["away_pts"] is None
 
 
 def test_season_schedule_falls_back_to_gamelog_when_uncaptured(raw_root: Path) -> None:

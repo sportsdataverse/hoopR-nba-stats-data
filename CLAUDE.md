@@ -131,7 +131,10 @@ is a valid cadence but must be stated explicitly.
   (`v3_backfill.SEASON_TYPE_OF_PREFIX`); digit `9` is an arena hold, not a game,
   and is dropped. Per-era absence is expected, not a failure — no play-in before
   2020-21, no NBA Cup before 2023-24. The gate diffs **core-to-core** (`{2,4}`)
-  and counts non-core staged games as `staged_noncore`, never as a `DIFF`.
+  — both the id-set diff and the score reconciliation — and counts non-core
+  staged games as `staged_noncore`, never as a `DIFF`. Points and `W`/`L` are
+  filled only from a scored, decided final: an absent `score` stays null, and a
+  0-0 "Final" (cancellation, unscored exhibition) gets no fabricated winner.
 
   ```sh
   bash scripts/run_v3_backfill.sh -s 1997 -e 2026    # prints its own tail -f watch command

@@ -6,11 +6,12 @@ For every requested END-year season and each of the two comparable families:
     Staged ``nba_schedule_{E}.parquet`` vs legacy
     ``nba_stats/schedules/parquet/schedule_{E-1}-{yy}.parquet``: game counts,
     game-id set symmetric difference, and per-game home/away score
-    reconciliation. The set diff is **core-to-core** (game-id type digit in
-    {2, 4}): legacy non-core games are reported as *explained* exclusions and
-    staged non-core games (preseason / all-star / play-in / NBA Cup, which the
-    backfill now compiles) are reported as ``staged_noncore``. Neither is ever
-    a diff -- only a core game present on one side and absent on the other is.
+    reconciliation. Both the set diff and the score reconciliation are
+    **core-to-core** (game-id type digit in {2, 4}): legacy non-core games are
+    reported as *explained* exclusions and staged non-core games (preseason /
+    all-star / play-in / NBA Cup, which the backfill now compiles) are reported
+    as ``staged_noncore``. Neither is ever a diff -- only a core game present on
+    one side and absent on the other, or a core score disagreement, is.
 
 ``play_by_play``
     Staged ``nba_play_by_play_{E}.parquet`` vs legacy
@@ -111,6 +112,11 @@ def pbp_final_scores(df: pl.DataFrame) -> pl.DataFrame:
     )
 
 
+def core_only(df: pl.DataFrame) -> pl.DataFrame:
+    """Rows whose (zero-filled) ``game_id`` type digit is in the v3 scope."""
+    return df.filter(pl.col("game_id").str.slice(2, 1).is_in(list(CORE_TYPE_DIGITS)))
+
+
 def compare_scores(a: pl.DataFrame, b: pl.DataFrame) -> "tuple[int, int, list[str]]":
     """(games compared, mismatches, sample mismatched ids) on the id overlap.
 
@@ -153,8 +159,11 @@ def gate_schedule(
     staged_core = core_ids(staged_set)
     missing = sorted(legacy_core - staged_set)
     extra = sorted(staged_core - legacy_core)
+    # Core-to-core here too: v3's non-core scores come from ``scheduleleaguev2``
+    # and legacy's from the R gamelog chain, so a non-core disagreement is a
+    # cross-source note, not a v3 regression -- it must not set the verdict.
     n_cmp, n_bad, bad_ids = compare_scores(
-        staged_schedule_scores(staged), legacy_schedule_scores(legacy)
+        core_only(staged_schedule_scores(staged)), core_only(legacy_schedule_scores(legacy))
     )
     detail = (
         f"staged={len(staged_set)} staged_noncore={len(staged_set) - len(staged_core)} "

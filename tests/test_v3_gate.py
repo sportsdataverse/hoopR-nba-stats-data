@@ -53,6 +53,15 @@ def test_gate_schedule_flags_missing_and_score_mismatch() -> None:
     assert "score_mismatch=1" in f["detail"]
 
 
+def test_gate_schedule_noncore_score_disagreement_is_not_a_diff() -> None:
+    """v3 non-core scores come from a different source than legacy's -- never a DIFF."""
+    staged = _sched([("0020500001", 101, 99), ("0010500001", 0, 0)])
+    legacy = _legacy_sched([("0020500001", 101, 99), ("0010500001", 90, 80)])
+    f = vg.gate_schedule(2006, staged, legacy, raw_game_count=None)
+    assert f["verdict"] == "OK"
+    assert "scores_compared=1" in f["detail"] and "score_mismatch=0" in f["detail"]
+
+
 def test_gate_schedule_null_scores_are_not_mismatches() -> None:
     staged = _sched([("0020500001", 101, 99)])
     legacy = _legacy_sched([("0020500001", None, None)])  # type: ignore[list-item]

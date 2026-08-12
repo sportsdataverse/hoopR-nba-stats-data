@@ -79,8 +79,11 @@ at regular-season + playoffs) supplies the metadata it has, and
 `scheduleleaguev2/{START}.json` supplies the ids it never covered — preseason
 `001`, All-Star `003`, play-in `005`, NBA Cup final `006`. `season_type` comes
 from the game-id type digit; digit `9` is an arena hold and is dropped. Older
-eras legitimately lack the later types. The gate diffs core-to-core (`{2,4}`)
-and reports non-core staged games as `staged_noncore`, never as a `DIFF`.
+eras legitimately lack the later types. Points and `W`/`L` come only from a
+scored, decided final — an absent `score` stays null and a 0-0 "Final"
+(cancellation, unscored exhibition) gets no fabricated winner. The gate diffs
+core-to-core (`{2,4}`) on both ids and scores, and reports non-core staged games
+as `staged_noncore`, never as a `DIFF`.
 
 `scripts/run_v3_cutover.sh` (`python -m nba_data_build.v3_cutover`) publishes
 those staged parquets onto the production release tags — the D26d cutover. It is

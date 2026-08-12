@@ -257,8 +257,10 @@ def schedule_from_league_schedule(raw_root: Union[str, Path], season_end: int) -
     Unlike ``leaguegamelog`` (captured only at ``regular-season`` / ``playoffs``),
     this payload carries **every** game type -- preseason (``001``), All-Star
     (``003``), play-in (``005``) and the NBA Cup final (``006``) included. Points
-    and W/L are filled only for games played to a final, so a not-yet-played
-    scheduled game doesn't land a fake 0-0.
+    are filled only for games played to a final *and* carrying a score, so a
+    not-yet-played scheduled game doesn't land a fake 0-0; W/L is filled only
+    when the two scores actually decide the game (a 0-0 "Final" -- a cancelled
+    or unscored row -- stays null on both sides rather than inventing a loser).
 
     Args:
         raw_root: Raw-store root (``hoopR-nba-stats-raw``).
@@ -288,8 +290,14 @@ def schedule_from_league_schedule(raw_root: Union[str, Path], season_end: int) -
                 continue
             home, away = game.get("homeTeam") or {}, game.get("awayTeam") or {}
             final = game.get("gameStatus") == _GAME_STATUS_FINAL
-            hp = int(home.get("score") or 0) if final else None
-            ap = int(away.get("score") or 0) if final else None
+            hs, as_ = home.get("score"), away.get("score")
+            hp = int(hs) if final and hs is not None else None
+            ap = int(as_) if final and as_ is not None else None
+            # ponytail: five payload rows are "Final" at 0-0 -- cancellations
+            # (0010700107 "Canceled", 0011300114 "CNCL") and unscored exhibition
+            # /All-Star rows. A tie is neither a W nor an L, so don't invent one.
+            decided = hp is not None and ap is not None and hp != ap
+            home_won = decided and hp > ap
 
             def name(team: dict[str, Any]) -> Optional[str]:
                 parts = [team.get("teamCity"), team.get("teamName")]
@@ -311,12 +319,12 @@ def schedule_from_league_schedule(raw_root: Union[str, Path], season_end: int) -
                     "home_team_abbreviation": home.get("teamTricode"),
                     "home_team_name": name(home),
                     "home_pts": hp,
-                    "home_wl": None if hp is None or ap is None else ("W" if hp > ap else "L"),
+                    "home_wl": ("W" if home_won else "L") if decided else None,
                     "away_team_id": away.get("teamId"),
                     "away_team_abbreviation": away.get("teamTricode"),
                     "away_team_name": name(away),
                     "away_pts": ap,
-                    "away_wl": None if hp is None or ap is None else ("L" if hp > ap else "W"),
+                    "away_wl": ("L" if home_won else "W") if decided else None,
                 }
             )
     rows_out.sort(key=lambda r: str(r["game_id"]))
