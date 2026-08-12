@@ -24,7 +24,7 @@ NBA Stats Officials from hoopR data repository — `boxscoresummaryv2` (game-lev
 | `first_name` | String |  |
 | `last_name` | String |  |
 | `jersey_num` | String |  |
-| `season` | Int64 | Season the row belongs to. Stats-API span form for NBA ("2023-24") in the released season assets; the schedule master carries the same span form. |
+| `season` | Int64 | Season the row belongs to. Stats-API span form for NBA ("2023-24") in the released season assets; the schedule master carries the same span form. `draft` is the exception: it carries the four-digit draft year as an integer (2003 = the June 2003 draft, which precedes the 2003-04 season). |
 | `game_id` | String | stats.nba.com game id, zero-padded 10-char string ("0022300001"; the "00" prefix is the NBA league id, so the id must never round-trip through int). |
 
 ## Coverage

@@ -1,0 +1,59 @@
+name: Annual NBA Draft Update
+
+# Diff-ported from wehoop-wnba-stats-data's annual_wnba_stats_draft.yml, moved
+# to the NBA's draft window. The daily cron (daily_nba_stats.yml) runs the
+# in-season window, so a late-June draft would otherwise sit unpublished until
+# the season rolls over. This job builds ONLY the draft dataset (from the
+# drafthistory raw capture) and uploads it to its release tag on
+# sportsdataverse-data.
+#
+# Season keying differs from every other dataset in this repo: the daily job
+# labels seasons by END year, but drafthistory keys on the DRAFT YEAR, so the
+# 2026 draft builds as --seasons 2026 (it precedes the 2026-27 season).
+on:
+  schedule:
+    - cron: "0 8 27 6 *" # late June, ~day after the NBA draft (2024: Jun 26-27, 2025: Jun 25-26)
+    - cron: "0 8 29 6 *" # second pass to catch late-entered picks
+  workflow_dispatch:
+    inputs:
+      season:
+        required: false
+        type: string
+
+permissions:
+  contents: write # release uploads
+
+jobs:
+  build_publish_draft:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.SDV_GH_TOKEN }}
+      GITHUB_PAT: ${{ secrets.SDV_GH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          python-version: '3.12'
+          cache-dependency-glob: uv.lock
+
+      - name: Install
+        run: uv sync --frozen --dev
+
+      - name: Season (the draft YEAR, not the end-year season label)
+        run: |
+          if [ -n "${{ inputs.season }}" ]; then
+            echo "SEASON=${{ inputs.season }}" >> "$GITHUB_ENV"
+          else
+            echo "SEASON=$(date -u +%Y)" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build + publish draft
+        run: |
+          uv run python -m nba_data_build.reshape \
+            --root "https://raw.githubusercontent.com/sportsdataverse/hoopR-nba-stats-raw/main/nba_stats/json" \
+            --seasons "$SEASON" \
+            --datasets draft \
+            --out build_out \
+            --publish

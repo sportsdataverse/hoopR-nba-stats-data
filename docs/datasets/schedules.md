@@ -8,9 +8,9 @@ NBA Stats Schedule from hoopR data repository — `leaguegamelog` (season-level)
 | **Release tag** | [`nba_stats_schedules`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_schedules) |
 | **File stem** | `nba_stats_schedule_{season}.{parquet,csv,rds}` |
 | **Seasons built** | — |
-| **Last published** | 2026-07-24 (newest release asset) |
+| **Last published** | 2026-08-12 (newest release asset) |
 | **Tag created** | 2023-03-30 |
-| **Release assets** | 97 |
+| **Release assets** | 188 |
 
 ## Automation
 
@@ -49,7 +49,7 @@ NBA Stats Schedule from hoopR data repository — `leaguegamelog` (season-level)
 | `pts` | Int64 | Points. |
 | `plus_minus` | Int64 | Point differential while on the floor (player rows) or final margin (team rows). |
 | `video_available` | Int64 | 1 when the feed links video for the action/game row. |
-| `season` | Int64 | Season the row belongs to. Stats-API span form for NBA ("2023-24") in the released season assets; the schedule master carries the same span form. |
+| `season` | Int64 | Season the row belongs to. Stats-API span form for NBA ("2023-24") in the released season assets; the schedule master carries the same span form. `draft` is the exception: it carries the four-digit draft year as an integer (2003 = the June 2003 draft, which precedes the 2003-04 season). |
 | `season_type` | String | Season type the capture was made under ("Regular Season", "Playoffs", ...). |
 
 ## Coverage

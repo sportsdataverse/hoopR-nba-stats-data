@@ -66,7 +66,7 @@ NBA Stats Team Season Stats from hoopR data repository — `leaguedashteamstats`
 | `ts_pct_rank` | Int64 |  |
 | `pace_rank` | Int64 |  |
 | `pie_rank` | Int64 |  |
-| `season` | Int64 | Season the row belongs to. Stats-API span form for NBA ("2023-24") in the released season assets; the schedule master carries the same span form. |
+| `season` | Int64 | Season the row belongs to. Stats-API span form for NBA ("2023-24") in the released season assets; the schedule master carries the same span form. `draft` is the exception: it carries the four-digit draft year as an integer (2003 = the June 2003 draft, which precedes the 2003-04 season). |
 | `season_type` | String | Season type the capture was made under ("Regular Season", "Playoffs", ...). |
 | `measure_type` | String |  |
 | `per_mode` | String |  |

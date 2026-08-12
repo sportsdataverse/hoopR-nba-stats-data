@@ -31,7 +31,7 @@ _PL_TYPES: dict[type, pl.DataType] = {
     float: pl.Float64,
     bool: pl.Boolean,
     date: pl.Date,
-    datetime: pl.Datetime('us'),
+    datetime: pl.Datetime("us"),
 }
 
 
@@ -763,6 +763,25 @@ class Coaches(NbaStatsDataset):
     season_type: Optional[str] = None
 
 
+class Draft(NbaStatsDataset):
+    """`draft` — declared from the published draft_2025.parquet."""
+
+    person_id: Optional[int] = None
+    player_name: Optional[str] = None
+    season: Optional[int] = None
+    round_number: Optional[int] = None
+    round_pick: Optional[int] = None
+    overall_pick: Optional[int] = None
+    draft_type: Optional[str] = None
+    team_id: Optional[int] = None
+    team_city: Optional[str] = None
+    team_name: Optional[str] = None
+    team_abbreviation: Optional[str] = None
+    organization: Optional[str] = None
+    organization_type: Optional[str] = None
+    player_profile_flag: Optional[int] = None
+
+
 class Schedules(NbaStatsDataset):
     """`schedules` — declared from the latest published/committed parquet."""
 
@@ -1109,6 +1128,7 @@ class GamesInDataRepo(NbaStatsDataset):
     week_name: Optional[str] = None
     week_number: Optional[int] = None
 
+
 MODELS: dict[str, type[NbaStatsDataset]] = {
     "standings": Standings,
     "player_season_stats": PlayerSeasonStats,
@@ -1116,6 +1136,7 @@ MODELS: dict[str, type[NbaStatsDataset]] = {
     "lineups": Lineups,
     "rosters": Rosters,
     "coaches": Coaches,
+    "draft": Draft,
     "schedules": Schedules,
     "player_game_logs": PlayerGameLogs,
     "pbp": Pbp,
@@ -1176,8 +1197,9 @@ def check_stem(stem: str, frame: pl.DataFrame) -> list[str]:
     """Resolve the dataset behind a release write stem and check the frame.
 
     Write stems carry the season suffix (``standings_2025``); the registry stem
-    is the prefix. A stem no model covers (e.g. ``draft``, which has never
-    published an asset to derive a schema from) returns no problems.
+    is the prefix. A stem no dataset claims returns no problems, as does a
+    registered dataset that has never published an asset to derive a schema
+    from (there are none today -- ``draft``, the last one, published 2026-08-12).
     """
     from nba_data_build.reshape.datasets import DATASETS
 

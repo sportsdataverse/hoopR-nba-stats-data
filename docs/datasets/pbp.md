@@ -8,9 +8,9 @@ NBA Stats Play-by-Play from hoopR data repository — `playbyplayv3` (game-level
 | **Release tag** | [`nba_stats_pbp`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_pbp) |
 | **File stem** | `play_by_play_{season}.{parquet,csv,rds}` |
 | **Seasons built** | 1996-97–2025-26 (28 seasons, non-contiguous) |
-| **Last published** | 2026-07-24 (newest release asset) |
+| **Last published** | 2026-08-12 (newest release asset) |
 | **Tag created** | 2023-03-30 |
-| **Release assets** | 90 |
+| **Release assets** | 181 |
 
 ## Automation
 
@@ -44,7 +44,7 @@ NBA Stats Play-by-Play from hoopR data repository — `playbyplayv3` (game-level
 | `shot_value` | Int64 | Point value of a shot attempt (2 or 3; 1 for free throws, 0 for non-shots). |
 | `action_id` | Int64 | Feed-internal id of the action row. |
 | `game_id` | String | stats.nba.com game id, zero-padded 10-char string ("0022300001"; the "00" prefix is the NBA league id, so the id must never round-trip through int). |
-| `season` | Int64 | Season the row belongs to. Stats-API span form for NBA ("2023-24") in the released season assets; the schedule master carries the same span form. |
+| `season` | Int64 | Season the row belongs to. Stats-API span form for NBA ("2023-24") in the released season assets; the schedule master carries the same span form. `draft` is the exception: it carries the four-digit draft year as an integer (2003 = the June 2003 draft, which precedes the 2003-04 season). |
 
 ## Coverage
 

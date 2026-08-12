@@ -54,9 +54,7 @@ def test_snake(raw_name: str, expected: str) -> None:
 
 
 def test_frame_from_result_set_adds_extras() -> None:
-    df = build.frame_from_result_set(
-        ["TEAM_ID", "W"], [[1, 2], [3, 4]], {"season": 2013}
-    )
+    df = build.frame_from_result_set(["TEAM_ID", "W"], [[1, 2], [3, 4]], {"season": 2013})
     assert df.columns == ["team_id", "w", "season"]
     assert df.height == 2 and df["season"].to_list() == [2013, 2013]
 
@@ -142,15 +140,15 @@ def test_shots_derived_from_real_pbp() -> None:
 
 
 @needs_real
-def test_draft_is_empty_pending_phase_3_capture() -> None:
-    """drafthistory has 0 files in the store until Phase 3 captures it.
+def test_draft_builds_from_the_real_store() -> None:
+    """draft routes through build_season_dataset (endpoint ``drafthistory``).
 
-    Documents the prerequisite: draft routes through build_season_dataset
-    (endpoint ``drafthistory``) but yields nothing today. After Phase 3 lands
-    drafthistory, FLIP this to assert ``df.height > 0`` for a season with a
-    known draft (e.g. 2013).
+    The 2013 draft is 60 picks over two rounds. Asserting the count rather than
+    just non-emptiness is deliberate: an unfiltered drafthistory call answers
+    with the FULL 1947-2026 history, so a season that silently lost its season
+    filter would still be "non-empty" — it would just be wrong.
     """
     df = build.build(REAL, BY_KEY["draft"], 2013)
-    assert df.height == 0, (
-        "draft unexpectedly non-empty — Phase 3 landed; flip this test"
-    )
+    assert df.height == 60, f"2013 draft built {df.height} rows, expected 60"
+    assert set(df["season"].unique().to_list()) == {2013}
+    assert sorted(df["round_number"].unique().to_list()) == [1, 2]

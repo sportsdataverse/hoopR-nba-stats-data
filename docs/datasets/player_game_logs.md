@@ -49,7 +49,7 @@ NBA Stats Player Game Logs from hoopR data repository — `leaguegamelog` (seaso
 | `pts` | Int64 | Points. |
 | `plus_minus` | Int64 | Point differential while on the floor (player rows) or final margin (team rows). |
 | `video_available` | Int64 | 1 when the feed links video for the action/game row. |
-| `season` | Int64 | Season the row belongs to. Stats-API span form for NBA ("2023-24") in the released season assets; the schedule master carries the same span form. |
+| `season` | Int64 | Season the row belongs to. Stats-API span form for NBA ("2023-24") in the released season assets; the schedule master carries the same span form. `draft` is the exception: it carries the four-digit draft year as an integer (2003 = the June 2003 draft, which precedes the 2003-04 season). |
 | `season_type` | String | Season type the capture was made under ("Regular Season", "Playoffs", ...). |
 
 ## Coverage

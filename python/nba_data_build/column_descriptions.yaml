@@ -18,6 +18,8 @@ game_id: >-
 season: >-
   Season the row belongs to. Stats-API span form for NBA ("2023-24") in the
   released season assets; the schedule master carries the same span form.
+  `draft` is the exception: it carries the four-digit draft year as an integer
+  (2003 = the June 2003 draft, which precedes the 2003-04 season).
 season_id: >-
   stats.nba.com composite season id: season-type digit + start year
   ("22023" = 2023-24 regular season).
@@ -194,3 +196,34 @@ PBP: >-
   Legacy availability flag carried over from the pre-registry hoopR schedule
   tree; superseded by in_pbp and kept only because the committed master still
   carries it.
+
+# --- draft (drafthistory) -----------------------------------------------------
+# Authored against the real 1996-2025 payloads: 1,773 picks, all DRAFT_TYPE
+# "Draft", rounds 1-2 throughout (the NBA has been a two-round draft since 1989).
+round_number: >-
+  Draft round the pick was made in (1 or 2 across the published 1996-2025
+  range; earlier drafts ran to more rounds).
+round_pick: >-
+  Pick number WITHIN the round (the 5th pick of round 2 is round_pick 5, not
+  35). Use overall_pick for draft-wide order.
+overall_pick: >-
+  Pick number across the whole draft, 1 = first overall.
+draft_type: >-
+  How the player entered the league. "Draft" for every pick in the published
+  range; the value exists to distinguish historical dispersal, expansion and
+  territorial drafts in older seasons.
+organization: >-
+  School, club or national team the player came from ("Syracuse", "KK Vrsac
+  (Serbia)"). Populated for ~99.9% of NBA picks; the WNBA twin ships it empty.
+organization_type: >-
+  Category of `organization`: "College/University" (1,395 of the 1,773 picks
+  1996-2025), "Other Team/Club" (333; mostly international clubs), "High
+  School" (43) or empty (2 -- Thon Maker 2016, Mitchell Robinson 2018, both of
+  whom also ship an empty `organization`). Note "High School" is not confined
+  to the pre-2006 prep-to-pro era: it is whatever the API last recorded, and
+  it recurs in 2015-2020 for picks with no college of record.
+player_profile_flag: >-
+  1 when stats.nba.com hosts a player profile for the pick, 0 when it does not
+  (166 of 1,773 picks 1996-2025). Largely tracks whether the pick ever reached
+  the NBA, but it is a profile-existence flag rather than a games-played one,
+  so it should not be read as a career indicator on its own.

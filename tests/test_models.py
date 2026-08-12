@@ -17,10 +17,11 @@ from nba_data_build.reshape.datasets import BY_KEY, DATASETS
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
-# draft is registered but has never published an asset (no nba_stats_draft
-# release exists), so there is no real parquet to derive a schema from and no
-# model. Inventing one from the WNBA twin would be a borrowed schema.
-UNPUBLISHED = {"draft"}
+# Datasets registered in DATASETS that have never published an asset, and so
+# have no real parquet to derive a schema from. Empty since draft published
+# (30 seasons, 1996-2025); its model is declared from the published
+# draft_2025.parquet, not borrowed from the WNBA twin.
+UNPUBLISHED: set[str] = set()
 
 MASTERS = {"schedule_master", "games_in_data_repo"}
 
@@ -90,8 +91,12 @@ def test_check_stem_resolves_the_seasoned_write_stem():
     frame = pl.DataFrame(schema=dict(polars_schema("standings")))
     assert check_stem("standings_2025", frame) == []
     assert check_stem("standings_2025", pl.DataFrame()) != []
-    # A stem no model covers (draft never published) is not an error.
-    assert check_stem("draft_2024", pl.DataFrame()) == []
+    # A stem no dataset claims is not an error.
+    assert check_stem("not_a_dataset_2024", pl.DataFrame()) == []
+    # draft is published and modelled now, so its stem DOES resolve and check.
+    draft = pl.DataFrame(schema=dict(polars_schema("draft")))
+    assert check_stem("draft_2024", draft) == []
+    assert check_stem("draft_2024", pl.DataFrame()) != []
 
 
 #: nba_stats/<key>/ trees that predate the reshape registry (the old hoopR

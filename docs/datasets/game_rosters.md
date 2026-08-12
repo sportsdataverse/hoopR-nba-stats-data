@@ -28,7 +28,7 @@ NBA Stats Game Rosters from hoopR data repository — `boxscoresummaryv2` (game-
 | `team_city` | String | Team city name. |
 | `team_name` | String | Team nickname or full name as the source endpoint ships it. |
 | `team_abbreviation` | String | Three-letter team code ("ATL"). |
-| `season` | Int64 | Season the row belongs to. Stats-API span form for NBA ("2023-24") in the released season assets; the schedule master carries the same span form. |
+| `season` | Int64 | Season the row belongs to. Stats-API span form for NBA ("2023-24") in the released season assets; the schedule master carries the same span form. `draft` is the exception: it carries the four-digit draft year as an integer (2003 = the June 2003 draft, which precedes the 2003-04 season). |
 | `game_id` | String | stats.nba.com game id, zero-padded 10-char string ("0022300001"; the "00" prefix is the NBA league id, so the id must never round-trip through int). |
 
 ## Coverage

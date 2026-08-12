@@ -21,7 +21,7 @@ NBA Stats Coaches from hoopR data repository — `commonteamroster` (season-leve
 | col_name | type | description |
 |---|---|---|
 | `team_id` | Int64 | stats.nba.com team id (Int64, e.g. 1610612737 = Atlanta Hawks). |
-| `season` | Int64 | Season the row belongs to. Stats-API span form for NBA ("2023-24") in the released season assets; the schedule master carries the same span form. |
+| `season` | Int64 | Season the row belongs to. Stats-API span form for NBA ("2023-24") in the released season assets; the schedule master carries the same span form. `draft` is the exception: it carries the four-digit draft year as an integer (2003 = the June 2003 draft, which precedes the 2003-04 season). |
 | `coach_id` | Int64 |  |
 | `first_name` | String |  |
 | `last_name` | String |  |
