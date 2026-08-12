@@ -32,6 +32,7 @@ bash scripts/hydrate_raw_store.sh          # clone-free hydrate of the raw store
 bash scripts/leaguedash_backfill.sh        # checkpointed; .done_<season> on rc 0 only
 bash scripts/run_impact_backfill.sh        # nba_player_impact full-history backfill
 bash scripts/run_v3_backfill.sh -s 1997 -e 2026   # Program V v3 backfill (resumable)
+bash scripts/run_v3_cutover.sh -s 1997 -e 2026    # D26d cutover -- DRY RUN by default
 python python/warm_possession_cache.py 2000:2024   # warm the possession cache
 ```
 
@@ -121,6 +122,29 @@ is a valid cadence but must be stated explicitly.
   ```
 
   The D26d tag swap (retiring the `_v3` tags) is a separate post-gate decision.
+
+- `scripts/run_v3_cutover.sh` — Program V (design §10, D26d) cutover publisher:
+  moves the staged v3 parquets onto the **production** release tags. **A DRY RUN
+  BY DEFAULT** — it re-runs the §10.3 gate, writes a REPLACE MANIFEST to `logs/`,
+  and uploads nothing. Publishing needs an explicit `-x` (`--execute`), which is
+  the least reversible action in the program: overwriting a release asset
+  destroys the previous bytes and `hoopR::load_nba_*()` reads them.
+
+  ```sh
+  bash scripts/run_v3_cutover.sh -s 1997 -e 2026            # dry run; prints its own tail -f
+  bash scripts/run_v3_cutover.sh -s 1997 -e 2026 -- --allow-diff 2011:schedule
+  bash scripts/run_v3_cutover.sh -s 1997 -e 2026 -x         # PUBLISH (after reading the manifest)
+  bash scripts/run_v3_cutover.sh -R -x                      # SEPARATE step: retire the _v3 tags
+  ```
+
+  Read the manifest's **WOULD BE DESTROYED** and **SURVIVES UN-REPLACED**
+  sections before ever passing `-x`. The gate hard-aborts on any unexplained
+  `DIFF`; each explained case needs its own `--allow-diff SEASON:FAMILY`, which
+  is echoed into the manifest — there is no blanket ignore switch. Uploads are
+  one asset at a time with a size re-check after each, and stop on the first
+  mismatch (`gh release upload` with many files has silently dropped large
+  assets). Verified uploads are recorded in `v3_staging/.cutover_receipts.json`,
+  so a re-run skips them: the publish is resumable and idempotent.
 
 ## Gotchas — NBA Stats headers / rate-limit / proxy
 

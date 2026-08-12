@@ -67,12 +67,25 @@ bash scripts/hydrate_raw_store.sh                  # clone-free hydrate of the r
 bash scripts/leaguedash_backfill.sh                # checkpointed; .done_<season> on rc 0
 bash scripts/run_impact_backfill.sh                # nba_player_impact full-history
 bash scripts/run_v3_backfill.sh -s 1997 -e 2026    # Program V v3 backfill (resumable)
+bash scripts/run_v3_cutover.sh -s 1997 -e 2026     # D26d cutover -- DRY RUN by default
 python python/warm_possession_cache.py 2000:2024   # warm the possession cache
 ```
 
 `scripts/run_v3_backfill.sh` stages v3 `schedule`/`pbp`/`possessions`/`lineups`
 into `v3_staging/` (never clobbering the live tree) and is verified by
 `python -m nba_data_build.v3_gate`; it is operator-run, not workflow-wired.
+
+`scripts/run_v3_cutover.sh` (`python -m nba_data_build.v3_cutover`) publishes
+those staged parquets onto the production release tags — the D26d cutover. It is
+**a dry run unless `-x` is passed**: it re-runs the §10.3 gate, writes a REPLACE
+MANIFEST into `logs/` naming every asset it would overwrite (with the current
+remote size + updated-at), and uploads nothing. The gate hard-aborts on any
+unexplained `DIFF`; explained cases are allowlisted one at a time with
+`--allow-diff SEASON:FAMILY` and printed in the manifest. Uploads are per-file
+with a post-upload size verification, resumable via
+`v3_staging/.cutover_receipts.json`. Retiring the `_v3` tags is a separate
+invocation (`-R`), never bundled with the data upload. Operator-run, not
+workflow-wired.
 
 `HOOPR_NBA_STATS_RAW_ROOT` overrides the raw store (a local checkout or a
 raw.githubusercontent URL); `HOOPR_NBA_STATS_PYBIN` the interpreter. The driver
