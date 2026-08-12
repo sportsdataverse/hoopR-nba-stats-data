@@ -123,6 +123,16 @@ is a valid cadence but must be stated explicitly.
   adoption. Verify a run with the §9.3 diff gate, which reconciles v3 against
   legacy where both exist and against the raw store where they don't:
 
+  **Game universe = every season type.** `leaguegamelog` was only ever captured
+  at `regular-season` + `playoffs`, so it stays the metadata source where it has
+  the game and `scheduleleaguev2/{START}.json` supplies the ids it never covered:
+  preseason (`001`), All-Star (`003`), play-in (`005`) and the NBA Cup final
+  (`006`). `season_type` is derived from the game-id type digit
+  (`v3_backfill.SEASON_TYPE_OF_PREFIX`); digit `9` is an arena hold, not a game,
+  and is dropped. Per-era absence is expected, not a failure — no play-in before
+  2020-21, no NBA Cup before 2023-24. The gate diffs **core-to-core** (`{2,4}`)
+  and counts non-core staged games as `staged_noncore`, never as a `DIFF`.
+
   ```sh
   bash scripts/run_v3_backfill.sh -s 1997 -e 2026    # prints its own tail -f watch command
   PYTHONPATH=python python/.venv/Scripts/python.exe -m nba_data_build.v3_gate -s 1997 -e 2026

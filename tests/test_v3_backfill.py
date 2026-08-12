@@ -104,6 +104,81 @@ def test_schedule_from_gamelog_neutral_site_without_boxscore(tmp_path: Path) -> 
     }
 
 
+def _write_league_schedule(raw_root: Path, start_year: int, games: list[dict]) -> None:
+    d = raw_root / "nba_stats" / "json" / "scheduleleaguev2"
+    d.mkdir(parents=True, exist_ok=True)
+    (d / f"{start_year}.json").write_text(
+        json.dumps({"leagueSchedule": {"gameDates": [{"games": games}]}}), encoding="utf-8"
+    )
+
+
+def _game(gid: str, status: int, h_score: int = 0, a_score: int = 0) -> dict:
+    return {
+        "gameId": gid,
+        "gameStatus": status,
+        "gameDateEst": "2005-10-08T00:00:00Z",
+        "homeTeam": {
+            "teamId": 1,
+            "teamTricode": "AAA",
+            "teamCity": "Alpha",
+            "teamName": "Alphas",
+            "score": h_score,
+        },
+        "awayTeam": {
+            "teamId": 2,
+            "teamTricode": "BBB",
+            "teamCity": "Beta",
+            "teamName": "Betas",
+            "score": a_score,
+        },
+    }
+
+
+def test_season_schedule_adds_non_gamelog_game_types(raw_root: Path) -> None:
+    """Preseason / All-Star / play-in / NBA Cup reach the universe via scheduleleaguev2."""
+    _write_league_schedule(
+        raw_root,
+        2005,
+        [
+            _game("0010500001", 3, 90, 88),  # preseason
+            _game("0020500001", 3, 1, 2),  # already in the gamelog -- must NOT override
+            _game("0030500001", 3, 120, 119),  # all-star
+            _game("0050500001", 3, 100, 95),  # play-in
+            _game("0060500001", 3, 111, 96),  # NBA Cup final
+            _game("0010500002", 1),  # scheduled, never played
+            _game("0090500001", 0),  # arena hold, not a game -- must be dropped
+        ],
+    )
+    df = vb.season_schedule(raw_root, 2006)
+    assert df["game_id"].to_list() == sorted(df["game_id"].to_list())
+    # strict superset of the gamelog-only universe
+    assert set(vb.schedule_from_gamelog(raw_root, 2006)["game_id"]) <= set(df["game_id"])
+    assert dict(zip(df["game_id"], df["season_type"])) == {
+        "0010500001": "preseason",
+        "0010500002": "preseason",
+        "0020500001": "regular-season",
+        "0030500001": "all-star",
+        "0040500001": "playoffs",
+        "0050500001": "play-in",
+        "0060500001": "nba-cup",
+    }
+    # the gamelog row wins where both sources have the game
+    assert df.filter(pl.col("game_id") == "0020500001").row(0, named=True)["home_pts"] == 101
+    cup = df.filter(pl.col("game_id") == "0060500001").row(0, named=True)
+    assert (cup["home_pts"], cup["home_wl"], cup["away_wl"]) == (111, "W", "L")
+    assert cup["home_team_name"] == "Alpha Alphas" and cup["matchup"] == "AAA vs. BBB"
+    assert cup["season"] == 2006 and cup["game_date"] == "2005-10-08"
+    # a scheduled-but-unplayed game carries no fabricated 0-0
+    unplayed = df.filter(pl.col("game_id") == "0010500002").row(0, named=True)
+    assert unplayed["home_pts"] is None and unplayed["home_wl"] is None
+
+
+def test_season_schedule_falls_back_to_gamelog_when_uncaptured(raw_root: Path) -> None:
+    """No scheduleleaguev2 payload -> unchanged pre-existing behavior."""
+    df = vb.season_schedule(raw_root, 2006)
+    assert df["game_id"].to_list() == ["0020500001", "0040500001"]
+
+
 def test_schedule_from_gamelog_empty_when_uncaptured(tmp_path: Path) -> None:
     df = vb.schedule_from_gamelog(tmp_path, 2006)
     assert df.height == 0
