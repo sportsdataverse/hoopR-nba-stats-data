@@ -76,6 +76,13 @@ games and reporting success.
   **Droplet-safe** (reads committed JSON, uploads via `gh`, no stats.nba.com calls)
   — it is the `data.build_py` stage in sdv-orch's `nba_stats` pipeline.
 - Ships **parquet + rds + csv** to 15 `nba_stats_*` tags (`hoopR_data` rds stamp).
+  All 17 tags this repo owns (those 15 + the Program V cutover's
+  `nba_stats_possessions` / `nba_stats_game_lineups`) are provisioned by
+  `ops/init/0000_create_hoopr_nba_stats_releases_init.sh`. **Neither `gh release
+  upload` nor `run_v3_cutover.sh -x` can CREATE a tag** — upload fails on a
+  missing release and the cutover dry run cannot warn (`remote_assets()` returns
+  `{}` for both "absent" and "empty"), so run the init script first whenever the
+  pipeline gains a new release target.
   Season-dir split: **league endpoints key by start-year, game endpoints by
   end-year** (`season_of=start+1`). `lineups` floor 2007; history 1996–2025.
   **These tags have no hoopR loader** — `load_nba_*` read ESPN tags; the
