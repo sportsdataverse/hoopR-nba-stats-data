@@ -18,11 +18,21 @@
 # The legacy schedule is NOT independent of the pbp -- it inherits pbp-derived
 # scores -- so "legacy agrees with pbp" is one source, not two.
 #
-# NOT ALLOWLISTED, deliberately: 2026:schedule. Its missing_in_v3=2
-# (0042500406, 0042500407, Finals G6/G7) is a raw-capture freshness gap, not a
-# data disagreement: both ids are absent from the raw leaguegamelog playoffs
-# capture (max captured id 0042500405) and have no per-game captures. That
-# needs an operator re-capture from a residential IP, never an allowlist.
+# RETRACTED (2026-08-12): 2026:schedule was held out of this file as a
+# "raw-capture freshness gap ... needs an operator re-capture, never an
+# allowlist." That diagnosis was wrong. A live re-capture of the playoffs
+# leaguegamelog from a residential IP returned the identical 85 games, max id
+# 0042500405, with zero differing team rows -- there is nothing upstream to
+# capture. 0042500406/0042500407 are never-played if-necessary Finals dates,
+# the same class as the 2005 entry below, so they are explained rather than
+# uncaptured and the entry is now carried here.
+#
+# The rule that produced the wrong call -- the cutover manifest's "a finding
+# whose missing_in_v3 games are absent from the raw store is a capture gap" --
+# does not separate a game that was NEVER PLAYED from one NOT YET CAPTURED.
+# Both look identical in the store. Before trusting it, check whether the
+# series ended early: a legacy row with score 0-0, a team_id of 0 and a
+# pre-tip game_status_text is a bracket placeholder, not a missed capture.
 
 1997:schedule=3 games (0029600130 legacy 88-90, 0029600332 legacy 123-81, 0029600370 legacy 91-76). Raw leaguegamelog, boxscoretraditionalv3 team totals (= player point sums) and boxscoresummaryv2 LineScore PTS all agree with v3 (88-92, 123-83, 93-79). Legacy is alone and is pbp-derived; the 1996-97 pbp running score is defective.
 1997:play_by_play=3 games (0029600070, 0029600332, 0029600370). The staged pbp max equals the raw playbyplayv3 max exactly, so the defect is upstream, not ours: 336-367 of ~450 actions in these feeds carry scoreHome/scoreAway 0-0 and the sparse populated values are wrong (0029600070 ends its 4th period at 101-86 against an authoritative 108-79). v3 carries the raw feed verbatim rather than fabricating a corrected running score; the schedule carries the authoritative final.
@@ -37,4 +47,5 @@
 2013:schedule=1 extra id in v3 (0021201214, BOS vs. IND 2013-04-16, the game cancelled after the Boston Marathon bombing). It is present in the raw leaguegamelog at 0-0, so v3 is right to carry it; legacy dropped it. No score mismatches this season.
 2023:schedule=84 extra ids and 70 score mismatches, all against a legacy file that is a stale regular-season-only snapshot. Every one of the 84 extras is a type-4 playoff id present in the raw leaguegamelog, and on all 70 mismatches legacy is null-or-zero while v3 matches the raw leaguegamelog exactly.
 2023:play_by_play=154 extra games, 0 missing. Every extra has its own raw playbyplayv3 capture; the legacy pbp parquet simply stops at 1160 games.
+2026:schedule=2 legacy-only ids + 6 score mismatches, all against a legacy file whose Finals block is a stale pre-series snapshot (every 2025-26 Finals row in it reads 0-0 with a team_id of 0 and game_status_text "8:30 pm ET", including the five that were played). 0042500406 (06/16) and 0042500407 (06/19) are placeholder rows for never-played if-necessary Finals dates -- NYK closed the series 4-1 at G5 (0042500405) on 06/13 -- and are absent from the raw leaguegamelog playoffs capture and from all 13 per-game endpoint dirs alike; v3 correctly omits them. Same class as the 2005 entry above. A live re-capture on 2026-08-12 returned the identical 85 games / max id 0042500405 with zero differing rows, so this is NOT a capture freshness gap. All 6 score mismatches (0042500317, 0042500401, 0042500402, 0042500403, 0042500404, 0042500405) have legacy at 0-0 while raw leaguegamelog PTS and boxscoretraditionalv3 team totals (= player point sums) agree with v3 exactly; boxscoresummaryv2 LineScore corroborates 0042500317 but ships an all-null row for the five Finals games -- an upstream quirk reproduced on a live fetch, not a capture miss.
 2026:play_by_play=85 raw captures not compiled, 0 phantom. All 85 are non-core game types (id type digit 1 preseason, 3 all-star, 5 play-in, 6 in-season tournament) and are outside the documented v3 scope of regular season (2) + playoffs (4).
