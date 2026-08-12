@@ -587,16 +587,17 @@ def render_manifest(
         "",
         "## SEASON-LABEL COLLISION (two names, one real season)",
         "",
-        "This publish is **additive** (decision B): the END-year assets land next to",
-        "the existing START-year ones. For every row below, both files describe the",
-        "**same real season** -- a consumer asking for one number gets different data",
-        "depending on which pattern it reads. The END-year name is authoritative; the",
-        "legacy name is scheduled for `--retire-legacy-assets`.",
+        "This publish is **additive** (decision B): the new assets land next to the",
+        "existing legacy ones. Every row below is one real season covered twice --",
+        "the NEW name is authoritative, the legacy name is scheduled for",
+        "`--retire-legacy-assets`. Rows whose two names ALSO disagree on the season",
+        "number are the sharper hazard (a consumer asking for one year gets different",
+        "data depending on which pattern it reads); they are counted under the table.",
         "",
     ]
     if collisions:
         lines += [
-            "| tag | real season | NEW (END-year, authoritative) | LEGACY (START-year, to be retired) | legacy bytes |",
+            "| tag | real season | NEW (authoritative) | LEGACY (to be retired) | legacy bytes |",
             "|---|---|---|---|---:|",
         ]
         for c in collisions:
