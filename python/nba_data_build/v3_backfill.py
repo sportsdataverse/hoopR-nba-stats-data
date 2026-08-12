@@ -14,8 +14,15 @@ The committed tree is untouched until the section-9.3 gate (:mod:`.v3_gate`)
 passes; the cutover move + tag swap (D26d) is a separate operator decision.
 
 Season convention: CLI seasons are **END years** (2006 = the 2005-06 season),
-matching the raw store's game-endpoint directories. ``leaguegamelog`` season
-dirs are keyed by START year (end - 1).
+matching the raw store's game-endpoint directories. ``leaguegamelog`` and
+``scheduleleaguev2`` season dirs/files are keyed by START year (end - 1).
+
+Game universe: **every** season type, not just the two ``leaguegamelog`` was
+captured at. ``leaguegamelog`` (regular-season + playoffs) stays the metadata
+source where it has a game; ``scheduleleaguev2`` supplies the ids it never
+covered -- preseason (``001``), All-Star (``003``), play-in (``005``) and the
+NBA Cup final (``006``). Older eras legitimately lack the later types (no
+play-in before 2020-21, no NBA Cup before 2023-24).
 
 Resumability is two-level: the per-game frame cache is shared with
 ``pipeline_cli`` (``{repo}/.nba_pipeline_cache``), and a season whose four
@@ -52,7 +59,26 @@ _FRAME_OF = {
     "lineups": "lineups",
 }
 
+#: The only two season types ``leaguegamelog`` was ever captured at. Everything
+#: else (preseason / All-Star / play-in / NBA Cup final) reaches the universe via
+#: :func:`schedule_from_league_schedule` instead.
 _GAMELOG_VARIANTS = ("regular-season", "playoffs")
+
+#: game-id digit 3 -> ``season_type`` slug. The two gamelog slugs are kept verbatim
+#: so existing rows don't change value; the four new ones follow the same style.
+#: (The sibling raw-repo ``schedule_master`` uses underscored labels -- a
+#: pre-existing divergence, not introduced here.)
+SEASON_TYPE_OF_PREFIX = {
+    "1": "preseason",
+    "2": "regular-season",
+    "3": "all-star",
+    "4": "playoffs",
+    "5": "play-in",
+    "6": "nba-cup",
+}
+
+#: ``gameStatus`` in ``scheduleleaguev2`` meaning the game was played to a final.
+_GAME_STATUS_FINAL = 3
 
 
 def _log(msg: str) -> None:
@@ -225,6 +251,103 @@ def schedule_from_gamelog(raw_root: Union[str, Path], season_end: int) -> pl.Dat
     return pl.DataFrame(rows_out, schema=_SCHEDULE_SCHEMA)
 
 
+def schedule_from_league_schedule(raw_root: Union[str, Path], season_end: int) -> pl.DataFrame:
+    """Game-level schedule from the raw ``scheduleleaguev2`` capture.
+
+    Unlike ``leaguegamelog`` (captured only at ``regular-season`` / ``playoffs``),
+    this payload carries **every** game type -- preseason (``001``), All-Star
+    (``003``), play-in (``005``) and the NBA Cup final (``006``) included. Points
+    are filled only for games played to a final *and* carrying a score, so a
+    not-yet-played scheduled game doesn't land a fake 0-0; W/L is filled only
+    when the two scores actually decide the game (a 0-0 "Final" -- a cancelled
+    or unscored row -- stays null on both sides rather than inventing a loser).
+
+    Args:
+        raw_root: Raw-store root (``hoopR-nba-stats-raw``).
+        season_end: Season **END** year (2026 = 2025-26). The payload file is
+            keyed by START year, matching ``leaguegamelog``.
+
+    Returns:
+        One row per game in ``_SCHEDULE_SCHEMA``; empty frame when uncaptured.
+    """
+    path = Path(raw_root) / "nba_stats" / "json" / "scheduleleaguev2" / f"{season_end - 1}.json"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return pl.DataFrame([], schema=_SCHEDULE_SCHEMA)
+
+    rows_out: list[dict[str, Any]] = []
+    for day in (payload.get("leagueSchedule") or {}).get("gameDates") or []:
+        for game in day.get("games") or []:
+            gid_raw = game.get("gameId")
+            if gid_raw is None:
+                continue
+            gid = str(gid_raw).zfill(10)
+            season_type = SEASON_TYPE_OF_PREFIX.get(gid[2])
+            if season_type is None:
+                # ponytail: type digit 9 is an arena hold (57 of them league-wide:
+                # no teams, no score, never final, never captured), not a game.
+                continue
+            home, away = game.get("homeTeam") or {}, game.get("awayTeam") or {}
+            final = game.get("gameStatus") == _GAME_STATUS_FINAL
+            hs, as_ = home.get("score"), away.get("score")
+            hp = int(hs) if final and hs is not None else None
+            ap = int(as_) if final and as_ is not None else None
+            # ponytail: five payload rows are "Final" at 0-0 -- cancellations
+            # (0010700107 "Canceled", 0011300114 "CNCL") and unscored exhibition
+            # /All-Star rows. A tie is neither a W nor an L, so don't invent one.
+            decided = hp is not None and ap is not None and hp != ap
+            home_won = decided and hp > ap
+
+            def name(team: dict[str, Any]) -> Optional[str]:
+                parts = [team.get("teamCity"), team.get("teamName")]
+                joined = " ".join(str(p) for p in parts if p)
+                return joined or None
+
+            rows_out.append(
+                {
+                    "game_id": gid,
+                    "season": season_end,
+                    "season_type": season_type,
+                    "game_date": (str(game.get("gameDateEst") or "")[:10]) or None,
+                    "matchup": (
+                        f"{home.get('teamTricode')} vs. {away.get('teamTricode')}"
+                        if home.get("teamTricode") and away.get("teamTricode")
+                        else None
+                    ),
+                    "home_team_id": home.get("teamId"),
+                    "home_team_abbreviation": home.get("teamTricode"),
+                    "home_team_name": name(home),
+                    "home_pts": hp,
+                    "home_wl": ("W" if home_won else "L") if decided else None,
+                    "away_team_id": away.get("teamId"),
+                    "away_team_abbreviation": away.get("teamTricode"),
+                    "away_team_name": name(away),
+                    "away_pts": ap,
+                    "away_wl": ("L" if home_won else "W") if decided else None,
+                }
+            )
+    rows_out.sort(key=lambda r: str(r["game_id"]))
+    return pl.DataFrame(rows_out, schema=_SCHEDULE_SCHEMA)
+
+
+def season_schedule(raw_root: Union[str, Path], season_end: int) -> pl.DataFrame:
+    """The season's full game universe: gamelog rows plus every other game type.
+
+    ``leaguegamelog`` stays the metadata source wherever it has the game (it
+    carries real W/L and the neutral-site home resolution); ``scheduleleaguev2``
+    supplies only the game ids it never covered. Season convention is **END**
+    year throughout.
+    """
+    gamelog = schedule_from_gamelog(raw_root, season_end)
+    extra = schedule_from_league_schedule(raw_root, season_end).join(
+        gamelog.select("game_id"), on="game_id", how="anti"
+    )
+    if extra.is_empty():
+        return gamelog
+    return pl.concat([gamelog, extra]).sort("game_id")
+
+
 def build_season(
     raw_root: Union[str, Path],
     season_end: int,
@@ -242,7 +365,7 @@ def build_season(
         return {"season": season_end, "status": "skipped"}
 
     t0 = time.time()
-    sched = schedule_from_gamelog(raw_root, season_end)
+    sched = season_schedule(raw_root, season_end)
     game_ids = sched["game_id"].to_list()
 
     processed: list[ProcessedGame] = []

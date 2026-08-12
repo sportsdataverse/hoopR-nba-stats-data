@@ -6,9 +6,12 @@ For every requested END-year season and each of the two comparable families:
     Staged ``nba_schedule_{E}.parquet`` vs legacy
     ``nba_stats/schedules/parquet/schedule_{E-1}-{yy}.parquet``: game counts,
     game-id set symmetric difference, and per-game home/away score
-    reconciliation. Legacy game types outside the v3 scope (preseason /
-    all-star / play-in -- game-id type digit not in {2, 4}) are reported as
-    *explained* exclusions, never as diffs.
+    reconciliation. Both the set diff and the score reconciliation are
+    **core-to-core** (game-id type digit in {2, 4}): legacy non-core games are
+    reported as *explained* exclusions and staged non-core games (preseason /
+    all-star / play-in / NBA Cup, which the backfill now compiles) are reported
+    as ``staged_noncore``. Neither is ever a diff -- only a core game present on
+    one side and absent on the other, or a core score disagreement, is.
 
 ``play_by_play``
     Staged ``nba_play_by_play_{E}.parquet`` vs legacy
@@ -109,6 +112,11 @@ def pbp_final_scores(df: pl.DataFrame) -> pl.DataFrame:
     )
 
 
+def core_only(df: pl.DataFrame) -> pl.DataFrame:
+    """Rows whose (zero-filled) ``game_id`` type digit is in the v3 scope."""
+    return df.filter(pl.col("game_id").str.slice(2, 1).is_in(list(CORE_TYPE_DIGITS)))
+
+
 def compare_scores(a: pl.DataFrame, b: pl.DataFrame) -> "tuple[int, int, list[str]]":
     """(games compared, mismatches, sample mismatched ids) on the id overlap.
 
@@ -148,13 +156,18 @@ def gate_schedule(
     legacy_all = _ids(legacy)
     legacy_core = core_ids(legacy_all)
     explained = len(legacy_all) - len(legacy_core)
+    staged_core = core_ids(staged_set)
     missing = sorted(legacy_core - staged_set)
-    extra = sorted(staged_set - legacy_core)
+    extra = sorted(staged_core - legacy_core)
+    # Core-to-core here too: v3's non-core scores come from ``scheduleleaguev2``
+    # and legacy's from the R gamelog chain, so a non-core disagreement is a
+    # cross-source note, not a v3 regression -- it must not set the verdict.
     n_cmp, n_bad, bad_ids = compare_scores(
-        staged_schedule_scores(staged), legacy_schedule_scores(legacy)
+        core_only(staged_schedule_scores(staged)), core_only(legacy_schedule_scores(legacy))
     )
     detail = (
-        f"staged={len(staged_set)} legacy_core={len(legacy_core)} "
+        f"staged={len(staged_set)} staged_noncore={len(staged_set) - len(staged_core)} "
+        f"legacy_core={len(legacy_core)} "
         f"legacy_excluded_noncore={explained} missing_in_v3={len(missing)} "
         f"extra_in_v3={len(extra)} scores_compared={n_cmp} score_mismatch={n_bad}"
     )
@@ -196,10 +209,13 @@ def gate_pbp(
 
     if legacy_pbp is not None:
         legacy_core = core_ids(_ids(legacy_pbp))
+        staged_core = core_ids(staged_games)
         missing = sorted(legacy_core - staged_games)
-        extra = sorted(staged_games - legacy_core)
+        extra = sorted(staged_core - legacy_core)
         detail = (
-            f"staged_games={len(staged_games)} legacy_core_games={len(legacy_core)} "
+            f"staged_games={len(staged_games)} "
+            f"staged_noncore={len(staged_games) - len(staged_core)} "
+            f"legacy_core_games={len(legacy_core)} "
             f"missing_in_v3={len(missing)} extra_in_v3={len(extra)} "
             f"min_events={min_events} scores_vs_sched={n_cmp} score_mismatch={n_bad}"
         )
