@@ -335,6 +335,30 @@ def test_render_manifest_reports_a_failing_gate_and_lists_blockers(tmp_path):
     assert "no blanket override" in text
 
 
+def test_manifest_carries_the_reason_and_flags_an_unattributed_allowlist(tmp_path):
+    _stage(tmp_path, 2006)
+    staged = vc.stage_rows(tmp_path, [2006], vc.TARGETS)
+    allowed = [
+        {"season": 2006, "family": "schedule", "verdict": "DIFF", "detail": "score_mismatch=1"},
+        {"season": 2006, "family": "play_by_play", "verdict": "DIFF", "detail": "score_mismatch=1"},
+    ]
+    text = vc.render_manifest(
+        vc.build_manifest(staged, {}, {}),
+        [],
+        seasons=[2006],
+        repo="r",
+        targets=vc.TARGETS,
+        allowlist={"2006:schedule", "2006:play_by_play"},
+        allowed_findings=allowed,
+        blocking_findings=[],
+        execute=False,
+        reasons={"2006:schedule": "raw leaguegamelog agrees with v3"},
+    )
+    assert "raw leaguegamelog agrees with v3" in text
+    # the entry given no reason must not read as explained
+    assert "UNATTRIBUTED" in text
+
+
 # --------------------------------------------------------------------------- gate
 
 
@@ -412,6 +436,40 @@ def test_main_refuses_to_publish_when_gate_fails(tmp_path, monkeypatch, capsys):
     assert len(manifests) == 1
     text = manifests[0].read_text(encoding="utf-8")
     assert "FAIL -- PUBLISH BLOCKED" in text and "boom" in text
+
+
+def test_allow_diff_file_explains_the_finding_and_unblocks_it(tmp_path, monkeypatch):
+    _stage(tmp_path / "v3_staging", 2006)
+    monkeypatch.setattr(vc, "_gh_runner", FakeGh())
+    monkeypatch.setattr(
+        v3_gate,
+        "run_gate",
+        _fake_gate([{"season": 2006, "family": "schedule", "verdict": "DIFF", "detail": "boom"}]),
+    )
+    allowfile = tmp_path / "allow.txt"
+    allowfile.write_text(
+        "# a comment\n\n2006:schedule=raw leaguegamelog agrees with v3\n", encoding="utf-8"
+    )
+
+    rc = vc.main(
+        [
+            "-s",
+            "2006",
+            "-e",
+            "2006",
+            "--repo-root",
+            str(tmp_path),
+            "--staging",
+            str(tmp_path / "v3_staging"),
+            "--allow-diff-file",
+            str(allowfile),
+        ]
+    )
+    assert rc == 0  # the explained DIFF no longer blocks
+    text = next((tmp_path / "logs").glob("v3_cutover_manifest_*.md")).read_text(encoding="utf-8")
+    assert "raw leaguegamelog agrees with v3" in text
+    assert "UNATTRIBUTED" not in text
+    assert "a comment" not in text  # comments are not entries
 
 
 # --------------------------------------------------------------------------- upload / resume

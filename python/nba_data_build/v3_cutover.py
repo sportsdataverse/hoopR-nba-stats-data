@@ -12,6 +12,11 @@ What it does, in order:
    range. Any ``DIFF`` / ``MISSING_STAGED`` verdict aborts unless that exact
    ``season:family`` pair was allowlisted with ``--allow-diff`` -- which is then
    printed verbatim in the manifest. There is no blanket ignore switch.
+   Each entry may carry ``=REASON``; the manifest renders it in a "why it is
+   explained" column and marks a reason-less entry **UNATTRIBUTED**, so an
+   approved diff can never be laundered into the record unexplained. The
+   standing, per-game-verified set lives in ``ops/v3_cutover_allowlist.txt``
+   and is passed with ``--allow-diff-file``.
 2. **Derive.** Every staged parquet is materialized in all three published
    formats (:mod:`.v3_formats`): ``parquet`` + ``rds`` + ``csv.gz``. The rds is
    what ``hoopR::load_nba_*()`` actually reads, so a parquet-only publish would
@@ -496,6 +501,7 @@ def render_manifest(
     blocking_findings: list[dict[str, Any]],
     execute: bool,
     collisions: Optional[list[dict[str, Any]]] = None,
+    reasons: Optional[dict[str, str]] = None,
 ) -> str:
     """The REPLACE MANIFEST, as markdown."""
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -655,9 +661,15 @@ def render_manifest(
 
     lines += ["", "### Allowlisted (explained) diffs", ""]
     if allowlist:
-        lines += ["| season:family | verdict | detail |", "|---|---|---|"]
+        reasons = reasons or {}
+        lines += [
+            "| season:family | verdict | why it is explained | detail |",
+            "|---|---|---|---|",
+        ]
         for f in allowed_findings:
-            lines.append(f"| `{f['season']}:{f['family']}` | {f['verdict']} | {f['detail']} |")
+            key = f"{f['season']}:{f['family']}"
+            why = reasons.get(key) or "**UNATTRIBUTED -- no reason recorded**"
+            lines.append(f"| `{key}` | {f['verdict']} | {why} | {f['detail']} |")
         unused = sorted(allowlist - {f"{f['season']}:{f['family']}" for f in allowed_findings})
         if unused:
             lines += ["", f"_allowlisted but not triggered: {', '.join(unused)}_"]
@@ -908,8 +920,21 @@ def main(argv: Optional[list[str]] = None) -> int:
         "--allow-diff",
         action="append",
         default=[],
-        metavar="SEASON:FAMILY",
-        help="allowlist ONE explained gate DIFF (repeatable); printed in the manifest",
+        metavar="SEASON:FAMILY[=REASON]",
+        help=(
+            "allowlist ONE explained gate DIFF (repeatable); printed in the manifest. "
+            "Append '=REASON' to record WHY it is explained -- the manifest carries it, "
+            "so an approved diff is never left unattributed."
+        ),
+    )
+    ap.add_argument(
+        "--allow-diff-file",
+        default=None,
+        metavar="PATH",
+        help=(
+            "file of SEASON:FAMILY[=REASON] lines (blank / '#' lines ignored), "
+            "merged with --allow-diff. See ops/v3_cutover_allowlist.txt."
+        ),
     )
     ap.add_argument(
         "--manifest", default=None, help="default: {repo}/logs/v3_cutover_manifest_{ts}.md"
@@ -978,7 +1003,16 @@ def main(argv: Optional[list[str]] = None) -> int:
         return 2
 
     seasons = list(range(args.start_season, args.end_season + 1))
-    allow = set(args.allow_diff)
+    # "SEASON:FAMILY" or "SEASON:FAMILY=why it is explained".
+    entries = list(args.allow_diff)
+    if args.allow_diff_file:
+        entries += [
+            ln.strip()
+            for ln in Path(args.allow_diff_file).read_text(encoding="utf-8").splitlines()
+            if ln.strip() and not ln.lstrip().startswith("#")
+        ]
+    allow_reasons = dict(p.split("=", 1) if "=" in p else (p, "") for p in entries)
+    allow = set(allow_reasons)
 
     if args.retire_legacy_assets:
         # Retirement is gated on VERIFICATION, not on the section-10.3 gate: what
@@ -1028,6 +1062,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             blocking_findings=blocking,
             execute=args.execute,
             collisions=collisions,
+            reasons=allow_reasons,
         ),
         encoding="utf-8",
     )

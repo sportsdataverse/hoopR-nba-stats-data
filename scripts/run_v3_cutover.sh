@@ -12,6 +12,14 @@
 #             END-year replacement is not present and verified in every format.
 #   --        everything after is passed through (e.g. --allow-diff 2011:schedule)
 #
+# The standing, per-game-verified gate allowlist is NOT applied implicitly --
+# pass it, so the run always says out loud which diffs it is accepting:
+#
+#   scripts/run_v3_cutover.sh -- --allow-diff-file ops/v3_cutover_allowlist.txt
+#
+# Each entry carries its reason and the manifest renders it; an entry without
+# one is rendered UNATTRIBUTED rather than quietly accepted.
+#
 # DRY RUN IS THE DEFAULT. A dry run re-runs the section-10.3 gate, derives the
 # release formats, writes the REPLACE MANIFEST to logs/, and uploads nothing.
 # Read the manifest's "WOULD BE DESTROYED" and "SEASON-LABEL COLLISION" sections

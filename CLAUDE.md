@@ -132,11 +132,23 @@ is a valid cadence but must be stated explicitly.
 
   ```sh
   bash scripts/run_v3_cutover.sh -s 1997 -e 2026            # dry run; prints its own tail -f
-  bash scripts/run_v3_cutover.sh -s 1997 -e 2026 -- --allow-diff 2023:schedule
+  bash scripts/run_v3_cutover.sh -s 1997 -e 2026 -- --allow-diff-file ops/v3_cutover_allowlist.txt
   bash scripts/run_v3_cutover.sh -s 1997 -e 2026 -x         # PUBLISH (after reading the manifest)
   bash scripts/run_v3_cutover.sh -R -x                      # SEPARATE step: retire the _v3 tags
   bash scripts/run_v3_cutover.sh -L -x                      # SEPARATE step: retire the LEGACY assets
   ```
+
+  **The gate allowlist is a reviewed file, not a flag you improvise.**
+  `ops/v3_cutover_allowlist.txt` holds one `SEASON:FAMILY=REASON` line per
+  explained §10.3 finding, each verified game-by-game against sources that are
+  independent of the play-by-play (raw `leaguegamelog` PTS,
+  `boxscoretraditionalv3` team totals cross-checked against the player-point
+  sums, `boxscoresummaryv2` LineScore). The legacy schedule is **not** such a
+  source — it inherits pbp-derived scores, so "legacy agrees with pbp" is one
+  source, not two. The manifest renders every applied entry with its reason and
+  marks a reason-less one `UNATTRIBUTED`. It is never applied implicitly: pass
+  `--allow-diff-file`. Never allowlist a *capture* gap (a game absent from the
+  raw store) — that needs a re-capture.
 
   **Three formats, always.** Every artifact publishes as `parquet` + `rds` +
   `csv.gz` (`nba_data_build/v3_formats.py`). `hoopR::load_nba_*()` reads the
