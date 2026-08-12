@@ -1,4 +1,4 @@
-"""Cross-check the D39 models against sdv-py's loader schemas (spec 12.2).
+"""Cross-check the D39 models against sdv-py's loader schemas (spec 11.2).
 
 The comparison data is a VENDORED fixture (``tests/fixtures/
 loader_schemas_nba_stats.json``), not a read of the sibling sdv-py checkout --

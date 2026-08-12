@@ -77,7 +77,7 @@ into `v3_staging/` (never clobbering the live tree) and is verified by
 
 `scripts/run_v3_cutover.sh` (`python -m nba_data_build.v3_cutover`) publishes
 those staged parquets onto the production release tags — the D26d cutover. It is
-**a dry run unless `-x` is passed**: it re-runs the §10.3 gate, derives the
+**a dry run unless `-x` is passed**: it re-runs the §9.3 gate, derives the
 release formats, writes a REPLACE MANIFEST into `logs/` naming every asset it
 would overwrite (with the current remote size + updated-at), and uploads nothing.
 The gate hard-aborts on any unexplained `DIFF`; explained cases are allowlisted

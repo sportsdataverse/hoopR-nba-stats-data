@@ -108,12 +108,12 @@ is a valid cadence but must be stated explicitly.
   one-off-looking name: `scripts/P0_DROPLET_RUNBOOK.md` §4a "Parallel cache warm"
   runs it to warm the per-game possession cache so the sequential impact build
   (§4b) is CPU-only.
-- `scripts/run_v3_backfill.sh` — Program V (design §10) v3 dataset backfill:
+- `scripts/run_v3_backfill.sh` — Program V (design §9) v3 dataset backfill:
   builds `schedule`/`pbp`/`possessions`/`lineups` per season from the committed
   raw store into `v3_staging/` (which never clobbers the live tree). Resumable —
   a season whose outputs exist is skipped unless `--rebuild`. Operator-run, not
   wired to a workflow: it is a multi-hour job and its output is gated before
-  adoption. Verify a run with the §10.3 diff gate, which reconciles v3 against
+  adoption. Verify a run with the §9.3 diff gate, which reconciles v3 against
   legacy where both exist and against the raw store where they don't:
 
   ```sh
@@ -123,9 +123,9 @@ is a valid cadence but must be stated explicitly.
 
   The D26d tag swap (retiring the `_v3` tags) is a separate post-gate decision.
 
-- `scripts/run_v3_cutover.sh` — Program V (design §10, D26d) cutover publisher:
+- `scripts/run_v3_cutover.sh` — Program V (design §9, D26d) cutover publisher:
   moves the staged v3 parquets onto the **production** release tags. **A DRY RUN
-  BY DEFAULT** — it re-runs the §10.3 gate, writes a REPLACE MANIFEST to `logs/`,
+  BY DEFAULT** — it re-runs the §9.3 gate, writes a REPLACE MANIFEST to `logs/`,
   and uploads nothing. Publishing needs an explicit `-x` (`--execute`), which is
   the least reversible action in the program: overwriting a release asset
   destroys the previous bytes and `hoopR::load_nba_*()` reads them.
@@ -140,7 +140,7 @@ is a valid cadence but must be stated explicitly.
 
   **The gate allowlist is a reviewed file, not a flag you improvise.**
   `ops/v3_cutover_allowlist.txt` holds one `SEASON:FAMILY=REASON` line per
-  explained §10.3 finding, each verified game-by-game against sources that are
+  explained §9.3 finding, each verified game-by-game against sources that are
   independent of the play-by-play (raw `leaguegamelog` PTS,
   `boxscoretraditionalv3` team totals cross-checked against the player-point
   sums, `boxscoresummaryv2` LineScore). The legacy schedule is **not** such a

@@ -1,4 +1,4 @@
-"""Program V (design §10) v3 backfill: compile D26b-named season parquets into staging.
+"""Program V (design §9) v3 backfill: compile D26b-named season parquets into staging.
 
 Builds the four v3 families -- ``schedule`` / ``play_by_play`` / ``possessions`` /
 ``lineups`` -- for a range of seasons entirely from the committed raw store
@@ -10,7 +10,7 @@ Builds the four v3 families -- ``schedule`` / ``play_by_play`` / ``possessions``
     nba_possessions_2006.parquet
     nba_lineups_2006.parquet
 
-The committed tree is untouched until the section-10.3 gate (:mod:`.v3_gate`)
+The committed tree is untouched until the section-9.3 gate (:mod:`.v3_gate`)
 passes; the cutover move + tag swap (D26d) is a separate operator decision.
 
 Season convention: CLI seasons are **END years** (2006 = the 2005-06 season),

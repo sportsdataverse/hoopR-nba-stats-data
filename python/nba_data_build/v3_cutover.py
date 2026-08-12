@@ -1,4 +1,4 @@
-"""Program V (design §10, D26d) cutover publisher: staged v3 -> production release tags.
+"""Program V (design §9, D26d) cutover publisher: staged v3 -> production release tags.
 
 **DRY RUN IS THE DEFAULT.** Nothing is uploaded, created, or deleted without an
 explicit ``--execute``. This is the least reversible action in the program:
@@ -8,7 +8,7 @@ loaders.
 
 What it does, in order:
 
-1. **Gate.** Re-runs the section-10.3 :mod:`.v3_gate` over the requested season
+1. **Gate.** Re-runs the section-9.3 :mod:`.v3_gate` over the requested season
    range. Any ``DIFF`` / ``MISSING_STAGED`` verdict aborts unless that exact
    ``season:family`` pair was allowlisted with ``--allow-diff`` -- which is then
    printed verbatim in the manifest. There is no blanket ignore switch.
@@ -473,7 +473,7 @@ def check_gate(
     raw_root: Path,
     allow: set[str],
 ) -> tuple[bool, list[dict[str, Any]], list[dict[str, Any]]]:
-    """Run the section-10.3 gate. Returns (ok, blocking findings, allowlisted findings)."""
+    """Run the section-9.3 gate. Returns (ok, blocking findings, allowlisted findings)."""
     from .v3_gate import run_gate
 
     findings, _ = run_gate(seasons, staging, repo_root, raw_root)
@@ -511,7 +511,7 @@ def render_manifest(
         "",
         f"- generated: `{stamp}`",
         f"- mode: **{'EXECUTE' if execute else 'DRY RUN (nothing uploaded)'}**",
-        f"- gate (section 10.3): **{'PASS' if gate_ok else 'FAIL -- PUBLISH BLOCKED'}**",
+        f"- gate (section 9.3): **{'PASS' if gate_ok else 'FAIL -- PUBLISH BLOCKED'}**",
         f"- release repo: `{repo}`",
         f"- seasons: {seasons[0]}-{seasons[-1]} ({len(seasons)}) END-year",
         "",
@@ -646,7 +646,7 @@ def render_manifest(
             f"| `{s['tag']}` | `{s['asset']}` | {_fmt_bytes(s['size'])} | {s['updated_at']} |"
         )
 
-    lines += ["", "## Gate (section 10.3)", ""]
+    lines += ["", "## Gate (section 9.3)", ""]
     if gate_ok:
         lines.append("**PASS** -- no unexplained finding over the season range.")
     else:
@@ -1022,7 +1022,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     allow = set(allow_reasons)
 
     if args.retire_legacy_assets:
-        # Retirement is gated on VERIFICATION, not on the section-10.3 gate: what
+        # Retirement is gated on VERIFICATION, not on the section-9.3 gate: what
         # matters is that the replacement bytes are provably on the release, and
         # the data-quality gate has no bearing on that.
         _log(f"legacy retirement {'(EXECUTE)' if args.execute else '(dry run)'}: {staging}")

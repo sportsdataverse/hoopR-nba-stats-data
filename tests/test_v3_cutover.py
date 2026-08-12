@@ -232,7 +232,7 @@ def test_render_manifest_names_destroyed(tmp_path):
     assert "WOULD BE DESTROYED" in text
     assert "nba_play_by_play_2006.parquet" in text
     assert "DRY RUN" in text
-    assert "gate (section 10.3): **PASS**" in text
+    assert "gate (section 9.3): **PASS**" in text
     assert "## Summary per format" in text
 
 

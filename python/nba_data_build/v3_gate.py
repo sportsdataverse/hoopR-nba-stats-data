@@ -1,4 +1,4 @@
-"""Section-10.3 gate: diff staged v3 seasons against legacy + the raw store.
+"""Section-9.3 gate: diff staged v3 seasons against legacy + the raw store.
 
 For every requested END-year season and each of the two comparable families:
 
@@ -286,7 +286,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     """CLI: ``python -m nba_data_build.v3_gate -s 1997 -e 2026``."""
     ap = argparse.ArgumentParser(
         prog="nba_data_build.v3_gate",
-        description="Program V section-10.3 gate: staged v3 vs legacy + raw store.",
+        description="Program V section-9.3 gate: staged v3 vs legacy + raw store.",
     )
     ap.add_argument("-s", "--start-season", type=int, default=1997)
     ap.add_argument("-e", "--end-season", type=int, default=2026)

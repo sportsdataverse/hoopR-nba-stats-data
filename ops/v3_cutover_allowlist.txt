@@ -1,4 +1,4 @@
-# Program V section-10.3 gate -- standing allowlist for the v3 cutover.
+# Program V section-9.3 gate -- standing allowlist for the v3 cutover.
 #
 #   SEASON:FAMILY=why it is explained
 #
