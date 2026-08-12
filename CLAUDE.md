@@ -132,10 +132,36 @@ is a valid cadence but must be stated explicitly.
 
   ```sh
   bash scripts/run_v3_cutover.sh -s 1997 -e 2026            # dry run; prints its own tail -f
-  bash scripts/run_v3_cutover.sh -s 1997 -e 2026 -- --allow-diff 2011:schedule
+  bash scripts/run_v3_cutover.sh -s 1997 -e 2026 -- --allow-diff 2023:schedule
   bash scripts/run_v3_cutover.sh -s 1997 -e 2026 -x         # PUBLISH (after reading the manifest)
   bash scripts/run_v3_cutover.sh -R -x                      # SEPARATE step: retire the _v3 tags
+  bash scripts/run_v3_cutover.sh -L -x                      # SEPARATE step: retire the LEGACY assets
   ```
+
+  **Three formats, always.** Every artifact publishes as `parquet` + `rds` +
+  `csv.gz` (`nba_data_build/v3_formats.py`). `hoopR::load_nba_*()` reads the
+  `.rds`, so a parquet-only publish ships data hoopR cannot open; the rds comes
+  from `sportsdataverse._rds.write_rds` (byte-parity, no R / no `Rscript`) and is
+  **verified by reading it back** — shape, column names, and per-column R vector
+  type against the source parquet — before it can be uploaded. The csv is gzipped
+  per the `ncaa-wbb-hoops-data` convention (GitHub's 2 GiB per-asset limit).
+
+  **The publish is ADDITIVE (decision B).** The END-year assets land *next to*
+  the legacy START-year ones rather than replacing them, so an all-`NEW` /
+  0-`REPLACE` manifest is the intended outcome, not a defect. That leaves each
+  tag carrying two labelings of the same real season — published
+  `play_by_play_1996.*` IS 1996-97 and staged `nba_play_by_play_1997.*` is ALSO
+  1996-97 — which the manifest's **SEASON-LABEL COLLISION** section enumerates
+  per tag, and which a generated per-tag `README.md` (uploaded on `-x`) explains
+  to consumers. `-L` (`--retire-legacy-assets`) removes the legacy names once
+  consumers have migrated; it refuses any season whose END-year replacement is
+  not present and byte-verified on the tag **in every format**, and is never
+  bundled with an upload or with `-R`.
+
+  **The v3 per-game lineups publish to `nba_stats_game_lineups`** (decision 3),
+  not `nba_stats_lineups` — the latter carries the season-level
+  `leaguedashlineups` dataset from stage 04, a different dataset rather than an
+  older version, and is left untouched.
 
   Read the manifest's **WOULD BE DESTROYED** and **SURVIVES UN-REPLACED**
   sections before ever passing `-x`. The gate hard-aborts on any unexplained

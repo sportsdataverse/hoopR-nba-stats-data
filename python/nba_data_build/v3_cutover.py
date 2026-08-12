@@ -12,25 +12,52 @@ What it does, in order:
    range. Any ``DIFF`` / ``MISSING_STAGED`` verdict aborts unless that exact
    ``season:family`` pair was allowlisted with ``--allow-diff`` -- which is then
    printed verbatim in the manifest. There is no blanket ignore switch.
-2. **Manifest.** Writes a REPLACE MANIFEST (markdown) naming every asset that
+2. **Derive.** Every staged parquet is materialized in all three published
+   formats (:mod:`.v3_formats`): ``parquet`` + ``rds`` + ``csv.gz``. The rds is
+   what ``hoopR::load_nba_*()`` actually reads, so a parquet-only publish would
+   ship data hoopR cannot open; it is written by the byte-parity RDS writer (no
+   R, no ``Rscript``) and **verified by reading it back** before it is
+   considered done.
+3. **Manifest.** Writes a REPLACE MANIFEST (markdown) naming every asset that
    would be uploaded: target tag, filename, local bytes/rows/sha256, and the
    CURRENT remote asset's size + updated-at when one exists. Every row is
-   classified ``NEW`` / ``REPLACE`` / ``UNCHANGED``. A dedicated section lists
-   the remote assets that would be **destroyed**, and a second lists the
-   legacy-named assets that would survive un-replaced and keep being served to
-   the loaders (the shadow set).
-3. **Upload** (``--execute`` only). One asset at a time; after each, the release
+   classified ``NEW`` / ``REPLACE`` / ``UNCHANGED``. Dedicated sections list the
+   remote assets that would be **destroyed**, the legacy-named assets that
+   survive un-replaced and keep being served to the loaders (the shadow set),
+   and the **season-label collisions** (below).
+4. **Upload** (``--execute`` only). One asset at a time; after each, the release
    is re-fetched and the remote size compared to the local file. First mismatch
    stops the run -- ``gh release upload`` with many files at once has silently
-   dropped large assets before, which is why this is per-file.
+   dropped large assets before, which is why this is per-file. Each touched tag
+   also receives a generated ``README.md`` explaining the two naming schemes.
+
+**Decision B -- additive publish.** The v3 assets land on the PRODUCTION tags
+alongside the existing legacy assets rather than replacing them, and consumers
+migrate afterwards. A 0-REPLACE / all-NEW manifest is therefore the intended
+outcome, not a defect. The hazard it creates is that during the migration window
+each tag carries two labelings of the same real season: published
+``play_by_play_1996.*`` IS the 1996-97 season, and staged
+``nba_play_by_play_1997.parquet`` is ALSO the 1996-97 season, so a consumer
+asking for "1997" gets different data depending on which file it grabs. Three
+mitigations, all in this module:
+
+* the **SEASON-LABEL COLLISION** manifest section pairs every new asset with the
+  legacy asset covering the same real season, per tag;
+* ``--execute`` uploads a generated per-tag ``README.md`` stating which pattern
+  is which, that both describe the same seasons, that the END-year name is
+  authoritative, and that the legacy assets are scheduled for removal;
+* ``--retire-legacy-assets`` deletes the legacy names once consumers have
+  migrated -- a **separate** invocation that refuses to delete anything whose
+  replacement is not present and verified in all three formats.
 
 Resumability: every verified upload appends a receipt to
 ``{staging}/.cutover_receipts.json``. A re-run classifies an asset ``UNCHANGED``
 (and skips it) only when a receipt's sha256 matches the local file *and* the
 remote size agrees -- size equality alone is never taken as identity.
 
-``_v3`` tag retirement is a **separate** invocation (``--retire-v3-tags``), never
-bundled into a data upload.
+``_v3`` tag retirement (``--retire-v3-tags``) and legacy-asset retirement
+(``--retire-legacy-assets``) are each a separate invocation, never bundled into
+a data upload and never into each other.
 
 Seasons are END years, matching :mod:`.v3_backfill` (2006 = the 2005-06 season).
 Note that the legacy production assets are keyed by START year; see
@@ -50,8 +77,12 @@ from pathlib import Path
 from typing import Any, Optional
 
 from .publish import Runner, _gh_runner
+from .v3_formats import FORMATS, derive_formats
 
 REPO = "sportsdataverse/sportsdataverse-data"
+
+#: Name of the per-tag migration note uploaded alongside the data (--execute).
+README_ASSET = "README.md"
 
 #: Read in 1 MiB blocks -- the staged pbp parquets run to ~20 MB each.
 _SHA_BLOCK = 1 << 20
@@ -101,20 +132,17 @@ TARGETS: dict[str, Target] = {
         tag="nba_stats_possessions",
         asset="nba_possessions_{season}.parquet",
     ),
-    # `nba_stats_lineups` already publishes the season-level leaguedashlineups
-    # dataset (stage 04) as `lineups_{start}.{csv,parquet,rds}`. The v3 per-game
-    # lineups family is NOT that dataset.
+    # D26d decision 3: the v3 per-game lineup/stint data gets its OWN tag.
+    # `nba_stats_lineups` carries the SEASON-level leaguedashlineups dataset
+    # from stage 04 (`lineups_{start}.{csv,parquet,rds}`) -- a different dataset,
+    # not an older version of this one, so it is left untouched rather than
+    # shared. `nba_stats_game_lineups` parallels the existing
+    # `nba_stats_game_rosters` naming. There is no legacy asset to shadow here:
+    # nothing on the new tag describes these seasons under another name.
     "lineups": Target(
         family="lineups",
-        tag="nba_stats_lineups",
+        tag="nba_stats_game_lineups",
         asset="nba_lineups_{season}.parquet",
-        legacy_asset="lineups_{season}.parquet",
-        legacy_offset=-1,
-        collision=(
-            "nba_stats_lineups already carries the season-level leaguedashlineups "
-            "dataset (lineups_{start}.csv/.parquet/.rds from stage 04) -- a different "
-            "dataset from the v3 per-game lineups. Resolve with --tag lineups=<tag>."
-        ),
     ),
 }
 
@@ -201,14 +229,30 @@ def classify(
     return "REPLACE"
 
 
+def release_build_dir(staging: Path) -> Path:
+    """Where the derived rds / csv.gz live. Sibling of the staged parquet, gitignored."""
+    return Path(staging) / "_release_build"
+
+
 def stage_rows(
     staging: Path,
     seasons: list[int],
     targets: dict[str, Target],
+    *,
+    formats: tuple[str, ...] = FORMATS,
+    force_derive: bool = False,
 ) -> list[dict[str, Any]]:
-    """Local side of the manifest: one row per staged parquet that exists."""
+    """Local side of the manifest: one row per staged artifact PER FORMAT.
+
+    The staged parquet is the source; the rds + csv.gz are derived from it here
+    (:func:`.v3_formats.derive_formats`, which verifies the rds by reading it
+    back). Derivation is idempotent -- an existing derived file newer than its
+    parquet is reused, so a re-run of the dry run does not re-serialize 120
+    season frames.
+    """
     from .v3_backfill import season_paths
 
+    out_dir = release_build_dir(staging)
     rows: list[dict[str, Any]] = []
     for season in seasons:
         paths = season_paths(staging, season)
@@ -216,18 +260,24 @@ def stage_rows(
             path = paths[family]
             if not path.exists():
                 continue
-            rows.append(
-                {
-                    "family": family,
-                    "season": season,
-                    "tag": target.tag,
-                    "asset": target.asset.format(season=season),
-                    "path": path,
-                    "size": path.stat().st_size,
-                    "rows": parquet_rows(path),
-                    "sha256": sha256_file(path),
-                }
-            )
+            stem = target.asset.format(season=season).rsplit(".parquet", 1)[0]
+            derived = derive_formats(path, out_dir, dataset=stem, force=force_derive)
+            n_rows = parquet_rows(path)
+            for fmt in formats:
+                fpath = derived[fmt]
+                rows.append(
+                    {
+                        "family": family,
+                        "season": season,
+                        "format": fmt,
+                        "tag": target.tag,
+                        "asset": f"{stem}.{fmt}",
+                        "path": fpath,
+                        "size": fpath.stat().st_size,
+                        "rows": n_rows,
+                        "sha256": sha256_file(fpath),
+                    }
+                )
     return rows
 
 
@@ -282,6 +332,135 @@ def shadowed_assets(
     return out
 
 
+def legacy_stem(target: Target, season: int) -> Optional[str]:
+    """Legacy asset stem covering the SAME real season as this END-year *season*.
+
+    ``play_by_play_{start}`` for an END-year 1997 is ``play_by_play_1996`` -- the
+    same 1996-97 games under the other labeling.
+    """
+    if not target.legacy_asset:
+        return None
+    name = target.legacy_asset.format(season=season + target.legacy_offset)
+    return name.rsplit(".parquet", 1)[0]
+
+
+def season_label_collisions(
+    seasons: list[int],
+    remote_by_tag: dict[str, dict[str, Any]],
+    targets: dict[str, Target],
+) -> list[dict[str, Any]]:
+    """Per tag, the pairs of assets that describe the SAME real season under two names.
+
+    This is the hazard the additive (decision-B) publish creates and the reason
+    the manifest carries it as its own section: after the cutover a tag serves
+    ``play_by_play_1996.*`` (START-year, the 1996-97 season) next to
+    ``nba_play_by_play_1997.*`` (END-year, ALSO the 1996-97 season). A consumer
+    asking for "1997" gets different data depending on which file it grabs, and
+    nothing in either filename says so. Only pairs whose legacy side actually
+    exists on the release are listed -- a name that was never published is not a
+    collision anyone can hit.
+    """
+    out: list[dict[str, Any]] = []
+    for target in targets.values():
+        remote = remote_by_tag.get(target.tag, {})
+        for season in seasons:
+            stem = legacy_stem(target, season)
+            if stem is None:
+                continue
+            legacy_names = sorted(
+                n for n in remote if n.rsplit(".", 1)[0] == stem or n.startswith(f"{stem}.")
+            )
+            if not legacy_names:
+                continue
+            new_stem = target.asset.format(season=season).rsplit(".parquet", 1)[0]
+            out.append(
+                {
+                    "tag": target.tag,
+                    "family": target.family,
+                    "season": season,
+                    "new_stem": new_stem,
+                    "legacy_stem": stem,
+                    "legacy_assets": legacy_names,
+                    "legacy_bytes": sum(remote[n]["size"] for n in legacy_names),
+                    # False when both names carry the SAME number (a same-season
+                    # duplicate, not a mislabeling): still worth listing, but it
+                    # is not the hazard that sends a consumer to the wrong year.
+                    "label_differs": target.legacy_offset != 0,
+                }
+            )
+    return out
+
+
+def render_tag_readme(
+    tag: str,
+    targets: dict[str, Target],
+    seasons: list[int],
+    *,
+    formats: tuple[str, ...] = FORMATS,
+) -> str:
+    """The migration note uploaded to each touched tag on ``--execute``.
+
+    Generated, never hand-written per tag: a hand-copied note drifts the moment
+    one tag's season range or asset pattern differs from another's.
+    """
+    mine = [t for t in targets.values() if t.tag == tag]
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    lines = [
+        f"# `{tag}` -- asset naming during the Program V v3 migration",
+        "",
+        f"_Generated {stamp} by `v3_cutover.py`. Do not hand-edit; it is re-uploaded on every publish._",
+        "",
+        "## Two filename patterns, the same seasons",
+        "",
+        "This tag currently carries assets under two naming conventions that",
+        "**describe the same real seasons**:",
+        "",
+        "| pattern | season label | example | status |",
+        "|---|---|---|---|",
+    ]
+    for t in mine:
+        new_example = t.asset.format(season=seasons[-1]).rsplit(".parquet", 1)[0]
+        lines.append(
+            f"| `{t.asset.rsplit('.parquet', 1)[0]}.*` | **END year** (2006 = the 2005-06 season) "
+            f"| `{new_example}.parquet` | **AUTHORITATIVE** |"
+        )
+        stem = legacy_stem(t, seasons[-1])
+        if stem:
+            legacy_pattern = (t.legacy_asset or "").rsplit(".parquet", 1)[0]
+            lines.append(
+                f"| `{legacy_pattern}.*` | START year (2005 = the 2005-06 season) "
+                f"| `{stem}.parquet` | legacy -- **scheduled for removal** |"
+            )
+    lines += [
+        "",
+        "So `play_by_play_1996.*` and `nba_play_by_play_1997.*` are the **same**",
+        '1996-97 games. Asking for "1997" gets you different data depending on',
+        "which file you grab. Pin the pattern, not just the number.",
+        "",
+        "## Which one to use",
+        "",
+        "Use the **END-year** files. They are the authoritative Program V v3",
+        "outputs and are the only ones that will still be here after the",
+        "migration window closes.",
+        "",
+        f"Every artifact is published in {len(formats)} formats: "
+        + ", ".join(f"`.{f}`" for f in formats)
+        + ". `hoopR::load_nba_*()` reads the `.rds`.",
+        "",
+        "## Removal of the legacy assets",
+        "",
+        "The START-year assets are scheduled for removal once consumers have",
+        "migrated. They are deleted by a separate, explicit",
+        "`v3_cutover.py --retire-legacy-assets --execute` run, which refuses to",
+        "delete any legacy asset whose END-year replacement is not present and",
+        "byte-verified on this tag in all published formats.",
+        "",
+        f"Seasons covered by this publish: {seasons[0]}-{seasons[-1]} (END-year).",
+        "",
+    ]
+    return "\n".join(lines)
+
+
 def check_gate(
     seasons: list[int],
     staging: Path,
@@ -316,6 +495,7 @@ def render_manifest(
     allowed_findings: list[dict[str, Any]],
     blocking_findings: list[dict[str, Any]],
     execute: bool,
+    collisions: Optional[list[dict[str, Any]]] = None,
 ) -> str:
     """The REPLACE MANIFEST, as markdown."""
     stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -373,6 +553,20 @@ def render_manifest(
         f"| {sum(1 for r in manifest if r['verdict'] == 'UNCHANGED')} | {_fmt_bytes(total)} |"
     )
 
+    by_fmt: dict[str, list[int]] = {}
+    for r in manifest:
+        by_fmt.setdefault(r.get("format", "parquet"), []).append(r["size"])
+    lines += [
+        "",
+        "## Summary per format",
+        "",
+        "| format | assets | bytes |",
+        "|---|---:|---:|",
+    ]
+    for fmt in sorted(by_fmt):
+        lines.append(f"| `.{fmt}` | {len(by_fmt[fmt])} | {_fmt_bytes(sum(by_fmt[fmt]))} |")
+    lines.append(f"| **all formats** | {len(manifest)} | {_fmt_bytes(total)} |")
+
     destroyed = [r for r in manifest if r["verdict"] == "REPLACE"]
     lines += ["", "## WOULD BE DESTROYED (existing remote assets overwritten)", ""]
     if destroyed:
@@ -387,6 +581,49 @@ def render_manifest(
             )
     else:
         lines.append("_none -- every planned asset name is new on its tag._")
+
+    collisions = collisions or []
+    lines += [
+        "",
+        "## SEASON-LABEL COLLISION (two names, one real season)",
+        "",
+        "This publish is **additive** (decision B): the END-year assets land next to",
+        "the existing START-year ones. For every row below, both files describe the",
+        "**same real season** -- a consumer asking for one number gets different data",
+        "depending on which pattern it reads. The END-year name is authoritative; the",
+        "legacy name is scheduled for `--retire-legacy-assets`.",
+        "",
+    ]
+    if collisions:
+        lines += [
+            "| tag | real season | NEW (END-year, authoritative) | LEGACY (START-year, to be retired) | legacy bytes |",
+            "|---|---|---|---|---:|",
+        ]
+        for c in collisions:
+            legacy = ", ".join(f"`{n}`" for n in c["legacy_assets"])
+            real = (
+                f"{c['season'] - 1}-{str(c['season'])[-2:]}"
+                if c["label_differs"]
+                else str(c["season"])
+            )
+            lines.append(
+                f"| `{c['tag']}` | {real} | `{c['new_stem']}.*` "
+                f"| {legacy} | {_fmt_bytes(c['legacy_bytes'])} |"
+            )
+        tags = sorted({c["tag"] for c in collisions})
+        relabelled = sum(1 for c in collisions if c["label_differs"])
+        lines += [
+            "",
+            f"**{len(collisions)} overlapping season(s) across {len(tags)} tag(s): "
+            f"{', '.join('`' + t + '`' for t in tags)}** -- of which **{relabelled}** carry a "
+            "DIFFERENT season number for the same games (the real hazard); the rest are "
+            "same-number duplicates. On `--execute` each of those tags receives a generated "
+            f"`{README_ASSET}` naming both patterns and which one wins.",
+        ]
+    else:
+        lines.append(
+            "_none -- no legacy asset on any target tag describes a season this publish also covers._"
+        )
 
     lines += [
         "",
@@ -430,12 +667,13 @@ def render_manifest(
         "",
         "## Full plan",
         "",
-        "| season | family | tag | asset | local bytes | rows | remote bytes | remote updated | verdict |",
-        "|---:|---|---|---|---:|---:|---:|---|---|",
+        "| season | family | format | tag | asset | local bytes | rows | remote bytes | remote updated | verdict |",
+        "|---:|---|---|---|---|---:|---:|---:|---|---|",
     ]
     for r in manifest:
         lines.append(
-            f"| {r['season']} | {r['family']} | `{r['tag']}` | `{r['asset']}` | {_fmt_bytes(r['size'])} "
+            f"| {r['season']} | {r['family']} | `{r.get('format', 'parquet')}` | `{r['tag']}` "
+            f"| `{r['asset']}` | {_fmt_bytes(r['size'])} "
             f"| {r['rows']:,} | {_fmt_bytes(r['remote_size'])} | {r['remote_updated_at'] or '-'} | {r['verdict']} |"
         )
     return "\n".join(lines) + "\n"
@@ -486,6 +724,126 @@ def upload_one(
             raise RuntimeError(f"{tag}/{asset}: round-trip sha256 {back} != local {row['sha256']}")
 
     save_receipt(staging, row["key"], row["sha256"], row["size"])
+
+
+def upload_readmes(
+    tags: list[str],
+    targets: dict[str, Target],
+    seasons: list[int],
+    repo: str,
+    staging: Path,
+    *,
+    runner: Optional[Runner] = None,
+    execute: bool = False,
+) -> None:
+    """Write + upload the generated per-tag migration note. No-op without *execute*."""
+    run = runner or _gh_runner
+    out_dir = release_build_dir(staging)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    for tag in tags:
+        # `gh release upload` names the asset after the file, so each tag's note
+        # is staged under its own directory as the plain README.md name.
+        staged = out_dir / tag / README_ASSET
+        staged.parent.mkdir(parents=True, exist_ok=True)
+        text = render_tag_readme(tag, targets, seasons)
+        staged.write_text(text, encoding="utf-8")
+        if not execute:
+            _log(f"  would upload {tag}/{README_ASSET} ({len(text)} bytes) -- {staged}")
+            continue
+        run(["release", "upload", tag, str(staged), "--repo", repo, "--clobber"])
+        _log(f"  uploaded {tag}/{README_ASSET}")
+
+
+def plan_legacy_retirement(
+    seasons: list[int],
+    manifest: list[dict[str, Any]],
+    remote_by_tag: dict[str, dict[str, Any]],
+    targets: dict[str, Target],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Split the legacy assets into (deletable, refused).
+
+    A legacy asset is deletable ONLY when its END-year replacement is present on
+    the same tag and verified in **every** published format -- verified meaning
+    the manifest classified it ``UNCHANGED``, i.e. a receipt's sha256 matches the
+    local file and the remote size agrees. Anything less and the legacy bytes are
+    the only surviving copy of that season on that tag: deleting them on the
+    strength of a same-name upload that was never checked is how a season
+    disappears. ``hoopR::load_nba_*()`` reads the ``.rds``, so an unverified rds
+    blocks retirement of the whole season even if the parquet checks out.
+    """
+    deletable: list[dict[str, Any]] = []
+    refused: list[dict[str, Any]] = []
+    for target in targets.values():
+        remote = remote_by_tag.get(target.tag, {})
+        for season in seasons:
+            stem = legacy_stem(target, season)
+            if stem is None:
+                continue
+            legacy_names = sorted(
+                n for n in remote if n.rsplit(".", 1)[0] == stem or n.startswith(f"{stem}.")
+            )
+            if not legacy_names:
+                continue
+            new_stem = target.asset.format(season=season).rsplit(".parquet", 1)[0]
+            rows = [
+                r
+                for r in manifest
+                if r["tag"] == target.tag and r["season"] == season and r["family"] == target.family
+            ]
+            got = {r.get("format", "parquet"): r["verdict"] for r in rows}
+            missing = [f for f in FORMATS if f not in got]
+            unverified = sorted(f for f, v in got.items() if v != "UNCHANGED")
+            entry = {
+                "tag": target.tag,
+                "season": season,
+                "new_stem": new_stem,
+                "legacy_assets": legacy_names,
+                "bytes": sum(remote[n]["size"] for n in legacy_names),
+            }
+            if missing or unverified:
+                reasons = []
+                if missing:
+                    reasons.append(f"not staged: {', '.join(missing)}")
+                if unverified:
+                    reasons.append(f"not verified on the release: {', '.join(unverified)}")
+                refused.append({**entry, "reason": "; ".join(reasons)})
+            else:
+                deletable.append(entry)
+    return deletable, refused
+
+
+def retire_legacy_assets(
+    deletable: list[dict[str, Any]],
+    refused: list[dict[str, Any]],
+    repo: str,
+    *,
+    runner: Optional[Runner] = None,
+    execute: bool = False,
+) -> int:
+    """Delete the legacy START-year assets. SEPARATE step; never bundled with an upload.
+
+    Returns nonzero when anything was refused -- a partially-completed retirement
+    is a state the operator must see, not one to exit 0 on.
+    """
+    run = runner or _gh_runner
+    for entry in refused:
+        _log(
+            f"REFUSING {entry['tag']} season {entry['season']}: {entry['reason']} "
+            f"-- keeping {', '.join(entry['legacy_assets'])}"
+        )
+    total = sum(e["bytes"] for e in deletable)
+    _log(
+        f"legacy retirement: {len(deletable)} season(s) deletable ({_fmt_bytes(total)}), "
+        f"{len(refused)} refused -- {'DELETING' if execute else 'dry run, nothing deleted'}"
+    )
+    for entry in deletable:
+        for name in entry["legacy_assets"]:
+            if not execute:
+                _log(f"  would delete {entry['tag']}/{name}")
+                continue
+            run(["release", "delete-asset", entry["tag"], name, "--repo", repo, "--yes"])
+            _log(f"  deleted {entry['tag']}/{name}")
+    return 1 if refused else 0
 
 
 def retire_tags(
@@ -570,7 +928,30 @@ def main(argv: Optional[list[str]] = None) -> int:
         action="store_true",
         help="SEPARATE STEP: delete the _v3 releases. Does no uploading.",
     )
+    ap.add_argument(
+        "--retire-legacy-assets",
+        action="store_true",
+        help=(
+            "SEPARATE STEP: delete the legacy START-year assets superseded by this "
+            "publish. Does no uploading. Refuses any season whose END-year "
+            "replacement is not present and verified in every format."
+        ),
+    )
+    ap.add_argument(
+        "--formats",
+        default=",".join(FORMATS),
+        help=f"comma-separated subset of {', '.join(FORMATS)} (default: all three)",
+    )
+    ap.add_argument(
+        "--force-derive",
+        action="store_true",
+        help="re-derive the rds / csv.gz even when they look current",
+    )
     args = ap.parse_args(argv)
+
+    if args.retire_v3_tags and args.retire_legacy_assets:
+        _log("--retire-v3-tags and --retire-legacy-assets are separate steps; run one at a time.")
+        return 2
 
     from .v3_backfill import repo_root_default
 
@@ -589,8 +970,25 @@ def main(argv: Optional[list[str]] = None) -> int:
         return 2
     targets = _parse_tag_overrides(args.tag, {f: TARGETS[f] for f in families})
 
+    formats = tuple(f.strip() for f in args.formats.split(",") if f.strip())
+    bad_formats = [f for f in formats if f not in FORMATS]
+    if bad_formats:
+        _log(f"unknown formats: {', '.join(bad_formats)} (have {', '.join(FORMATS)})")
+        return 2
+
     seasons = list(range(args.start_season, args.end_season + 1))
     allow = set(args.allow_diff)
+
+    if args.retire_legacy_assets:
+        # Retirement is gated on VERIFICATION, not on the section-10.3 gate: what
+        # matters is that the replacement bytes are provably on the release, and
+        # the data-quality gate has no bearing on that.
+        _log(f"legacy retirement {'(EXECUTE)' if args.execute else '(dry run)'}: {staging}")
+        staged = stage_rows(staging, seasons, targets, formats=formats)
+        remote_by_tag = {t.tag: remote_assets(t.tag, args.release_repo) for t in targets.values()}
+        manifest = build_manifest(staged, remote_by_tag, load_receipts(staging))
+        deletable, refused = plan_legacy_retirement(seasons, manifest, remote_by_tag, targets)
+        return retire_legacy_assets(deletable, refused, args.release_repo, execute=args.execute)
 
     _log(f"gate: seasons {seasons[0]}-{seasons[-1]} staging={staging}")
     ok, blocking, allowed = check_gate(seasons, staging, repo_root, raw_root, allow)
@@ -599,8 +997,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     # The manifest is read-only and is written even when the gate fails -- the
     # operator needs the blast radius in front of them while deciding whether a
     # DIFF is explainable, not only after it is resolved.
-    _log("collecting staged parquets (size / rows / sha256)")
-    staged = stage_rows(staging, seasons, targets)
+    _log(f"deriving release formats ({', '.join(formats)}) + hashing -- rds is verified on write")
+    staged = stage_rows(staging, seasons, targets, formats=formats, force_derive=args.force_derive)
     if not staged:
         _log(f"no staged parquets under {staging} for those seasons -- nothing to do")
         return 1
@@ -608,6 +1006,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     remote_by_tag = {t.tag: remote_assets(t.tag, args.release_repo) for t in targets.values()}
     manifest = build_manifest(staged, remote_by_tag, load_receipts(staging))
     shadow = shadowed_assets(manifest, remote_by_tag, targets)
+    collisions = season_label_collisions(seasons, remote_by_tag, targets)
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     out = (
@@ -627,6 +1026,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             allowed_findings=allowed,
             blocking_findings=blocking,
             execute=args.execute,
+            collisions=collisions,
         ),
         encoding="utf-8",
     )
@@ -634,7 +1034,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     _log(f"MANIFEST: {out}")
     _log(
         f"  NEW={n['NEW']} REPLACE={n['REPLACE']} UNCHANGED={n['UNCHANGED']} "
-        f"upload_bytes={sum(r['size'] for r in manifest) / 1e6:.1f}MB shadowed={len(shadow)}"
+        f"upload_bytes={sum(r['size'] for r in manifest) / 1e6:.1f}MB shadowed={len(shadow)} "
+        f"season_label_collisions={len(collisions)}"
     )
 
     if not ok:
@@ -645,12 +1046,24 @@ def main(argv: Optional[list[str]] = None) -> int:
         return 1
 
     if not args.execute:
+        _log(f"{README_ASSET} that --execute would upload to each tag (written locally, not sent):")
+        upload_readmes(
+            sorted({r["tag"] for r in manifest}),
+            targets,
+            seasons,
+            args.release_repo,
+            staging,
+            execute=False,
+        )
         _log("DRY RUN -- nothing uploaded. Review the manifest, then re-run with --execute.")
         return 0
 
-    collisions = [t for t in targets.values() if t.collision]
-    if collisions:
-        for t in collisions:
+    # A *tag* collision (target tag already carrying a different dataset) is a
+    # hard refusal; a *season-label* collision is expected under decision B and
+    # is mitigated by the README below, not by refusing.
+    tag_collisions = [t for t in targets.values() if t.collision]
+    if tag_collisions:
+        for t in tag_collisions:
             _log(f"REFUSING: {t.family} -> {t.tag}: {t.collision}")
         return 1
 
@@ -667,6 +1080,19 @@ def main(argv: Optional[list[str]] = None) -> int:
             _log("Stopped. Fix, then re-run -- verified assets are skipped via the receipt file.")
             return 1
     _log(f"done: {len(todo)} asset(s) uploaded + verified")
+
+    # Last, so a failed data upload never leaves a note promising assets that are
+    # not there. Every touched tag gets one, not only the colliding ones: the
+    # END-year convention needs stating wherever it now appears.
+    _log(f"uploading the {README_ASSET} migration note to each touched tag")
+    upload_readmes(
+        sorted({r["tag"] for r in manifest}),
+        targets,
+        seasons,
+        args.release_repo,
+        staging,
+        execute=True,
+    )
     return 0
 
 

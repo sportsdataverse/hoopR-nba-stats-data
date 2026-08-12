@@ -77,15 +77,27 @@ into `v3_staging/` (never clobbering the live tree) and is verified by
 
 `scripts/run_v3_cutover.sh` (`python -m nba_data_build.v3_cutover`) publishes
 those staged parquets onto the production release tags — the D26d cutover. It is
-**a dry run unless `-x` is passed**: it re-runs the §10.3 gate, writes a REPLACE
-MANIFEST into `logs/` naming every asset it would overwrite (with the current
-remote size + updated-at), and uploads nothing. The gate hard-aborts on any
-unexplained `DIFF`; explained cases are allowlisted one at a time with
-`--allow-diff SEASON:FAMILY` and printed in the manifest. Uploads are per-file
-with a post-upload size verification, resumable via
-`v3_staging/.cutover_receipts.json`. Retiring the `_v3` tags is a separate
-invocation (`-R`), never bundled with the data upload. Operator-run, not
-workflow-wired.
+**a dry run unless `-x` is passed**: it re-runs the §10.3 gate, derives the
+release formats, writes a REPLACE MANIFEST into `logs/` naming every asset it
+would overwrite (with the current remote size + updated-at), and uploads nothing.
+The gate hard-aborts on any unexplained `DIFF`; explained cases are allowlisted
+one at a time with `--allow-diff SEASON:FAMILY` and printed in the manifest.
+Uploads are per-file with a post-upload size verification, resumable via
+`v3_staging/.cutover_receipts.json`. Operator-run, not workflow-wired.
+
+Every artifact publishes in **three formats** — `parquet` + `rds` + `csv.gz`,
+derived from the staged parquet by `nba_data_build/v3_formats.py`.
+`hoopR::load_nba_*()` reads the `.rds`, which is written by
+`sportsdataverse._rds.write_rds` (no R) and verified by reading it back before
+upload. The publish is **additive**: END-year assets land beside the legacy
+START-year ones, so an all-`NEW` manifest is expected, the manifest carries a
+**SEASON-LABEL COLLISION** section pairing the two names for each real season,
+and each touched tag gets a generated `README.md`. The v3 per-game lineups go to
+`nba_stats_game_lineups`, leaving the season-level `nba_stats_lineups` dataset
+untouched. Retiring the `_v3` tags (`-R`) and retiring the legacy START-year
+assets (`-L`, which refuses any season whose replacement is not verified in
+every format) are separate invocations, never bundled with the data upload or
+with each other.
 
 `HOOPR_NBA_STATS_RAW_ROOT` overrides the raw store (a local checkout or a
 raw.githubusercontent URL); `HOOPR_NBA_STATS_PYBIN` the interpreter. The driver
