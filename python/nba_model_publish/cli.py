@@ -9,7 +9,7 @@ Usage::
         [--cache-dir /data/nba_possessions] \\
         [--tag nba_player_impact] \\
         [--repo sportsdataverse/sportsdataverse-data] \\
-        [--publish | --dry-run]
+        [--publish] [--dry-run]
 
     python -m nba_model_publish upload \\
         --dir out/impact \\

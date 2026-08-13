@@ -22,7 +22,9 @@ from __future__ import annotations
 import re
 import shutil
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import nba_model_publish.cli as cli
 import pytest
@@ -51,7 +53,9 @@ def _read(path: Path) -> str:
 
 
 @pytest.fixture
-def impact_run(monkeypatch, tmp_path):
+def impact_run(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> Callable[..., list[bool]]:
     """Run `impact` with the builder stubbed and every upload recorded, not performed.
 
     Returns a callable taking the extra CLI flags and returning the list of
@@ -66,7 +70,7 @@ def impact_run(monkeypatch, tmp_path):
 
     calls: list[bool] = []
 
-    def _fake_upload(*args, dry_run=False, **kwargs):
+    def _fake_upload(*args: Any, dry_run: bool = False, **kwargs: Any) -> dict[str, Any]:
         calls.append(dry_run)
         return {"uploaded": 0 if dry_run else 1, "files": ["x"], "failed": []}
 
@@ -84,13 +88,15 @@ def impact_run(monkeypatch, tmp_path):
 # --- the default is non-publishing -------------------------------------------
 
 
-def test_default_never_reaches_the_upload_path(impact_run, capsys):
+def test_default_never_reaches_the_upload_path(
+    impact_run: Callable[..., list[bool]], capsys: pytest.CaptureFixture[str]
+) -> None:
     """No flags: `upload_artifacts` is not called at all -- not even with dry_run=True."""
     assert impact_run() == []
     assert "publish: skipped" in capsys.readouterr().out
 
 
-def test_default_is_not_merely_a_dry_run_upload(impact_run):
+def test_default_is_not_merely_a_dry_run_upload(impact_run: Callable[..., list[bool]]) -> None:
     """Pinned separately: passing dry_run=True to the uploader would also 'not publish',
     but it still enumerates the release. The default must not touch it at all."""
     assert not impact_run(), "the default must reach zero upload calls, not a dry one"
@@ -99,16 +105,16 @@ def test_default_is_not_merely_a_dry_run_upload(impact_run):
 # --- the publishing paths still publish --------------------------------------
 
 
-def test_publish_flag_performs_the_upload(impact_run):
+def test_publish_flag_performs_the_upload(impact_run: Callable[..., list[bool]]) -> None:
     """The cron's flag: both upload calls (seasons + model card) run for real."""
     assert impact_run("--publish") == [False, False]
 
 
-def test_dry_run_plans_the_upload_without_performing_it(impact_run):
+def test_dry_run_plans_the_upload_without_performing_it(impact_run: Callable[..., list[bool]]) -> None:
     assert impact_run("--dry-run") == [True, True]
 
 
-def test_dry_run_wins_over_publish(impact_run):
+def test_dry_run_wins_over_publish(impact_run: Callable[..., list[bool]]) -> None:
     """Two flags, one rule: --dry-run is the stronger one, so a pasted-in
     --publish alongside it cannot upgrade the run into a real publish."""
     assert impact_run("--publish", "--dry-run") == [True, True]
@@ -126,7 +132,7 @@ def _cron_lines(path: Path) -> list[str]:
 
 
 @pytest.mark.parametrize("doc", [RUNBOOK, HANDOFF], ids=["runbook", "handoff"])
-def test_documented_cron_still_publishes(doc):
+def test_documented_cron_still_publishes(doc: Path) -> None:
     """The whole point of the daily cron is publishing. A cron line without
     --publish runs for hours, logs EXIT=0, and writes nothing."""
     lines = _cron_lines(doc)
@@ -135,13 +141,13 @@ def test_documented_cron_still_publishes(doc):
         assert "--publish" in ln, f"{doc.name} cron line no longer publishes: {ln}"
 
 
-def test_launcher_forwards_extra_flags_to_the_cli():
+def test_launcher_forwards_extra_flags_to_the_cli() -> None:
     """`--publish` only reaches the CLI because the launcher forwards "$@"."""
     body = _read(LAUNCHER)
     assert '"$@"' in body, "run_impact_backfill.sh stopped forwarding extra args"
 
 
-def test_workflow_flags_follow_the_subcommand():
+def test_workflow_flags_follow_the_subcommand() -> None:
     """--repo/--dry-run/--publish belong to the `impact` subparser. They once
     preceded `impact`, which argparse rejects outright."""
     body = _read(WORKFLOW)
@@ -152,5 +158,5 @@ def test_workflow_flags_follow_the_subcommand():
 
 
 @pytest.mark.skipif(shutil.which("bash") is None, reason="bash not available")
-def test_launcher_is_syntactically_valid():
+def test_launcher_is_syntactically_valid() -> None:
     assert subprocess.run([shutil.which("bash"), "-n", str(LAUNCHER)], timeout=60).returncode == 0
