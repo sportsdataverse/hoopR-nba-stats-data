@@ -212,6 +212,9 @@ def test_season_done_checkpoint(tmp_path: Path) -> None:
     assert paths["play_by_play"].name == "nba_play_by_play_2006.parquet"
     for p in paths.values():
         p.touch()
+    # Four parquets are not enough -- the build summary is part of the checkpoint.
+    assert not vb.season_done(staging, 2006)
+    vb.summary_path(staging, 2006).write_text("{}", encoding="utf-8")
     assert vb.season_done(staging, 2006)
 
 
@@ -220,6 +223,7 @@ def test_build_season_skips_when_done(tmp_path: Path, raw_root: Path) -> None:
     staging.mkdir()
     for p in vb.season_paths(staging, 2006).values():
         p.touch()
+    vb.summary_path(staging, 2006).write_text("{}", encoding="utf-8")
     out = vb.build_season(raw_root, 2006, staging, tmp_path / "cache")
     assert out == {"season": 2006, "status": "skipped"}
 
@@ -238,3 +242,48 @@ def test_build_season_uncaptured_games_dont_fail(tmp_path: Path, raw_root: Path)
     assert sched["game_id"].to_list() == ["0020500001", "0040500001"]
     # Checkpoint now holds: a rerun skips.
     assert vb.build_season(raw_root, 2006, staging, tmp_path / "cache")["status"] == "skipped"
+
+
+def _write_pbpv3(raw_root: Path, game_id: str, n_actions: int) -> None:
+    """Legacy-layout pbpv3 capture (the only capture a no-pbp game has)."""
+    d = raw_root / "nba_stats" / "json" / "pbpv3"
+    d.mkdir(parents=True, exist_ok=True)
+    actions = [{"actionNumber": i + 1, "period": 1} for i in range(n_actions)]
+    payload = {"meta": {}, "game": {"gameId": game_id, "videoAvailable": 0, "actions": actions}}
+    (d / f"{game_id}.json").write_text(json.dumps(payload), encoding="utf-8")
+
+
+def test_build_season_counts_no_pbp_games_separately(tmp_path: Path, raw_root: Path) -> None:
+    """A captured game with zero actions builds; it is neither failed nor processed.
+
+    Regression for D26c: ~1,602 valid-but-empty captures were counted as
+    ``games_failed`` (``FileNotFoundError: no boxv3_periods capture``) while
+    ``games_uncaptured`` sat at 0 and read green.
+    """
+    _write_pbpv3(raw_root, "0020500001", 0)
+    staging = tmp_path / "v3_staging"
+    out = vb.build_season(raw_root, 2006, staging, tmp_path / "cache")
+
+    assert out["games_failed"] == 0
+    assert out["games_no_pbp"] == 1
+    assert out["games_processed"] == 0
+    assert out["games_uncaptured"] == 1  # the other fixture game has no capture
+    assert out["games_indexed"] == 2
+
+    # The no-pbp game still gets its schedule row, with real ids.
+    sched = pl.read_parquet(vb.season_paths(staging, 2006)["schedule"])
+    row = sched.filter(pl.col("game_id") == "0020500001").row(0, named=True)
+    assert row["home_team_id"] == 1 and row["away_team_id"] == 2
+    # ... and contributes no pbp/possession/lineup rows.
+    assert out["rows"]["play_by_play"] == 0
+
+    # Classification survives the per-game cache round trip (rebuild, warm cache).
+    again = vb.build_season(raw_root, 2006, staging, tmp_path / "cache", rebuild=True)
+    assert (again["games_no_pbp"], again["games_failed"]) == (1, 0)
+
+
+def test_build_season_persists_summary_for_the_gate(tmp_path: Path, raw_root: Path) -> None:
+    staging = tmp_path / "v3_staging"
+    out = vb.build_season(raw_root, 2006, staging, tmp_path / "cache")
+    assert vb.read_summary(staging, 2006) == out
+    assert vb.read_summary(staging, 2099) is None

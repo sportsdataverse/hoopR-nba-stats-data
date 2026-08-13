@@ -78,6 +78,38 @@ def _load_raw_json(root: Union[str, Path], kind: str, game_id: str) -> Any:
     return read_raw(root, kind, game_id)
 
 
+def pbp_action_count(payload: Any, game_id: str = "") -> int:
+    """Number of play-by-play actions in a **valid** ``playbyplayv3`` payload.
+
+    The empty-vs-missing discriminator. stats.nba.com genuinely published no
+    play-by-play for ~1,600 games in the store (pre-2010-11 preseason, most
+    All-Star exhibitions, a pair of phantom 2005 placeholders): the capture is a
+    well-formed ``{"meta": ..., "game": {"gameId": ..., "actions": []}}`` and 0
+    is the real answer. That is *not* the same as a capture being absent (which
+    :func:`~nba_data_build.scrape.raw_store.read_raw` raises ``FileNotFoundError``
+    for) nor the same as a garbled/error payload, which must fail loudly here
+    rather than pass itself off as "this game has no plays".
+
+    Args:
+        payload: Parsed ``playbyplayv3`` capture.
+        game_id: Game id, for the error message only.
+
+    Returns:
+        ``len(payload["game"]["actions"])``.
+
+    Raises:
+        ValueError: If *payload* carries no ``game.actions`` list at all.
+    """
+    game = payload.get("game") if isinstance(payload, dict) else None
+    actions = game.get("actions") if isinstance(game, dict) else None
+    if not isinstance(actions, list):
+        raise ValueError(
+            f"malformed playbyplayv3 payload for {game_id or '<unknown game>'}: "
+            "no game.actions list (a capture error, not a game without plays)"
+        )
+    return len(actions)
+
+
 def _quarter_box_oncourt(
     enh: pl.DataFrame,
     periods: dict[int, Any],
@@ -152,9 +184,9 @@ def _attach_running_possession(enh: pl.DataFrame, poss: pl.DataFrame) -> pl.Data
     ]
     attach_cols = ["possession_number", *lineup_cols]
 
-    poss_for_join = poss.select(
-        ["start_order_index", "end_order_index", *attach_cols]
-    ).sort("start_order_index")
+    poss_for_join = poss.select(["start_order_index", "end_order_index", *attach_cols]).sort(
+        "start_order_index"
+    )
     enh_sorted = enh.sort("order_index")
 
     joined = enh_sorted.join_asof(
@@ -165,10 +197,7 @@ def _attach_running_possession(enh: pl.DataFrame, poss: pl.DataFrame) -> pl.Data
         pl.col("order_index") > pl.col("end_order_index")
     )
     joined = joined.with_columns(
-        [
-            pl.when(out_of_range).then(None).otherwise(pl.col(c)).alias(c)
-            for c in attach_cols
-        ]
+        [pl.when(out_of_range).then(None).otherwise(pl.col(c)).alias(c) for c in attach_cols]
     )
     return joined.drop(["start_order_index", "end_order_index"])
 
@@ -182,6 +211,14 @@ def process_game(root: Union[str, Path], game_id: str) -> ProcessedGame:
     -- a missing raw capture raises ``FileNotFoundError`` rather than
     reaching for the network.
 
+    A game whose ``pbpv3`` capture is valid but carries **zero actions** (see
+    :func:`pbp_action_count`) is a game stats.nba.com published no plays for; it
+    returns three empty frames instead of raising, and only ``pbpv3`` is read.
+    Callers tell it apart from a fully-processed game by
+    ``pg.enriched_pbp.is_empty()`` -- ``enhanced_pbp_from_payload`` returns a
+    zero-row frame if and only if ``actions`` was empty, so the two are
+    equivalent and the classification survives the parquet cache round trip.
+
     Args:
         root: Raw-store root directory (see
             :func:`~nba_data_build.scrape.raw_store.raw_path`).
@@ -194,7 +231,8 @@ def process_game(root: Union[str, Path], game_id: str) -> ProcessedGame:
         RuntimeError: If the installed sdv-py ``PIPELINE_VERSION`` is below
             the Phase-B minimum (see
             :func:`~nba_data_build.cache_guard.assert_pipeline_version`).
-        FileNotFoundError: If any of the three raw captures is missing on disk.
+        FileNotFoundError: If any raw capture the game needs is missing on disk.
+        ValueError: If the ``pbpv3`` capture is malformed (no ``game.actions``).
 
     Example:
         Quick start::
@@ -207,12 +245,27 @@ def process_game(root: Union[str, Path], game_id: str) -> ProcessedGame:
 
     from sportsdataverse.nba.nba_enhanced_pbp import enhanced_pbp_from_payload
     from sportsdataverse.nba.nba_lineups import boxscore_home_away
+    from sportsdataverse.nba.nba_pbp_constants import LINEUPS_SCHEMA
     from sportsdataverse.nba.nba_possessions import (
+        POSSESSIONS_SCHEMA,
         attach_possession_lineups,
         build_possessions,
     )
 
     pbpv3 = _load_raw_json(root, "pbpv3", game_id)
+    if pbp_action_count(pbpv3, str(game_id)) == 0:
+        # A game stats.nba.com never published plays for. ``boxscoretraditionalv3
+        # _period`` is only produced for games that HAVE pbp (period counts derive
+        # from it), so reading it here would raise on a game that is simply empty
+        # upstream. Empty frames, documented schemas, no plays invented.
+        empty = enhanced_pbp_from_payload(pbpv3)
+        return ProcessedGame(
+            game_id=str(game_id),
+            enriched_pbp=empty,
+            possessions=pl.DataFrame(schema=POSSESSIONS_SCHEMA),
+            lineups=pl.DataFrame(schema=LINEUPS_SCHEMA),
+        )
+
     boxv3 = _load_raw_json(root, "boxv3", game_id)
     boxv3_periods_raw = _load_raw_json(root, "boxv3_periods", game_id)
     # GOTCHA (Task 6): dict keys round-trip through JSON as strings -- int-cast them.
@@ -220,9 +273,7 @@ def process_game(root: Union[str, Path], game_id: str) -> ProcessedGame:
 
     enh = enhanced_pbp_from_payload(pbpv3)
     home, away = boxscore_home_away(boxv3)
-    oc, used = _quarter_box_oncourt(
-        enh, periods, boxv3, home_team_id=home, away_team_id=away
-    )
+    oc, used = _quarter_box_oncourt(enh, periods, boxv3, home_team_id=home, away_team_id=away)
 
     poss = attach_possession_lineups(
         build_possessions(enh), oc, enh, home_team_id=home

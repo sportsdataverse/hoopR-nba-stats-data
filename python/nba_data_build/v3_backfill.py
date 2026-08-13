@@ -97,9 +97,31 @@ def season_paths(staging: Union[str, Path], season_end: int) -> dict[str, Path]:
     return {fam: staging / f"nba_{fam}_{season_end}.parquet" for fam in FAMILIES}
 
 
+def summary_path(staging: Union[str, Path], season_end: int) -> Path:
+    """Per-season build summary JSON (the gate's only view of per-game outcomes)."""
+    return Path(staging) / f"nba_build_summary_{season_end}.json"
+
+
+def read_summary(staging: Union[str, Path], season_end: int) -> Optional[dict[str, Any]]:
+    """The season's persisted build summary, or ``None`` when absent/unreadable."""
+    path = summary_path(staging, season_end)
+    try:
+        loaded = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+    return loaded if isinstance(loaded, dict) else None
+
+
 def season_done(staging: Union[str, Path], season_end: int) -> bool:
-    """True when all four staged parquets exist (the resume checkpoint)."""
-    return all(p.exists() for p in season_paths(staging, season_end).values())
+    """True when all four staged parquets **and** the build summary exist.
+
+    The summary is part of the checkpoint on purpose: a season staged without
+    one is a season whose per-game failures nobody can see, and the gate treats
+    it as unverified rather than passing it.
+    """
+    return all(p.exists() for p in season_paths(staging, season_end).values()) and (
+        summary_path(staging, season_end).exists()
+    )
 
 
 def _read_gamelog(
@@ -370,6 +392,7 @@ def build_season(
 
     processed: list[ProcessedGame] = []
     uncaptured: list[str] = []
+    no_pbp: list[str] = []
     failed: list[str] = []
     start_year = season_end - 1
     for n, gid in enumerate(game_ids, 1):
@@ -385,6 +408,15 @@ def build_season(
                 failed.append(gid)
                 _log(f"  season {season_end} game {gid} FAILED: {type(exc).__name__}: {exc}")
                 continue
+        if pg.enriched_pbp.is_empty():
+            # Captured, valid, and genuinely without plays upstream (pre-2010-11
+            # preseason, All-Star exhibitions, the 2005 phantom placeholders).
+            # ``process_game`` only ever yields an empty pbp frame for an empty
+            # ``actions[]``, so this survives the cache round trip. It gets its
+            # schedule row like any other game and contributes no pbp/possession/
+            # lineup rows -- counted here, never folded into ``games_processed``.
+            no_pbp.append(gid)
+            continue
         processed.append(pg)
         if n % 100 == 0:
             _log(f"  season {season_end}: {n}/{len(game_ids)} games ({len(failed)} failed)")
@@ -409,16 +441,25 @@ def build_season(
         df.write_parquet(paths[fam])
         rows[fam] = df.height
 
-    return {
+    summary = {
         "season": season_end,
         "status": "built",
+        # games_failed leads: a season is only as good as its worst game, and a
+        # zero-uncaptured/nonzero-failed season used to read as green (D26c).
+        "games_failed": len(failed),
         "games_indexed": len(game_ids),
         "games_uncaptured": len(uncaptured),
-        "games_failed": len(failed),
+        "games_no_pbp": len(no_pbp),
         "games_processed": len(processed),
+        "failed_sample": failed[:5],
+        "no_pbp_sample": no_pbp[:5],
         "rows": rows,
         "secs": round(time.time() - t0, 1),
     }
+    # The gate reads this back (v3_gate.gate_build): the per-game outcome counts
+    # are not recoverable from the parquets alone.
+    summary_path(staging, season_end).write_text(json.dumps(summary), encoding="utf-8")
+    return summary
 
 
 def main(argv: Optional[list[str]] = None) -> int:
@@ -455,6 +496,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         f"raw={raw_root} staging={staging} cache={cache_root}"
     )
     failures = 0
+    failed_games = 0
     for season in range(args.start_season, args.end_season + 1):
         try:
             summary = build_season(raw_root, season, staging, cache_root, rebuild=args.rebuild)
@@ -462,9 +504,14 @@ def main(argv: Optional[list[str]] = None) -> int:
             failures += 1
             _log(f"season {season} ERROR: {type(exc).__name__}: {exc}")
             continue
-        _log(f"season {season}: {summary}")
-    _log(f"done ({failures} season-level failures)")
-    return 1 if failures else 0
+        n_failed = int(summary.get("games_failed") or 0)
+        failed_games += n_failed
+        prefix = f"season {season} GAMES_FAILED={n_failed}" if n_failed else f"season {season}"
+        _log(f"{prefix}: {summary}")
+    # A nonzero game-level failure count is an exit-code-worthy result, not a
+    # line buried in the log next to a green games_uncaptured=0.
+    _log(f"done ({failures} season-level failures, {failed_games} game-level failures)")
+    return 1 if failures or failed_games else 0
 
 
 if __name__ == "__main__":
