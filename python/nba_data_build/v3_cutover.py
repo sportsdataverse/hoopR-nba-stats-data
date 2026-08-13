@@ -396,6 +396,67 @@ def season_label_collisions(
     return out
 
 
+#: Families the play-by-play coverage note is TRUE of: the schedule that carries
+#: the rows, and the three families derived from the play-by-play (a game with no
+#: actions yields no possessions and no lineups either). Default-deny -- a target
+#: added later gets no claim about its coverage until someone verifies one.
+_PBP_COVERAGE_FAMILIES = frozenset({"schedule", "play_by_play", "possessions", "lineups"})
+
+#: Appended to the README of every tag in _PBP_COVERAGE_FAMILIES. Every game type
+#: is published, so the schedule carries rows the play-by-play feed has no actions
+#: for. Stated as coverage rather than as a gap, because the most expensive wrong
+#: reaction to this table is a re-scrape of games upstream never published.
+_PBP_COVERAGE_NOTE: tuple[str, ...] = (
+    "## Play-by-play coverage by game type",
+    "",
+    "Every NBA season type is published for 1997-2026 (END-year): preseason",
+    "(`001`), regular season (`002`), All-Star (`003`), playoffs (`004`),",
+    "play-in (`005`) and NBA Cup final (`006`). The schedule is the full game",
+    "universe, so it carries some games the play-by-play feed has no actions",
+    "for. As verified 2026-08-12/13, across all 40,961 scheduled games:",
+    "",
+    "| season type | scheduled | with play-by-play | without |",
+    "|---|---:|---:|---:|",
+    "| preseason (`001`) | 2,836 | 1,267 | 1,569 |",
+    "| regular season (`002`) | 35,547 | 35,546 | 1 |",
+    "| All-Star (`003`) | 96 | 66 | 30 |",
+    "| playoffs (`004`) | 2,442 | 2,440 | 2 |",
+    "| play-in (`005`) | 37 | 37 | 0 |",
+    "| NBA Cup final (`006`) | 3 | 3 | 0 |",
+    "| **total** | **40,961** | **39,359** | **1,602** |",
+    "",
+    "**Preseason play-by-play begins with the 2010-11 season** (END-year 2011).",
+    "Every preseason game *played* from 2011 onward has play-by-play; no",
+    "preseason game from 1996-97 through 2009-10 has any. The boundary is clean,",
+    "not scattered: END-year 2010 is 0 of 119 and END-year 2011 is 119 of 119.",
+    "That accounts for 1,567 of the 1,569 preseason rows without play-by-play.",
+    "The other two are never-played dates rather than missing captures:",
+    "`0011300114` (MIL vs. TOR, 2013-10-25, 0-0) and `0011600107` (CHI vs. BOS,",
+    "2016-10-22, unscored).",
+    "",
+    "The remaining rows without play-by-play are events that were never played",
+    "as games:",
+    "",
+    "* **All-Star (30 of 96)** -- exhibitions rather than games: the Rookie",
+    "  Challenge (`SPH vs. RKE`) and the Skills/Shooting events published under",
+    "  `EST`/`WST` matchups. The All-Star Game itself has play-by-play.",
+    "* **Playoffs (2)** -- `0040401000` and `0040401001`, placeholder rows dated",
+    "  2005-06-27 and 2005-06-28, after the 2005 Finals had ended, with no teams",
+    '  and no scores. Never-played "if necessary" dates.',
+    "* **Regular season (1)** -- `0021201214` (BOS vs. IND, 2013-04-16), the game",
+    "  cancelled after the Boston Marathon bombing. It is 0-0 in the upstream",
+    "  `leaguegamelog`, so it is carried with no play-by-play rather than dropped.",
+    "",
+    "**These are upstream absences, not capture gaps -- do not re-scrape them.**",
+    "Each one was re-probed live: stats.nba.com returns a valid `playbyplayv3`",
+    "payload (`keys=['game','meta']`) with `actions: []` on the same session that",
+    "returns 500+ actions for other games. An empty response here is the feed's",
+    "answer, not a failure. Upstream could publish more later; this describes",
+    "what it served as of 2026-08-12/13.",
+    "",
+)
+
+
 def render_tag_readme(
     tag: str,
     targets: dict[str, Target],
@@ -463,6 +524,8 @@ def render_tag_readme(
         f"Seasons covered by this publish: {seasons[0]}-{seasons[-1]} (END-year).",
         "",
     ]
+    if any(t.family in _PBP_COVERAGE_FAMILIES for t in mine):
+        lines += _PBP_COVERAGE_NOTE
     return "\n".join(lines)
 
 

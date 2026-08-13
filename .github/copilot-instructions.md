@@ -85,6 +85,17 @@ scored, decided final — an absent `score` stays null and a 0-0 "Final"
 core-to-core (`{2,4}`) on both ids and scores, and reports non-core staged games
 as `staged_noncore`, never as a `DIFF`.
 
+Publishing every season type means the schedule carries games upstream served no
+play-by-play for — 1,602 of 40,961 as of 2026-08-12/13, with `games_failed=0`.
+**`games_no_pbp` is not `games_failed` and is not a re-scrape target:**
+`games_failed` is a game the build could not process (exit-code-worthy);
+`games_no_pbp` is a *valid* `playbyplayv3` response with `actions: []`.
+**Preseason play-by-play begins with the 2010-11 season** (END-year 2010 is 0 of
+119, 2011 is 119 of 119); the rest are All-Star exhibitions (30), never-played
+2005 Finals placeholders (2), and the 2013-04-16 Boston Marathon cancellation
+(1). Re-running the backfill will not move `games_no_pbp`; a re-capture only
+answers `games_uncaptured`. Full accounting: `docs/nba-v3-coverage.md`.
+
 `scripts/run_v3_cutover.sh` (`python -m nba_data_build.v3_cutover`) publishes
 those staged parquets onto the production release tags — the D26d cutover. It is
 **a dry run unless `-x` is passed**: it re-runs the §9.3 gate, derives the

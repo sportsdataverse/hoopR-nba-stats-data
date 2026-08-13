@@ -163,7 +163,39 @@ def column_table(dataset: str) -> str:
     return "\n".join(lines) + "\n"
 
 
+#: Standing facts a per-season count table cannot say for itself, appended under
+#: `## Coverage`. Authored here rather than in the generated page so a regen
+#: cannot drop them; static text, so the drift gate compares them like any other
+#: structure. Keep them short and link the detail -- the full accounting lives in
+#: `docs/nba-v3-coverage.md`, not copied into every page.
+COVERAGE_NOTES: dict[str, str] = {
+    "pbp": """
+**Every NBA season type is published** — preseason (`001`), regular season
+(`002`), All-Star (`003`), playoffs (`004`), play-in (`005`) and NBA Cup final
+(`006`) — so `games known` counts the full game universe, and a season's
+`games built` is below it wherever upstream published no play-by-play.
+
+**Preseason play-by-play begins with the 2010-11 season** (END-year 2011): 0 of
+119 preseason games in END-year 2010, 119 of 119 in 2011. That era boundary is
+1,567 of the 1,602 scheduled games without play-by-play; the rest are All-Star
+exhibitions and never-played dates.
+
+**These are upstream absences, not capture gaps — do not re-scrape them.** Each
+was re-probed live (2026-08-12/13): stats.nba.com returns a valid `playbyplayv3`
+payload with `actions: []` on the same session that returns 500+ actions for
+other games. [`docs/nba-v3-coverage.md`](../nba-v3-coverage.md) is the canonical
+accounting — per-type counts, the individual game ids, and the `games_no_pbp` vs
+`games_failed` distinction.
+""",
+}
+
+
 def coverage_table(dataset: str) -> str:
+    """The per-season counts plus any standing coverage note for *dataset*."""
+    return _coverage_counts(dataset) + COVERAGE_NOTES.get(dataset, "")
+
+
+def _coverage_counts(dataset: str) -> str:
     """Per-season game counts for game-level datasets, from the manifest."""
     games = _games_in_repo()
     if dataset in MASTERS:

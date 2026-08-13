@@ -8,7 +8,7 @@ NBA Stats Schedule from hoopR data repository — `leaguegamelog` (season-level)
 | **Release tag** | [`nba_stats_schedules`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_schedules) |
 | **File stem** | `nba_stats_schedule_{season}.{parquet,csv,rds}` |
 | **Seasons built** | — |
-| **Last published** | 2026-08-12 (newest release asset) |
+| **Last published** | 2026-08-13 (newest release asset) |
 | **Tag created** | 2023-03-30 |
 | **Release assets** | 188 |
 

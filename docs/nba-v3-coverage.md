@@ -64,6 +64,58 @@ from `playbyplayv3`; `draft` has no data until the Phase 3 capture.
 - **`playbyplayv3` 1998 (dir 1999) shows fewer files (791)** — the lockout-shortened 1998-99
   season (50 games/team), not a coverage gap.
 
+## Play-by-play coverage by game type
+
+Program V publishes **every** NBA season type for 1997–2026 (END-year) —
+preseason (`001`), regular season (`002`), All-Star (`003`), playoffs (`004`),
+play-in (`005`) and NBA Cup final (`006`). The schedule is therefore the full
+game universe, and it carries games the `playbyplayv3` feed has no actions for.
+Counts below are the staged v3 build as verified **2026-08-12/13**:
+
+| season type | scheduled | with play-by-play | without |
+|---|---:|---:|---:|
+| preseason (`001`) | 2,836 | 1,267 | 1,569 |
+| regular season (`002`) | 35,547 | 35,546 | 1 |
+| All-Star (`003`) | 96 | 66 | 30 |
+| playoffs (`004`) | 2,442 | 2,440 | 2 |
+| play-in (`005`) | 37 | 37 | 0 |
+| NBA Cup final (`006`) | 3 | 3 | 0 |
+| **total** | **40,961** | **39,359** | **1,602** |
+
+- **Preseason play-by-play begins with the 2010-11 season** (END-year 2011).
+  Every preseason game *played* from 2011 onward has play-by-play; none from
+  1996-97 through 2009-10 does. The boundary is clean rather than scattered —
+  END-year 2010 is 0 of 119, END-year 2011 is 119 of 119 — which is what an era
+  boundary looks like and a capture gap does not. That accounts for **1,567** of
+  the 1,569 preseason rows without play-by-play. The other two are never-played
+  dates rather than lost captures: `0011300114` (MIL vs. TOR, 2013-10-25, 0-0)
+  and `0011600107` (CHI vs. BOS, 2016-10-22, unscored).
+- **All-Star (30 of 96) are exhibition events, not games** — the Rookie
+  Challenge (`SPH vs. RKE`) and the Skills/Shooting events published under
+  `EST`/`WST` matchups. The All-Star Game itself has play-by-play.
+- **Playoffs (2) are phantom placeholders.** `0040401000` and `0040401001` are
+  dated 2005-06-27 and 2005-06-28 — *after* the 2005 Finals ended — with no
+  teams and no scores. Never-played "if necessary" dates; upstream files them
+  the same way each year (2025-26 carries `0042500406`/`0042500407`).
+- **Regular season (1) is `0021201214`** (BOS vs. IND, 2013-04-16), the game
+  cancelled after the Boston Marathon bombing. It is present in the raw
+  `leaguegamelog` at 0-0, so it is correctly carried with no play-by-play.
+
+**These are upstream absences and should NOT be re-scraped.** Each payload is a
+*valid* response with `actions: []`, not a fetch failure: a live re-probe returns
+`keys=['game','meta']` with 0 actions on the same session that returns 500+
+actions for other games — a positive control ruling out rate limiting, session
+death, and IP blocking. Upstream may publish more later; this records what it
+served as of 2026-08-12/13.
+
+**Maintainers: `games_no_pbp` is not `games_failed`.** The per-season build
+summary (`v3_staging/nba_build_summary_{season}.json`) counts them separately,
+and `v3_gate` reads both. `games_failed` is a game the build could not process
+(a missing capture, a parse error) and is exit-code-worthy; `games_no_pbp` is a
+game upstream served empty and is the expected steady state — currently 1,602
+across 1997–2026 with `games_failed=0`. Re-running the backfill will not change
+`games_no_pbp`, and a re-capture is only ever the answer to `games_uncaptured`.
+
 ## `playbyplayv3`
 
 - floor (start year): **1996**
