@@ -108,6 +108,15 @@ def test_masters_are_documented():
     assert "in_*" in page or "in_pbp" in page
 
 
+def test_pbp_page_explains_the_games_without_play_by_play():
+    """`games built` < `games known` is coverage, not a backlog -- say so on the page."""
+    page = dataset_page("pbp", live=False)
+    assert "Preseason play-by-play begins with the 2010-11 season" in page
+    assert "do not re-scrape them" in page
+    # The gate must still see it: a note dropped from the generator is drift.
+    assert "Preseason play-by-play" in _without_status(page)
+
+
 def test_drift_gate_ignores_publish_status_and_coverage():
     page = dataset_page("pbp", live=False)
     noisy = page.replace(
