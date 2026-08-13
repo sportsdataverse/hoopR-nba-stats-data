@@ -29,8 +29,10 @@ python -m nba_data_build.reshape --root <hoopR-nba-stats-raw>/nba_stats/json --s
 
 # Runbook helpers
 bash scripts/hydrate_raw_store.sh          # clone-free hydrate of the raw store
-bash scripts/leaguedash_backfill.sh        # checkpointed; .done_<season> on rc 0 only
-bash scripts/run_impact_backfill.sh        # nba_player_impact full-history backfill
+bash scripts/leaguedash_backfill.sh        # league-dash cube, BUILD-ONLY; .done_<mode>_<season> on rc 0
+bash scripts/leaguedash_backfill.sh -s 2026 -e 2026 -n   # ...plan uploads, upload nothing
+python -m nba_data_build.leaguedash_cli --seasons 2026 --publish   # publish (deliberate)
+bash scripts/run_impact_backfill.sh        # nba_player_impact full-history backfill (PUBLISHES)
 bash scripts/run_v3_backfill.sh -s 1997 -e 2026   # Program V v3 backfill (resumable)
 bash scripts/run_v3_cutover.sh -s 1997 -e 2026    # D26d cutover -- DRY RUN by default
 python python/warm_possession_cache.py 2000:2024   # warm the possession cache
@@ -40,6 +42,22 @@ Env: `HOOPR_NBA_STATS_RAW_ROOT` overrides the raw store location,
 `HOOPR_NBA_STATS_PYBIN` the interpreter (the workflow sets both). The driver
 fails fast when the raw store has no `playbyplayv3/` rather than compiling zero
 games and reporting success.
+
+**`leaguedash_backfill.sh` builds; it cannot publish.** It writes under
+`build_out/` and has no upload path at all — `-n` plans a publish without
+uploading, and `-p` is a usage error. It used to pass `--publish`
+unconditionally and upload after every season, leaving a live release one stray
+invocation away from a rewrite — the same hazard as the R creation stages that
+overwrote three WNBA 2025 tags. An opt-in flag was rejected as the fix: a flag
+can be typed by accident or copied out of a runbook line, whereas a script
+carrying no upload path cannot publish at all. Publishing is the deliberate
+module invocation
+`python -m nba_data_build.leaguedash_cli --seasons <y> --publish`.
+The rest of `scripts/` is not build-only: `daily_nba_stats_python_processor.sh`
+and `run_impact_backfill.sh` are publishers by design (both upload unless the
+model CLI is given `--dry-run`), so read a script's header before running it.
+`wehoop-wnba-stats-data/scripts/leaguedash_backfill.sh` is this script's twin —
+change both together.
 
 ## Conventions
 
@@ -104,8 +122,10 @@ is a valid cadence but must be stated explicitly.
 ## Runbook scripts (not dead code)
 
 - `scripts/leaguedash_backfill.sh` — multi-hour resumable full-history leaguedash
-  backfill (`.done_<season>` sentinels, publishes after every season); run directly
-  from a residential terminal. Referenced by nothing in-repo by design — it is a
+  backfill. **Build-only: it has no upload path.** `.done_<mode>_<season>`
+  sentinels are keyed by mode so a build pass is never mistaken for a published
+  one; `-n` plans uploads without performing them. Run directly from a
+  residential terminal. Referenced by nothing in-repo by design — it is a
   user-executed runbook, not pipeline wiring.
 - `scripts/hydrate_raw_store.sh` — clone-free raw-store hydrate from the
   `nba-stats-raw-json` per-season release bundles (~30 tarballs instead of ~120k
