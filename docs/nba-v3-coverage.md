@@ -83,12 +83,13 @@ Counts below are the staged v3 build as verified **2026-08-12/13**:
 | **total** | **40,961** | **39,359** | **1,602** |
 
 - **Preseason play-by-play begins with the 2010-11 season** (END-year 2011).
-  Every preseason game from 2011 onward has play-by-play; none from 1996-97
-  through 2009-10 does. The boundary is clean rather than scattered — END-year
-  2010 is 0 of 119, END-year 2011 is 119 of 119 — which is what an era boundary
-  looks like and a capture gap does not. Two later preseason dates are the only
-  exceptions: `0011300114` (MIL vs. TOR, 2013-10-25, 0-0) and `0011600107`
-  (CHI vs. BOS, 2016-10-22, unscored) — never-played dates, not lost captures.
+  Every preseason game *played* from 2011 onward has play-by-play; none from
+  1996-97 through 2009-10 does. The boundary is clean rather than scattered —
+  END-year 2010 is 0 of 119, END-year 2011 is 119 of 119 — which is what an era
+  boundary looks like and a capture gap does not. That accounts for **1,567** of
+  the 1,569 preseason rows without play-by-play. The other two are never-played
+  dates rather than lost captures: `0011300114` (MIL vs. TOR, 2013-10-25, 0-0)
+  and `0011600107` (CHI vs. BOS, 2016-10-22, unscored).
 - **All-Star (30 of 96) are exhibition events, not games** — the Rookie
   Challenge (`SPH vs. RKE`) and the Skills/Shooting events published under
   `EST`/`WST` matchups. The All-Star Game itself has play-by-play.

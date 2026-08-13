@@ -396,10 +396,16 @@ def season_label_collisions(
     return out
 
 
-#: Appended verbatim to every per-tag README. Every game type is published, so
-#: the schedule carries rows the play-by-play feed has no actions for. Stated as
-#: coverage rather than as a gap, because the most expensive wrong reaction to
-#: this table is a re-scrape of games upstream never published.
+#: Families the play-by-play coverage note is TRUE of: the schedule that carries
+#: the rows, and the three families derived from the play-by-play (a game with no
+#: actions yields no possessions and no lineups either). Default-deny -- a target
+#: added later gets no claim about its coverage until someone verifies one.
+_PBP_COVERAGE_FAMILIES = frozenset({"schedule", "play_by_play", "possessions", "lineups"})
+
+#: Appended to the README of every tag in _PBP_COVERAGE_FAMILIES. Every game type
+#: is published, so the schedule carries rows the play-by-play feed has no actions
+#: for. Stated as coverage rather than as a gap, because the most expensive wrong
+#: reaction to this table is a re-scrape of games upstream never published.
 _PBP_COVERAGE_NOTE: tuple[str, ...] = (
     "## Play-by-play coverage by game type",
     "",
@@ -420,12 +426,13 @@ _PBP_COVERAGE_NOTE: tuple[str, ...] = (
     "| **total** | **40,961** | **39,359** | **1,602** |",
     "",
     "**Preseason play-by-play begins with the 2010-11 season** (END-year 2011).",
-    "Every preseason game from 2011 onward has play-by-play; no preseason game",
-    "from 1996-97 through 2009-10 has any. The boundary is clean, not scattered:",
-    "END-year 2010 is 0 of 119 and END-year 2011 is 119 of 119. Two isolated",
-    "later preseason dates (`0011300114`, MIL vs. TOR 2013-10-25; `0011600107`,",
-    "CHI vs. BOS 2016-10-22) carry 0-0 or absent scores -- never-played dates,",
-    "not missing captures.",
+    "Every preseason game *played* from 2011 onward has play-by-play; no",
+    "preseason game from 1996-97 through 2009-10 has any. The boundary is clean,",
+    "not scattered: END-year 2010 is 0 of 119 and END-year 2011 is 119 of 119.",
+    "That accounts for 1,567 of the 1,569 preseason rows without play-by-play.",
+    "The other two are never-played dates rather than missing captures:",
+    "`0011300114` (MIL vs. TOR, 2013-10-25, 0-0) and `0011600107` (CHI vs. BOS,",
+    "2016-10-22, unscored).",
     "",
     "The remaining rows without play-by-play are events that were never played",
     "as games:",
@@ -516,8 +523,9 @@ def render_tag_readme(
         "",
         f"Seasons covered by this publish: {seasons[0]}-{seasons[-1]} (END-year).",
         "",
-        *_PBP_COVERAGE_NOTE,
     ]
+    if any(t.family in _PBP_COVERAGE_FAMILIES for t in mine):
+        lines += _PBP_COVERAGE_NOTE
     return "\n".join(lines)
 
 

@@ -309,6 +309,15 @@ def test_tag_readme_states_the_pbp_coverage_as_a_fact_not_a_gap():
     assert "1,602" in text and "40,961" in text
 
 
+def test_tag_readme_omits_the_pbp_coverage_note_for_an_unrelated_family():
+    """Default-deny: a target added later inherits no claim about its coverage."""
+    other = vc.Target(
+        family="box_scores", tag="nba_stats_boxscores", asset="nba_box_{season}.parquet"
+    )
+    text = vc.render_tag_readme(other.tag, {"box_scores": other}, [1997, 2026])
+    assert "Play-by-play coverage" not in text
+
+
 def test_dry_run_writes_the_readme_locally_but_uploads_nothing(tmp_path):
     staging = tmp_path / "v3_staging"
     staging.mkdir(parents=True)

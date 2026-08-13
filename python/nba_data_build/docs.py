@@ -176,17 +176,16 @@ COVERAGE_NOTES: dict[str, str] = {
 `games built` is below it wherever upstream published no play-by-play.
 
 **Preseason play-by-play begins with the 2010-11 season** (END-year 2011): 0 of
-119 preseason games in END-year 2010, 119 of 119 in 2011. Of the 1,602 scheduled
-games without play-by-play, 1,569 are pre-2011 preseason, 30 are All-Star
-exhibitions (Rookie Challenge, Skills), 2 are never-played 2005 Finals
-placeholder dates, and 1 is the 2013-04-16 game cancelled after the Boston
-Marathon bombing.
+119 preseason games in END-year 2010, 119 of 119 in 2011. That era boundary is
+1,567 of the 1,602 scheduled games without play-by-play; the rest are All-Star
+exhibitions and never-played dates.
 
 **These are upstream absences, not capture gaps — do not re-scrape them.** Each
 was re-probed live (2026-08-12/13): stats.nba.com returns a valid `playbyplayv3`
 payload with `actions: []` on the same session that returns 500+ actions for
-other games. See [`docs/nba-v3-coverage.md`](../nba-v3-coverage.md) for the
-per-type accounting and the `games_no_pbp` vs `games_failed` distinction.
+other games. [`docs/nba-v3-coverage.md`](../nba-v3-coverage.md) is the canonical
+accounting — per-type counts, the individual game ids, and the `games_no_pbp` vs
+`games_failed` distinction.
 """,
 }
 
