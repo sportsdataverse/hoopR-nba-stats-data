@@ -35,6 +35,21 @@ LAUNCHER = REPO / "scripts" / "run_impact_backfill.sh"
 WORKFLOW = REPO / ".github" / "workflows" / "nba_models.yml"
 
 
+def _read(path: Path) -> str:
+    """Read a pinned file, failing with the reason rather than a bare OSError.
+
+    CI sparse-checkouts the repo, so a file this module asserts on can simply
+    not be present -- which would surface as an inscrutable FileNotFoundError
+    (it did, for `.github`, on the first run of this suite). Name the fix.
+    """
+    assert path.exists(), (
+        f"{path.relative_to(REPO)} is missing -- if this is CI, add its top-level "
+        "directory to the sparse-checkout in .github/workflows/tests.yml. "
+        "Do not skip: an unread file is an unproven guard."
+    )
+    return path.read_text(encoding="utf-8")
+
+
 @pytest.fixture
 def impact_run(monkeypatch, tmp_path):
     """Run `impact` with the builder stubbed and every upload recorded, not performed.
@@ -105,7 +120,7 @@ def test_dry_run_wins_over_publish(impact_run):
 def _cron_lines(path: Path) -> list[str]:
     return [
         ln
-        for ln in path.read_text(encoding="utf-8").splitlines()
+        for ln in _read(path).splitlines()
         if "run_impact_backfill.sh" in ln and ln.lstrip().startswith("30 9 ")
     ]
 
@@ -122,14 +137,14 @@ def test_documented_cron_still_publishes(doc):
 
 def test_launcher_forwards_extra_flags_to_the_cli():
     """`--publish` only reaches the CLI because the launcher forwards "$@"."""
-    body = LAUNCHER.read_text(encoding="utf-8")
+    body = _read(LAUNCHER)
     assert '"$@"' in body, "run_impact_backfill.sh stopped forwarding extra args"
 
 
 def test_workflow_flags_follow_the_subcommand():
     """--repo/--dry-run/--publish belong to the `impact` subparser. They once
     preceded `impact`, which argparse rejects outright."""
-    body = WORKFLOW.read_text(encoding="utf-8")
+    body = _read(WORKFLOW)
     run_block = body[body.index("uv run --no-sync python -m nba_model_publish") :]
     assert re.match(r"uv run --no-sync python -m nba_model_publish impact\b", run_block)
     for flag in ("--publish", "--dry-run"):
