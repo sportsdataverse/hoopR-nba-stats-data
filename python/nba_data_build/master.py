@@ -62,8 +62,19 @@ def stamp_from_built(schedule: pl.DataFrame, built_dir: str | Path, season: int)
     """Restamp ``in_*`` from this run's built season artifacts (the exact truth).
 
     ``built_dir`` follows the reshape CLI's output contract:
-    ``{out}/{release_tag}/{stem}_{season}.parquet``. A dataset without a built
-    file this run keeps whatever flag the season file already carries.
+    ``{out}/{release_tag}/{stem}_{season}.parquet``, where that year is the
+    season's END year since the 2026-08-13 republish.
+
+    ``season`` here is ALREADY the end year — this function is called from
+    ``nba_stats_99_schedule_master_creation.py --season``, whose own ``_span``
+    reads it that way (``_span(2026) == "2025-26"``). So no offset is applied:
+    the reshape CLI takes a START year and adds one on the way out, and this
+    reader is handed the result. The two CLIs disagree about what ``season``
+    means, which is why this is spelled out rather than left to the reader.
+
+    A dataset without a built file this run keeps whatever flag the season file
+    already carries — a lookup miss is silent, so a convention drift here shows
+    up as flags that never change, not as an error.
     """
     out = schedule
     for dataset in GAME_LEVEL:
