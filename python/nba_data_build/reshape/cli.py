@@ -27,6 +27,24 @@ Publish is controller-gated
 The default (no flags) and ``--dry-run`` both stop after writing locally under
 ``--out``: nothing is uploaded. ``--dry-run`` wins if both it and ``--publish``
 are passed.
+
+Published assets are keyed by the season's END year
+---------------------------------------------------
+``--seasons`` takes the START year, matching the raw store's season-level layout
+and every other CLI in this repo. The PUBLISHED artifact does not: since the
+2026-08-13 republish, ``nba_stats_*`` release assets are named by the season's
+ENDING year and their ``season`` column carries it, so the 1996-97 season ships
+as ``coaches_1997.parquet`` with ``season = 1997``.
+
+Both the filename and the column are converted together at the write boundary by
+:func:`_published_season` — never inside ``build``, which deliberately holds no
+season/dir logic. Consumers depend on the two agreeing: sdv-db's ingest asserts
+``frame.season == requested + 1`` and REFUSES the write when it does not, and
+sportsdataverse-py's ``load_nba_stats_*`` fetch these names directly.
+
+hoopR is NOT a consumer of these tags — its ``load_nba_*`` read the ESPN-sourced
+``espn_nba_*`` releases, so the rename does not touch the R side. wehoop DOES
+read ``wnba_stats_*``, so the equivalent WNBA change would not be free.
 """
 
 from __future__ import annotations
@@ -47,6 +65,24 @@ from .io import write_release_formats
 from .raw import _is_url
 
 _REPO = "sportsdataverse/sportsdataverse-data"
+
+#: START year -> the year the PUBLISHED asset is named and stamped with.
+#:
+#: 1 since the 2026-08-13 republish moved every ``nba_stats_*`` release asset
+#: onto END-year names. Named rather than inlined because two call sites must
+#: agree: the writer here and ``master.stamp_from_built``, which reads the files
+#: back by the same name. A drift between them is silent -- the reader simply
+#: finds nothing and leaves stale flags in place.
+_PUBLISHED_SEASON_OFFSET = 1
+
+
+def _published_season(season: int) -> int:
+    """The season's ENDING year: what the release asset is named and stamped with.
+
+    ``--seasons`` takes the START year (the raw store's season-level convention),
+    so 1996 builds the 1996-97 season and publishes it as ``*_1997``.
+    """
+    return season + _PUBLISHED_SEASON_OFFSET
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -146,26 +182,25 @@ def main(argv: Optional[list[str]] = None) -> int:
             # Pre-floor seasons have no source data: skip rather than ship an
             # empty release (only lineups has a floor above the 1996 full history).
             if dataset.season_floor is not None and season < dataset.season_floor:
-                print(
-                    f"skip {dataset.key} {season}: below season_floor "
-                    f"{dataset.season_floor}"
-                )
+                print(f"skip {dataset.key} {season}: below season_floor {dataset.season_floor}")
                 continue
             df = build_dataset(root, dataset, season, _pbp=pbp)
             if df.is_empty():
                 print(f"skip {dataset.key} {season}: no rows")
                 continue
+            # START year in, END year out -- filename and column together.
+            pub = _published_season(season)
+            if "season" in df.columns:
+                df = df.with_columns(pl.lit(pub).cast(df.schema["season"]).alias("season"))
             paths = write_release_formats(
                 df,
                 out / dataset.release_tag,
-                f"{dataset.stem}_{season}",
+                f"{dataset.stem}_{pub}",
                 nba_type=dataset.nba_type,
                 timestamp=stamp,
             )
             built_tags.add(dataset.release_tag)
-            print(
-                f"built {dataset.key} {season}: {df.height} rows -> {paths['parquet'].name}"
-            )
+            print(f"built {dataset.key} {season}: {df.height} rows -> {paths['parquet'].name}")
 
     failed_uploads: list[tuple[str, list]] = []
     if args.publish or args.dry_run:

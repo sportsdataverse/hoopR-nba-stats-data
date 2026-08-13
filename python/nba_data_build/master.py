@@ -29,6 +29,7 @@ from pathlib import Path
 
 import polars as pl
 
+from nba_data_build.reshape.cli import _published_season
 from nba_data_build.reshape.datasets import DATASETS, Dataset
 
 #: Game-level datasets that roll up into a season release and so get a flag.
@@ -62,12 +63,19 @@ def stamp_from_built(schedule: pl.DataFrame, built_dir: str | Path, season: int)
     """Restamp ``in_*`` from this run's built season artifacts (the exact truth).
 
     ``built_dir`` follows the reshape CLI's output contract:
-    ``{out}/{release_tag}/{stem}_{season}.parquet``. A dataset without a built
-    file this run keeps whatever flag the season file already carries.
+    ``{out}/{release_tag}/{stem}_{END year}.parquet``. ``season`` is the START
+    year here, as everywhere else in this repo, so the lookup applies the same
+    published-season offset the writer does — see
+    :func:`nba_data_build.reshape.cli._published_season`. If the two ever drift,
+    nothing errors: no file matches, and every flag silently keeps its old value.
+
+    A dataset without a built file this run keeps whatever flag the season file
+    already carries.
     """
     out = schedule
+    published = _published_season(season)
     for dataset in GAME_LEVEL:
-        path = Path(built_dir) / dataset.release_tag / f"{dataset.stem}_{season}.parquet"
+        path = Path(built_dir) / dataset.release_tag / f"{dataset.stem}_{published}.parquet"
         if not path.is_file():
             continue
         built = pl.read_parquet(path, columns=["game_id"])
