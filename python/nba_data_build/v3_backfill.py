@@ -102,25 +102,46 @@ def summary_path(staging: Union[str, Path], season_end: int) -> Path:
     return Path(staging) / f"nba_build_summary_{season_end}.json"
 
 
+#: Counts a summary must carry to be usable. A partial one is worse than none:
+#: every missing count reads as 0, which is exactly the "reports success while
+#: knowing nothing" failure this summary exists to prevent.
+_SUMMARY_COUNTS = (
+    "games_indexed",
+    "games_failed",
+    "games_uncaptured",
+    "games_no_pbp",
+    "games_processed",
+)
+
+
 def read_summary(staging: Union[str, Path], season_end: int) -> Optional[dict[str, Any]]:
-    """The season's persisted build summary, or ``None`` when absent/unreadable."""
+    """The season's persisted build summary, or ``None`` when absent or invalid.
+
+    Invalid means unreadable, not a dict, for the wrong season, or missing any
+    of the five per-game counts -- never a partially-populated dict, whose
+    absent counts would silently read as zero.
+    """
     path = summary_path(staging, season_end)
     try:
         loaded = json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         return None
-    return loaded if isinstance(loaded, dict) else None
+    if not isinstance(loaded, dict) or loaded.get("season") != season_end:
+        return None
+    if any(not isinstance(loaded.get(k), int) for k in _SUMMARY_COUNTS):
+        return None
+    return loaded
 
 
 def season_done(staging: Union[str, Path], season_end: int) -> bool:
-    """True when all four staged parquets **and** the build summary exist.
+    """True when all four staged parquets **and** a valid build summary exist.
 
     The summary is part of the checkpoint on purpose: a season staged without
     one is a season whose per-game failures nobody can see, and the gate treats
     it as unverified rather than passing it.
     """
     return all(p.exists() for p in season_paths(staging, season_end).values()) and (
-        summary_path(staging, season_end).exists()
+        read_summary(staging, season_end) is not None
     )
 
 
@@ -384,7 +405,10 @@ def build_season(
     and ``rebuild`` is False. Per-game failures cost that game, not the season.
     """
     if not rebuild and season_done(staging, season_end):
-        return {"season": season_end, "status": "skipped"}
+        # Carry the prior run's counts through: a skipped season whose summary
+        # records failures must still fail the CLI exit code, not read as zero.
+        prior = read_summary(staging, season_end) or {}
+        return {**prior, "season": season_end, "status": "skipped"}
 
     t0 = time.time()
     sched = season_schedule(raw_root, season_end)
