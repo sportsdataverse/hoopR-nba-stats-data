@@ -55,6 +55,23 @@ while getopts s:e:o:n flag; do
     esac
 done
 
+# Validate the range before anything else: a non-numeric or inverted range makes
+# `seq` emit nothing, so the loop body never runs and the script closes with
+# "BACKFILL DONE" + EXIT=0 having built nothing -- the reports-success-while-
+# doing-nothing failure this repo keeps hitting.
+for v in "${START}" "${END}"; do
+    case "${v}" in
+        ''|*[!0-9]*)
+            echo "::error ::-s/-e must be numeric seasons (got -s '${START}' -e '${END}')" >&2
+            exit 2
+            ;;
+    esac
+done
+if [ "${START}" -gt "${END}" ]; then
+    echo "::error ::-s ${START} is after -e ${END}; that range builds nothing" >&2
+    exit 2
+fi
+
 LOG="${REPO_DIR}/logs/leaguedash_backfill.log"
 mkdir -p "$(dirname "${LOG}")" "${OUT_DIR}"
 

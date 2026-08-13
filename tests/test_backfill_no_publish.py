@@ -69,3 +69,17 @@ def test_publish_flag_is_rejected():
     )
     assert proc.returncode == 2, f"expected usage exit 2, got {proc.returncode}: {proc.stderr}"
     assert "usage:" in proc.stderr
+
+
+@pytest.mark.skipif(shutil.which("bash") is None, reason="bash not available")
+@pytest.mark.parametrize("args", [["-s", "20x0"], ["-s", "2020", "-e", "2019"]])
+def test_unusable_season_range_is_rejected(args):
+    """An empty `seq` range would build nothing and still report EXIT=0."""
+    proc = subprocess.run(
+        [shutil.which("bash"), str(SCRIPT), *args],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert proc.returncode == 2, f"expected exit 2, got {proc.returncode}: {proc.stdout}"
+    assert "::error ::" in proc.stderr
