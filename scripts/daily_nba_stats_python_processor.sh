@@ -86,8 +86,17 @@ for i in $(seq "${START_YEAR}" "${END_YEAR}"); do
         # schedule file's in_* flags from the artifacts just built, BEFORE the
         # scratch dir goes away. Non-fatal: a stamp failure must not fail the
         # publish that already happened.
+        #
+        # $((i + 1)), not ${i}: the two stages disagree about what a season is.
+        # `nba_data_build.reshape --seasons` takes the START year (raw.store_dir
+        # is the documented single point of the start<->end split), while stage
+        # 99's `--season` is the END year -- its own _span reads 2026 as
+        # "2025-26". Passing ${i} to both stamped the PREVIOUS season's schedule
+        # file, and since the 2026-08-13 END-year republish it would also miss
+        # every built artifact (reshape now writes {stem}_{i+1}). Both failures
+        # are silent: a lookup miss just leaves the old flags in place.
         "${PYBIN}" python/nba_stats_99_schedule_master_creation.py \
-            --built-dir "${OUT_DIR}" --season "${i}" --stamp-only \
+            --built-dir "${OUT_DIR}" --season "$((i + 1))" --stamp-only \
             2>&1 | tee -a "${LOGFILE}" \
             || echo "schedule-master stamp failed for season ${i}" | tee -a "${LOGFILE}"
     fi
