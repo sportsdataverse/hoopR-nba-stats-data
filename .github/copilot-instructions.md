@@ -64,12 +64,28 @@ python -m nba_data_build.reshape --root <hoopR-nba-stats-raw>/nba_stats/json --s
 
 # Runbook helpers
 bash scripts/hydrate_raw_store.sh                  # clone-free hydrate of the raw store
-bash scripts/leaguedash_backfill.sh                # checkpointed; .done_<season> on rc 0
-bash scripts/run_impact_backfill.sh                # nba_player_impact full-history
+bash scripts/leaguedash_backfill.sh                # league-dash cube, BUILD-ONLY
+bash scripts/leaguedash_backfill.sh -s 2026 -e 2026 -n   # ...plan uploads, upload nothing
+python -m nba_data_build.leaguedash_cli --seasons 2026 --publish   # publish (deliberate)
+bash scripts/run_impact_backfill.sh                # nba_player_impact full-history (PUBLISHES)
 bash scripts/run_v3_backfill.sh -s 1997 -e 2026    # Program V v3 backfill (resumable)
 bash scripts/run_v3_cutover.sh -s 1997 -e 2026     # D26d cutover -- DRY RUN by default
 python python/warm_possession_cache.py 2000:2024   # warm the possession cache
 ```
+
+**`scripts/leaguedash_backfill.sh` builds; it cannot publish.** It writes under
+`build_out/` and carries no upload path — `-n` plans a publish without
+uploading, and `-p` is a usage error. It used to pass `--publish`
+unconditionally and upload after every season, leaving a live release one stray
+invocation away from a rewrite (the same hazard as the R stages above). An
+opt-in flag was rejected as the fix: a flag can be typed by accident or copied
+out of a runbook line, whereas a script with no upload path cannot publish at
+all. Publish deliberately with
+`python -m nba_data_build.leaguedash_cli --seasons <y> --publish`. This does
+**not** generalize to all of `scripts/`:
+`daily_nba_stats_python_processor.sh` and `run_impact_backfill.sh` publish by
+design (the latter uploads unless `--dry-run` is forwarded). Keep this script in
+step with its twin, `wehoop-wnba-stats-data/scripts/leaguedash_backfill.sh`.
 
 `scripts/run_v3_backfill.sh` stages v3 `schedule`/`pbp`/`possessions`/`lineups`
 into `v3_staging/` (never clobbering the live tree) and is verified by
