@@ -67,7 +67,8 @@ bash scripts/hydrate_raw_store.sh                  # clone-free hydrate of the r
 bash scripts/leaguedash_backfill.sh                # league-dash cube, BUILD-ONLY
 bash scripts/leaguedash_backfill.sh -s 2026 -e 2026 -n   # ...plan uploads, upload nothing
 python -m nba_data_build.leaguedash_cli --seasons 2026 --publish   # publish (deliberate)
-bash scripts/run_impact_backfill.sh                # nba_player_impact full-history (PUBLISHES)
+bash scripts/run_impact_backfill.sh                # nba_player_impact full-history, BUILD-ONLY
+bash scripts/run_impact_backfill.sh 2025 --publish # ...and upload to the release (deliberate)
 bash scripts/run_v3_backfill.sh -s 1997 -e 2026    # Program V v3 backfill (resumable)
 bash scripts/run_v3_cutover.sh -s 1997 -e 2026     # D26d cutover -- DRY RUN by default
 python python/warm_possession_cache.py 2000:2024   # warm the possession cache
@@ -81,11 +82,16 @@ invocation away from a rewrite (the same hazard as the R stages above). An
 opt-in flag was rejected as the fix: a flag can be typed by accident or copied
 out of a runbook line, whereas a script with no upload path cannot publish at
 all. Publish deliberately with
-`python -m nba_data_build.leaguedash_cli --seasons <y> --publish`. This does
-**not** generalize to all of `scripts/`:
-`daily_nba_stats_python_processor.sh` and `run_impact_backfill.sh` publish by
-design (the latter uploads unless `--dry-run` is forwarded). Keep this script in
-step with its twin, `wehoop-wnba-stats-data/scripts/leaguedash_backfill.sh`.
+`python -m nba_data_build.leaguedash_cli --seasons <y> --publish`. Keep this
+script in step with its twin,
+`wehoop-wnba-stats-data/scripts/leaguedash_backfill.sh`.
+
+**`run_impact_backfill.sh` is opt-in, not build-only.** `nba_model_publish
+impact` needs `--publish` to write the release, but the publish path stays
+because a daily droplet cron uses it (`scripts/P0_DROPLET_RUNBOOK.md` §6) —
+deleting the path there would have made that cron a silent no-op that still
+exits 0. Do not "harden" it into the leaguedash shape without moving the cron
+first. `daily_nba_stats_python_processor.sh` is still a publisher by design.
 
 `scripts/run_v3_backfill.sh` stages v3 `schedule`/`pbp`/`possessions`/`lineups`
 into `v3_staging/` (never clobbering the live tree) and is verified by

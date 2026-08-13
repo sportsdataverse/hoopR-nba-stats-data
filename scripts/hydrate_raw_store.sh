@@ -12,7 +12,7 @@
 #   RAW_STORE_DIR=/data/raw bash scripts/hydrate_raw_store.sh
 #
 # Then point the build at it (no proxy, no live stats.nba.com):
-#   python -m nba_model_publish impact --seasons 1997:2026 --raw-store-dir "$RAW_STORE_DIR"
+#   python -m nba_model_publish impact --seasons 1997:2026 --raw-store-dir "$RAW_STORE_DIR" --publish
 #
 # Idempotent + resumable: a season whose bundle already extracted is skipped, so
 # a killed run can be re-run. Requires `gh` (read access is enough).
@@ -72,4 +72,5 @@ if [ "$failed" -gt 0 ]; then
 fi
 
 echo "store ready: $DEST ($ok season(s) present, $missing bundle(s) unpublished)"
-echo "  use: python -m nba_model_publish impact --seasons ${lo}:${hi} --raw-store-dir \"$DEST\""
+echo "  use: python -m nba_model_publish impact --seasons ${lo}:${hi} --raw-store-dir \"$DEST\" --publish"
+echo "        (drop --publish to build without touching the release)"

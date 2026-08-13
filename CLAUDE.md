@@ -32,7 +32,8 @@ bash scripts/hydrate_raw_store.sh          # clone-free hydrate of the raw store
 bash scripts/leaguedash_backfill.sh        # league-dash cube, BUILD-ONLY; .done_<mode>_<season> on rc 0
 bash scripts/leaguedash_backfill.sh -s 2026 -e 2026 -n   # ...plan uploads, upload nothing
 python -m nba_data_build.leaguedash_cli --seasons 2026 --publish   # publish (deliberate)
-bash scripts/run_impact_backfill.sh        # nba_player_impact full-history backfill (PUBLISHES)
+bash scripts/run_impact_backfill.sh        # nba_player_impact full-history backfill, BUILD-ONLY
+bash scripts/run_impact_backfill.sh 2025 --publish   # ...and upload to the release (deliberate)
 bash scripts/run_v3_backfill.sh -s 1997 -e 2026   # Program V v3 backfill (resumable)
 bash scripts/run_v3_cutover.sh -s 1997 -e 2026    # D26d cutover -- DRY RUN by default
 python python/warm_possession_cache.py 2000:2024   # warm the possession cache
@@ -53,9 +54,18 @@ can be typed by accident or copied out of a runbook line, whereas a script
 carrying no upload path cannot publish at all. Publishing is the deliberate
 module invocation
 `python -m nba_data_build.leaguedash_cli --seasons <y> --publish`.
-The rest of `scripts/` is not build-only: `daily_nba_stats_python_processor.sh`
-and `run_impact_backfill.sh` are publishers by design (both upload unless the
-model CLI is given `--dry-run`), so read a script's header before running it.
+**`run_impact_backfill.sh` also builds by default, but keeps a publish path.**
+`nba_model_publish impact` requires `--publish` to touch the release; without
+it the run builds and exits 0. The stronger no-upload-path-at-all treatment
+was rejected HERE because this publisher is wired: a daily droplet cron exists
+to publish `nba_player_impact` (`scripts/P0_DROPLET_RUNBOOK.md` §6), so
+removing the path would have converted a multi-hour job into a silent no-op —
+worse than the accidental publish, because nothing errors. The cron and the
+runbook backfill line pass `--publish`; `tests/test_impact_publish_optin.py`
+pins both halves. `--dry-run` still plans the upload and beats `--publish`.
+
+`daily_nba_stats_python_processor.sh` remains a publisher by design, so read a
+script's header before running it.
 `wehoop-wnba-stats-data/scripts/leaguedash_backfill.sh` is this script's twin —
 change both together.
 
@@ -117,7 +127,7 @@ is a valid cadence but must be stated explicitly.
 
 | model | artifact(s) | release tag | training data (seasons/source) | fitting script | gates at publish | last retrain | cadence |
 |---|---|---|---|---|---|---|---|
-| `nba_player_impact` (RAPM / adj-RAPM / SPM / BPM / DARKO / WAR; one row per player-season-season_type, Regular Season + Playoffs, PlayIn excluded) | `nba_player_impact_{season}.parquet` + `.csv` + `.rds` per season, plus `nba_player_impact_card.json` model card | `nba_player_impact` on `sportsdataverse/sportsdataverse-data` | 1997–2026 END-years (30 seasons): stats.nba.com possessions + player game logs, built offline from the committed `hoopR-nba-stats-raw` store (`--raw-store-dir`, PRs #19/#21) | `python/nba_model_publish/builders.py` (`build_nba_player_impact`) via `python -m nba_model_publish impact`; launcher `scripts/run_impact_backfill.sh` | TODO — no formal in-repo gate; the model card attests seasons/rows actually built (upstream validation lives in sdv-py's model zoo) | 2026-07-28 (full 1997–2026 backfill publish) | on-demand: `nba_models.yml` (workflow_dispatch only, `dry_run` defaults true) for an incremental season; full-history backfills stay on the droplet runbook (`scripts/hydrate_raw_store.sh` + `scripts/run_impact_backfill.sh`) |
+| `nba_player_impact` (RAPM / adj-RAPM / SPM / BPM / DARKO / WAR; one row per player-season-season_type, Regular Season + Playoffs, PlayIn excluded) | `nba_player_impact_{season}.parquet` + `.csv` + `.rds` per season, plus `nba_player_impact_card.json` model card | `nba_player_impact` on `sportsdataverse/sportsdataverse-data` | 1997–2026 END-years (30 seasons): stats.nba.com possessions + player game logs, built offline from the committed `hoopR-nba-stats-raw` store (`--raw-store-dir`, PRs #19/#21) | `python/nba_model_publish/builders.py` (`build_nba_player_impact`) via `python -m nba_model_publish impact` (**publishing is opt-in — `--publish`, else it builds only**); launcher `scripts/run_impact_backfill.sh` (forwards `--publish`; the droplet cron passes it) | TODO — no formal in-repo gate; the model card attests seasons/rows actually built (upstream validation lives in sdv-py's model zoo) | 2026-07-28 (full 1997–2026 backfill publish) | on-demand: `nba_models.yml` (workflow_dispatch only, `dry_run` defaults true) for an incremental season; full-history backfills stay on the droplet runbook (`scripts/hydrate_raw_store.sh` + `scripts/run_impact_backfill.sh`) |
 
 ## Runbook scripts (not dead code)
 

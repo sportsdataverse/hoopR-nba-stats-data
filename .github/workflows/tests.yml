@@ -20,11 +20,17 @@ jobs:
           # ~40k committed JSON (pre-purge) under nba_stats/. Sparse keeps the
           # job fast and survives the coming purge unchanged; archive-backed
           # tests are deselected below.
+          #
+          # `.github` is here because tests assert on workflow invocations --
+          # e.g. that nba_models.yml passes `--publish`, and passes it AFTER
+          # the subcommand. Omitted, those assertions raise FileNotFoundError
+          # instead of checking anything.
           sparse-checkout: |
             python
             tests
             scripts
             docs
+            .github
             README.md
             CLAUDE.md
             pyproject.toml

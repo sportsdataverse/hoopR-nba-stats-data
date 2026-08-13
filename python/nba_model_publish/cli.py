@@ -9,7 +9,7 @@ Usage::
         [--cache-dir /data/nba_possessions] \\
         [--tag nba_player_impact] \\
         [--repo sportsdataverse/sportsdataverse-data] \\
-        [--dry-run]
+        [--publish] [--dry-run]
 
     python -m nba_model_publish upload \\
         --dir out/impact \\
@@ -19,13 +19,20 @@ Usage::
         [--dry-run]
 
 ``impact`` compiles each season's possessions (cached + resumable via the
-per-game parquet cache), runs the impact model suite, writes one
-``nba_player_impact_{season}.parquet`` per season plus a model-card sidecar,
-and uploads the built seasons to the release tag. Requires live
-stats.nba.com access (droplet + proxy host — cloud IPs hang).
+per-game parquet cache), runs the impact model suite, and writes one
+``nba_player_impact_{season}.parquet`` per season plus a model-card sidecar.
+Requires live stats.nba.com access (droplet + proxy host — cloud IPs hang).
 
-``upload`` publishes an already-built directory without recomputing
-anything; with ``--dry-run`` it is fully network-free (hermetic).
+**Publishing is opt-in.** ``impact`` builds only unless ``--publish`` is
+passed; ``--dry-run`` plans the uploads without performing them and wins over
+``--publish`` when both are given. This matches
+``nba_data_build.leaguedash_cli``. The daily droplet cron and the runbook
+recovery lines pass ``--publish`` explicitly — see
+``scripts/P0_DROPLET_RUNBOOK.md``.
+
+``upload`` publishes an already-built directory without recomputing anything;
+that is its entire purpose, so it needs no ``--publish`` gate. With
+``--dry-run`` it is fully network-free (hermetic).
 """
 
 from __future__ import annotations
@@ -64,9 +71,13 @@ def _parse_seasons(spec: str) -> list[int]:
         else:
             lo = hi = int(spec)
     except ValueError as exc:
-        raise argparse.ArgumentTypeError(f"invalid --seasons {spec!r}: expected 'YYYY' or 'YYYY:YYYY'") from exc
+        raise argparse.ArgumentTypeError(
+            f"invalid --seasons {spec!r}: expected 'YYYY' or 'YYYY:YYYY'"
+        ) from exc
     if hi < lo:
-        raise argparse.ArgumentTypeError(f"invalid --seasons {spec!r}: end {hi} precedes start {lo}")
+        raise argparse.ArgumentTypeError(
+            f"invalid --seasons {spec!r}: end {hi} precedes start {lo}"
+        )
     return list(range(lo, hi + 1))
 
 
@@ -95,7 +106,9 @@ def _parse_season_types(spec: str) -> list[str]:
         raise argparse.ArgumentTypeError("--season-types must not be empty")
     unknown = [p for p in parts if p not in SEASON_TYPES]
     if unknown:
-        raise argparse.ArgumentTypeError(f"invalid --season-types {unknown!r}: expected any of {list(SEASON_TYPES)}")
+        raise argparse.ArgumentTypeError(
+            f"invalid --season-types {unknown!r}: expected any of {list(SEASON_TYPES)}"
+        )
     # canonical order: the PO pass reuses fitted values from the RS pass
     canonical = [t for t in SEASON_TYPES if t in parts]
     if "Playoffs" in canonical and "Regular Season" not in canonical:
@@ -208,6 +221,14 @@ def build_parser() -> argparse.ArgumentParser:
         "Defaults to $SDV_PY_NBA_RAW_JSON_DIR.",
     )
     imp.add_argument("--tag", default="nba_player_impact", help="GitHub release tag.")
+    imp.add_argument(
+        "--publish",
+        action="store_true",
+        help="Upload the built seasons to --tag. WITHOUT this flag the run builds "
+        "only and touches no release -- publishing is opt-in so an ad-hoc or "
+        "exploratory build cannot rewrite a live release by accident. The daily "
+        "droplet cron passes it (scripts/P0_DROPLET_RUNBOOK.md).",
+    )
     _add_repo_dry(imp)
 
     up = sub.add_parser(
@@ -235,7 +256,9 @@ def _print_result(res: dict, repo: str, tag: str, dry_run: bool) -> None:
     suffix = " (dry-run)" if dry_run else ""
     failed = res.get("failed") or []
     failed_part = f" failed={len(failed)}" if failed else ""
-    print(f"publish: uploaded={res['uploaded']} files={len(res['files'])}{failed_part} -> {repo}:{tag}{suffix}")
+    print(
+        f"publish: uploaded={res['uploaded']} files={len(res['files'])}{failed_part} -> {repo}:{tag}{suffix}"
+    )
 
 
 def _resolve_proxy_provider(no_proxy: bool, raw_store_dir: str | None = None):
@@ -295,6 +318,15 @@ def main(argv=None) -> int:
             raw_store_dir=args.raw_store_dir,
         )
         total_rows = sum(b["rows"] for b in built)
+        if not (args.publish or args.dry_run):
+            # Publishing is opt-in: return before upload_artifacts is reached at
+            # all, rather than relying on a dry_run kwarg deeper down.
+            print(
+                f"publish: skipped seasons={len(built)} rows={total_rows} -> {args.out} "
+                f"(pass --publish to upload to {args.repo}:{args.tag}, "
+                f"or --dry-run to plan the upload)"
+            )
+            return 0
         res = upload_artifacts(
             args.out,
             args.tag,

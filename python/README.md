@@ -24,11 +24,19 @@ Reuses `nba_data_build.publish` for uploads (season-scoped, resilient,
 release auto-create). The single-model `nba_stats_rapm` /
 `nba_stats_possessions` tags stay owned by `nba_data_build`.
 
+**Publishing is opt-in.** `impact` builds only unless you pass `--publish`;
+`--dry-run` plans the upload without performing it and wins over `--publish`.
+(Same convention as `nba_data_build.leaguedash_cli`.) `upload` is the
+publish-by-name verb and needs no gate.
+
 ```sh
 cd python && uv sync
-# build + publish (LIVE stats.nba.com — droplet/residential + proxy only):
+# build only — no release is touched (LIVE stats.nba.com — droplet/residential + proxy only):
 uv run python -m nba_model_publish impact --seasons 2000:2024 --out out/impact \
     --cache-dir /data/nba_possessions
+# build AND publish to the nba_player_impact tag:
+uv run python -m nba_model_publish impact --seasons 2000:2024 --out out/impact \
+    --cache-dir /data/nba_possessions --publish
 # publish an already-built directory (fully network-free with --dry-run):
 uv run python -m nba_model_publish upload --dir out/impact --tag nba_player_impact --dry-run
 ```
