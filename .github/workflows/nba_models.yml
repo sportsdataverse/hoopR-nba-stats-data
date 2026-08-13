@@ -82,11 +82,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.SDV_GH_TOKEN }}
         run: |
-          uv run --no-sync python -m nba_model_publish \
-            --repo "$PUBLISH_REPO" \
-            ${{ inputs.dry_run && '--dry-run' || '' }} \
-            impact \
+          # --repo/--dry-run/--publish belong to the `impact` SUBPARSER, so they
+          # must follow `impact`. They used to precede it, which argparse
+          # rejects with "unrecognized arguments" before any work happens.
+          #
+          # dry_run=true (the default) -> --dry-run, plan only. dry_run=false ->
+          # --publish, which `impact` now requires to write the release at all.
+          uv run --no-sync python -m nba_model_publish impact \
             --seasons "$SEASONS" \
             --out out/nba_player_impact \
             --raw-store-dir "$NBA_RAW_STORE" \
-            --tag nba_player_impact
+            --repo "$PUBLISH_REPO" \
+            --tag nba_player_impact \
+            ${{ inputs.dry_run && '--dry-run' || '--publish' }}

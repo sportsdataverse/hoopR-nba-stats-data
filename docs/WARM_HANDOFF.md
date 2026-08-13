@@ -66,6 +66,12 @@ SDV_PY_NBA_CACHE_DIR=/data/nba_possessions SDV_NBA_DELAY_S=0 \
 Builds both season types (RS + Playoffs) — the default since #15. Watch for
 `EXIT=0` and 25 parquets in `python/build_out/impact/`.
 
+No `--publish` here on purpose: this step BUILDS, step 3 verifies the real
+parquet, and only then does step 5 upload. `impact` builds-only by default,
+so the staged order this handoff describes is what actually happens. (Before
+that default flipped, this command published before you had verified
+anything, then step 5 re-uploaded the same files.)
+
 ### 3. Verify the real parquet (the gate no unit test can be)
 
 ```bash
@@ -126,8 +132,12 @@ Nightly current-season refresh (cheap; the cache means only new games fetch):
 ```bash
 crontab -e
 # 09:30 UTC keeps clear of the R cron at 07:00
-30 9 * * * . $HOME/.config/sdv/env && cd $HOME/hoopR-nba-stats-data && SDV_NBA_DELAY_S=2 bash scripts/run_impact_backfill.sh 2025 >> logs/impact_cron.log 2>&1
+30 9 * * * . $HOME/.config/sdv/env && cd $HOME/hoopR-nba-stats-data && SDV_NBA_DELAY_S=2 bash scripts/run_impact_backfill.sh 2025 --publish >> logs/impact_cron.log 2>&1
 ```
+
+`--publish` is load-bearing: `impact` builds-only by default, so a cron line
+missing it runs for hours, logs `EXIT=0`, and publishes nothing. See
+`scripts/P0_DROPLET_RUNBOOK.md` §6.
 
 ### 7. Tear down the monitoring
 

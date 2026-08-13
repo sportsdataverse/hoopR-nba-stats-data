@@ -5,7 +5,14 @@
 #   bash scripts/run_impact_backfill.sh [SEASONS] [extra nba_model_publish args...]
 #     SEASONS   'YYYY:YYYY' or 'YYYY', season END-years e.g. 2024 = 2023-24
 #               (default 1997:2026)
-#     extras    forwarded verbatim, e.g. --dry-run for a no-upload smoke run
+#     extras    forwarded verbatim to `nba_model_publish impact`
+#
+# PUBLISHING IS OPT-IN -- pass --publish or this builds only:
+#   ... run_impact_backfill.sh 2025 --publish   # builds AND uploads to the tag
+#   ... run_impact_backfill.sh 2025             # builds only, release untouched
+#   ... run_impact_backfill.sh 2025 --dry-run   # builds, prints the upload plan
+# A run without --publish still exits 0; `publish: skipped` in the log is the
+# tell. The daily droplet cron passes --publish (scripts/P0_DROPLET_RUNBOOK.md).
 #
 # Watch live (exact path printed at start):
 #   tail -f logs/impact_backfill_<timestamp>.log

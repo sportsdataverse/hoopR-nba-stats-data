@@ -89,8 +89,10 @@ cache skips everything already compiled. The 2023 cache seeded here is
 
 **Do not publish a standalone mid-range season**: seasons build
 earliest→latest so the adj-RAPM prior and DARKO panel flow forward — an
-out-of-sequence single-season build has no prior chain. `--dry-run` on the
-smoke is what makes it safe.
+out-of-sequence single-season build has no prior chain. Omitting `--publish`
+is what makes the smoke safe; the `--dry-run` above additionally prints the
+upload plan (and, being the stronger flag, keeps the run non-publishing even
+if `--publish` is pasted in alongside it).
 
 ## 4. Full backfill 2000:2024 (resumable)
 
@@ -153,8 +155,12 @@ Launch (in tmux — this outlives your SSH session):
 . ~/.config/sdv/env
 cd ~/hoopR-nba-stats-data
 tmux new -s backfill
-SDV_NBA_DELAY_S=7 bash scripts/run_impact_backfill.sh 2000:2024
+SDV_NBA_DELAY_S=7 bash scripts/run_impact_backfill.sh 2000:2024 --publish
 ```
+
+`--publish` is REQUIRED for the release to be written: `nba_model_publish
+impact` builds only by default, so dropping the flag here produces a
+multi-hour build whose output never reaches the tag — and exits 0.
 
 - **Watch:** `tail -f ~/hoopR-nba-stats-data/logs/impact_backfill_*.log`
 - **Pause/resume:** Ctrl-C anytime; rerun the same command. Cached games are
@@ -197,11 +203,17 @@ keeps clear of the R cron at 07:00.
 ```bash
 crontab -e
 # m  h  dom mon dow
-30 9 * * * . $HOME/.config/sdv/env && cd $HOME/hoopR-nba-stats-data && SDV_NBA_DELAY_S=2 bash scripts/run_impact_backfill.sh 2025 >> logs/impact_cron.log 2>&1
+30 9 * * * . $HOME/.config/sdv/env && cd $HOME/hoopR-nba-stats-data && SDV_NBA_DELAY_S=2 bash scripts/run_impact_backfill.sh 2025 --publish >> logs/impact_cron.log 2>&1
 ```
 
 Season arg = start year (`2025` = 2025-26); bump it each October. Check
 `logs/impact_cron.log` for `EXIT=0` after the first scheduled run.
+
+`--publish` is what makes this cron a publisher. Without it the job still
+runs to completion and still logs `EXIT=0`, but writes nothing to the release
+— a silent no-op, not a failure. If the release stops advancing while the log
+stays green, check this line first (`publish: skipped` in the log is the
+tell).
 
 ## Gotchas
 
