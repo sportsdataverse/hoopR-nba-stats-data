@@ -213,7 +213,12 @@ def main(argv: Optional[list[str]] = None) -> int:
                 out / tag,
                 tag,
                 args.repo,
-                seasons=seasons,
+                # PUBLISHED years, not the requested ones: plan_uploads scopes by
+                # matching `_{season}.{ext}` against the filenames on disk, and
+                # those now carry the END year. Passing the START years here
+                # matches nothing and the publish uploads zero files while still
+                # reporting success.
+                seasons=[_published_season(s) for s in seasons],
                 exts=("parquet", "rds", "csv"),
                 dry_run=args.dry_run,
             )
