@@ -1,6 +1,15 @@
 """Section-9.3 gate: diff staged v3 seasons against legacy + the raw store.
 
-For every requested END-year season and each of the two comparable families:
+For every requested END-year season, one build finding plus the two comparable
+families:
+
+``build``
+    The backfill's persisted per-season summary
+    (``nba_build_summary_{E}.json``): DIFF when any indexed game failed to
+    build, MISSING_SUMMARY when the season was never built (or was built by a
+    version that didn't record one). The parquets can't answer this -- a game
+    that raised is simply absent from them -- so an unread summary is the
+    difference between "0 games failed" and "nobody counted".
 
 ``schedule``
     Staged ``nba_schedule_{E}.parquet`` vs legacy
@@ -140,6 +149,42 @@ def _finding(season: int, family: str, verdict: str, detail: str) -> dict[str, A
     return {"season": season, "family": family, "verdict": verdict, "detail": detail}
 
 
+def gate_build(season: int, summary: Optional[dict[str, Any]]) -> dict[str, Any]:
+    """One season's build-family finding: did every indexed game actually build?
+
+    The parquets cannot answer this -- a game that raised mid-build simply isn't
+    in them, which is indistinguishable from a game that was never scheduled. So
+    the gate reads the backfill's persisted per-season summary
+    (:func:`~nba_data_build.v3_backfill.read_summary`) and fails the season when
+    any game failed. A season with **no** summary is unverified, not fine.
+
+    Args:
+        season: END-year season.
+        summary: The season's build summary dict, or ``None`` when absent.
+
+    Returns:
+        A finding whose verdict is ``OK`` / ``DIFF`` / ``MISSING_SUMMARY``.
+    """
+    if summary is None:
+        return _finding(
+            season,
+            "build",
+            "MISSING_SUMMARY",
+            f"no nba_build_summary_{season}.json -- rerun the backfill for this season",
+        )
+    failed = int(summary.get("games_failed") or 0)
+    detail = (
+        f"games_indexed={summary.get('games_indexed')} "
+        f"games_failed={failed} "
+        f"games_uncaptured={summary.get('games_uncaptured')} "
+        f"games_no_pbp={summary.get('games_no_pbp')} "
+        f"games_processed={summary.get('games_processed')}"
+    )
+    if failed:
+        detail += f" failed_sample={summary.get('failed_sample')}"
+    return _finding(season, "build", "DIFF" if failed else "OK", detail)
+
+
 def gate_schedule(
     season: int,
     staged: Optional[pl.DataFrame],
@@ -268,7 +313,7 @@ def run_gate(
     raw_root: Union[str, Path],
 ) -> "tuple[list[dict[str, Any]], int]":
     """Gate every season; returns (findings, exit_code)."""
-    from .v3_backfill import season_paths
+    from .v3_backfill import read_summary, season_paths
 
     findings: list[dict[str, Any]] = []
     for season in seasons:
@@ -276,6 +321,7 @@ def run_gate(
         staged_sched = _read_optional(paths["schedule"])
         staged_pbp = _read_optional(paths["play_by_play"])
         raw_ids = raw_captured_ids(raw_root, season)
+        findings.append(gate_build(season, read_summary(staging, season)))
         findings.append(
             gate_schedule(
                 season,
@@ -293,7 +339,7 @@ def run_gate(
                 raw_ids,
             )
         )
-    bad = {"DIFF", "MISSING_STAGED"}
+    bad = {"DIFF", "MISSING_STAGED", "MISSING_SUMMARY"}
     exit_code = 1 if any(f["verdict"] in bad for f in findings) else 0
     return findings, exit_code
 

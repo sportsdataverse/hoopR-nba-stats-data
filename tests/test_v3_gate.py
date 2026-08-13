@@ -121,4 +121,50 @@ def test_run_gate_exit_code(tmp_path) -> None:
     # Nothing staged for the requested season -> MISSING_STAGED -> exit 1.
     findings, code = vg.run_gate([2006], tmp_path, tmp_path, tmp_path)
     assert code == 1
-    assert {f["verdict"] for f in findings} == {"MISSING_STAGED"}
+    assert {f["verdict"] for f in findings} == {"MISSING_STAGED", "MISSING_SUMMARY"}
+
+
+def _summary(**over) -> dict:
+    base = {
+        "season": 2006,
+        "status": "built",
+        "games_failed": 0,
+        "games_indexed": 1300,
+        "games_uncaptured": 0,
+        "games_no_pbp": 113,
+        "games_processed": 1187,
+        "failed_sample": [],
+    }
+    base.update(over)
+    return base
+
+
+def test_gate_build_fails_a_season_with_failed_games() -> None:
+    """The D26c blind spot: games_uncaptured=0 must not carry a season on its own."""
+    ok = vg.gate_build(2006, _summary())
+    assert ok["verdict"] == "OK"
+    assert "games_no_pbp=113" in ok["detail"]
+
+    bad = vg.gate_build(2006, _summary(games_failed=113, failed_sample=["0019600001"]))
+    assert bad["verdict"] == "DIFF"
+    assert "games_failed=113" in bad["detail"] and "0019600001" in bad["detail"]
+
+
+def test_gate_build_missing_summary_is_unverified_not_ok() -> None:
+    finding = vg.gate_build(2006, None)
+    assert finding["verdict"] == "MISSING_SUMMARY"
+
+
+def test_run_gate_surfaces_failed_games(tmp_path) -> None:
+    import json
+
+    from nba_data_build import v3_backfill as vb
+
+    for p in vb.season_paths(tmp_path, 2006).values():
+        _sched([("0020500001", 101, 99)]).write_parquet(p)
+    vb.summary_path(tmp_path, 2006).write_text(
+        json.dumps(_summary(games_failed=7)), encoding="utf-8"
+    )
+    findings, code = vg.run_gate([2006], tmp_path, tmp_path, tmp_path)
+    build = next(f for f in findings if f["family"] == "build")
+    assert build["verdict"] == "DIFF" and code == 1
