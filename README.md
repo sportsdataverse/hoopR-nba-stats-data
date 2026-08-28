@@ -23,3 +23,17 @@
 | [`python/nba_stats_99_schedule_master_creation.py`](python/nba_stats_99_schedule_master_creation.py) | [`schedule_master`](docs/datasets/schedule_master.md) | `nba_stats/nba_stats_schedule_master.parquet` (committed) | — |
 | [`python/nba_stats_99_schedule_master_creation.py`](python/nba_stats_99_schedule_master_creation.py) | [`games_in_data_repo`](docs/datasets/games_in_data_repo.md) | `nba_stats/nba_stats_games_in_data_repo.parquet` (committed) | — |
 <!-- END GENERATED: datasets -->
+
+## Automation & status
+
+<!-- BEGIN GENERATED: status -->
+
+| workflow | schedule | last run |
+|---|---|---|
+| [![annual_nba_stats_draft.yml](https://github.com/sportsdataverse/hoopR-nba-stats-data/actions/workflows/annual_nba_stats_draft.yml/badge.svg)](https://github.com/sportsdataverse/hoopR-nba-stats-data/actions/workflows/annual_nba_stats_draft.yml) | day 27 08:00 UTC in Jun; day 29 08:00 UTC in Jun | never run |
+| [![daily_nba_stats.yml](https://github.com/sportsdataverse/hoopR-nba-stats-data/actions/workflows/daily_nba_stats.yml/badge.svg)](https://github.com/sportsdataverse/hoopR-nba-stats-data/actions/workflows/daily_nba_stats.yml) | days 18-31 07:00 UTC in Oct; daily 07:00 UTC in Nov-Dec; daily 07:00 UTC in Jan-Jun; days 1-12 07:00 UTC in Jul | 2026-07-12 |
+| [![nba_models.yml](https://github.com/sportsdataverse/hoopR-nba-stats-data/actions/workflows/nba_models.yml/badge.svg)](https://github.com/sportsdataverse/hoopR-nba-stats-data/actions/workflows/nba_models.yml) | on push / PR / dispatch | never run |
+| [![orphan_scripts.yml](https://github.com/sportsdataverse/hoopR-nba-stats-data/actions/workflows/orphan_scripts.yml/badge.svg)](https://github.com/sportsdataverse/hoopR-nba-stats-data/actions/workflows/orphan_scripts.yml) | on push / PR / dispatch | 2026-08-19 |
+| [![tests.yml](https://github.com/sportsdataverse/hoopR-nba-stats-data/actions/workflows/tests.yml/badge.svg)](https://github.com/sportsdataverse/hoopR-nba-stats-data/actions/workflows/tests.yml) | on push / PR / dispatch | 2026-08-19 |
+
+<!-- END GENERATED: status -->
