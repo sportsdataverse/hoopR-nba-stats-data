@@ -23,3 +23,38 @@
 | [`python/nba_stats_99_schedule_master_creation.py`](python/nba_stats_99_schedule_master_creation.py) | [`schedule_master`](docs/datasets/schedule_master.md) | `nba_stats/nba_stats_schedule_master.parquet` (committed) | — |
 | [`python/nba_stats_99_schedule_master_creation.py`](python/nba_stats_99_schedule_master_creation.py) | [`games_in_data_repo`](docs/datasets/games_in_data_repo.md) | `nba_stats/nba_stats_games_in_data_repo.parquet` (committed) | — |
 <!-- END GENERATED: datasets -->
+
+## Automation & status
+
+<!-- BEGIN GENERATED: status -->
+
+| workflow | schedule | last run |
+|---|---|---|
+| [![annual_nba_stats_draft.yml](https://github.com/sportsdataverse/hoopR-nba-stats-data/actions/workflows/annual_nba_stats_draft.yml/badge.svg)](https://github.com/sportsdataverse/hoopR-nba-stats-data/actions/workflows/annual_nba_stats_draft.yml) | day 27 08:00 UTC in Jun; day 29 08:00 UTC in Jun | never run |
+| [![daily_nba_stats.yml](https://github.com/sportsdataverse/hoopR-nba-stats-data/actions/workflows/daily_nba_stats.yml/badge.svg)](https://github.com/sportsdataverse/hoopR-nba-stats-data/actions/workflows/daily_nba_stats.yml) | days 18-31 07:00 UTC in Oct; daily 07:00 UTC in Nov-Dec; daily 07:00 UTC in Jan-Jun; days 1-12 07:00 UTC in Jul | 2026-07-12 |
+| [![nba_models.yml](https://github.com/sportsdataverse/hoopR-nba-stats-data/actions/workflows/nba_models.yml/badge.svg)](https://github.com/sportsdataverse/hoopR-nba-stats-data/actions/workflows/nba_models.yml) | on dispatch | never run |
+| [![orphan_scripts.yml](https://github.com/sportsdataverse/hoopR-nba-stats-data/actions/workflows/orphan_scripts.yml/badge.svg)](https://github.com/sportsdataverse/hoopR-nba-stats-data/actions/workflows/orphan_scripts.yml) | on push / dispatch | 2026-08-19 |
+| [![tests.yml](https://github.com/sportsdataverse/hoopR-nba-stats-data/actions/workflows/tests.yml/badge.svg)](https://github.com/sportsdataverse/hoopR-nba-stats-data/actions/workflows/tests.yml) | on push / PR / dispatch | 2026-08-28 |
+
+| release tag | assets | size | last publish |
+|---|---:|---:|---|
+| [`nba_stats_coaches`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_coaches) | 90 | 0.8 MB | 2026-08-13 |
+| [`nba_stats_draft`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_draft) | 90 | 0.5 MB | 2026-08-13 |
+| [`nba_stats_game_lineups`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_game_lineups) | 91 | 93.5 MB | 2026-08-13 |
+| [`nba_stats_game_rosters`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_game_rosters) | 90 | 12.8 MB | 2026-08-13 |
+| [`nba_stats_leaguedash`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_leaguedash) | 833 | 284.2 MB | 2026-08-13 |
+| [`nba_stats_lineups`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_lineups) | 57 | 453.3 MB | 2026-08-13 |
+| [`nba_stats_officials`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_officials) | 90 | 4.3 MB | 2026-08-13 |
+| [`nba_stats_pbp`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_pbp) | 181 | 4,795.6 MB | 2026-08-13 |
+| [`nba_stats_player_boxscores`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_player_boxscores) | 90 | 187.8 MB | 2026-08-13 |
+| [`nba_stats_player_game_logs`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_player_game_logs) | 90 | 16.3 MB | 2026-08-13 |
+| [`nba_stats_player_season_stats`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_player_season_stats) | 90 | 127.4 MB | 2026-08-13 |
+| [`nba_stats_possessions`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_possessions) | 91 | 310.5 MB | 2026-08-13 |
+| [`nba_stats_rosters`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_rosters) | 90 | 2.7 MB | 2026-08-13 |
+| [`nba_stats_schedules`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_schedules) | 188 | 19.0 MB | 2026-08-13 |
+| [`nba_stats_shots`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_shots) | 90 | 1,070.5 MB | 2026-08-13 |
+| [`nba_stats_standings`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_standings) | 90 | 1.6 MB | 2026-08-13 |
+| [`nba_stats_team_boxscores`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_team_boxscores) | 90 | 12.2 MB | 2026-08-13 |
+| [`nba_stats_team_season_stats`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_team_season_stats) | 90 | 9.3 MB | 2026-08-13 |
+
+<!-- END GENERATED: status -->
