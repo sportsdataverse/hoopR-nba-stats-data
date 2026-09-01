@@ -71,7 +71,7 @@ bash scripts/run_impact_backfill.sh                # nba_player_impact full-hist
 bash scripts/run_impact_backfill.sh 2025 --publish # ...and upload to the release (deliberate)
 bash scripts/run_v3_backfill.sh -s 1997 -e 2026    # Program V v3 backfill (resumable)
 bash scripts/run_v3_cutover.sh -s 1997 -e 2026     # D26d cutover -- DRY RUN by default
-python python/warm_possession_cache.py 2000:2024   # warm the possession cache
+python -m nba_data_build.warm_possession_cache 2000:2024   # warm the possession cache
 ```
 
 **`scripts/leaguedash_backfill.sh` builds; it cannot publish.** It writes under

@@ -36,7 +36,7 @@ bash scripts/run_impact_backfill.sh        # nba_player_impact full-history back
 bash scripts/run_impact_backfill.sh 2025 --publish   # ...and upload to the release (deliberate)
 bash scripts/run_v3_backfill.sh -s 1997 -e 2026   # Program V v3 backfill (resumable)
 bash scripts/run_v3_cutover.sh -s 1997 -e 2026    # D26d cutover -- DRY RUN by default
-python python/warm_possession_cache.py 2000:2024   # warm the possession cache
+python -m nba_data_build.warm_possession_cache 2000:2024   # warm the possession cache
 ```
 
 Env: `HOOPR_NBA_STATS_RAW_ROOT` overrides the raw store location,
@@ -141,7 +141,7 @@ is a valid cadence but must be stated explicitly.
   `nba-stats-raw-json` per-season release bundles (~30 tarballs instead of ~120k
   per-file URL reads); the CI-friendly way to run a FULL-history impact build.
   Idempotent + resumable (already-extracted seasons skip). Landed with #19/#20.
-- `python/warm_possession_cache.py` — pre-backfill runbook stage despite the
+- `python/nba_data_build/warm_possession_cache.py` — pre-backfill runbook stage despite the
   one-off-looking name: `scripts/P0_DROPLET_RUNBOOK.md` §4a "Parallel cache warm"
   runs it to warm the per-game possession cache so the sequential impact build
   (§4b) is CPU-only.
