@@ -121,6 +121,22 @@ Stage numbers are intended build order, not run order.
 | [`python/nba_stats_99_schedule_master_creation.py`](python/nba_stats_99_schedule_master_creation.py) | [`games_in_data_repo`](docs/datasets/games_in_data_repo.md) | `nba_stats/nba_stats_games_in_data_repo.parquet` (committed) | — |
 <!-- END GENERATED: datasets -->
 
+## Reports & explainers
+
+<!-- BEGIN GENERATED: reports -->
+
+| Report | What it is | Last updated |
+|---|---|---|
+| [Dataset docs (column-level, generated)](docs/datasets/) | 17 files, one per item | 2026-08-13 |
+| [DONE: `nba_stats_draft` (Phase 3) — published 2026-08-12](docs/nba-draft-todo.md) | explainer | 2026-08-12 |
+| [NBA Stats v3 reshaper — implementation plan](docs/nba-reshaper-port-plan.md) | explainer | 2026-07-28 |
+| [NBA Stats reshaper port — scope](docs/nba-reshaper-port-scope.md) | explainer | 2026-07-23 |
+| [NBA Stats v3 reshaper — tag manifest (Phase 0, Task 0.1)](docs/nba-tag-manifest.md) | explainer | 2026-07-28 |
+| [NBA v3 raw-store coverage probe](docs/nba-v3-coverage.md) | explainer | 2026-08-13 |
+| [NBA player-impact backfill — completion handoff](docs/WARM_HANDOFF.md) | explainer | 2026-08-13 |
+
+<!-- END GENERATED: reports -->
+
 ## Automation & status
 
 <!-- BEGIN GENERATED: status -->
