@@ -151,8 +151,8 @@ def test_workflow_flags_follow_the_subcommand() -> None:
     """--repo/--dry-run/--publish belong to the `impact` subparser. They once
     preceded `impact`, which argparse rejects outright."""
     body = _read(WORKFLOW)
-    run_block = body[body.index("uv run --no-sync python -m nba_model_01_player_impact") :]
-    assert re.match(r"uv run --no-sync python -m nba_model_01_player_impact\b", run_block)
+    run_block = body[body.index("uv run --no-sync python -m nba_model_08_impact") :]
+    assert re.match(r"uv run --no-sync python -m nba_model_08_impact\b", run_block)
     for flag in ("--publish", "--dry-run"):
         assert flag in run_block, f"workflow lost {flag}"
 

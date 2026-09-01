@@ -22,7 +22,9 @@ def test_manifest_parses_and_driver_exists():
 
 def test_stages_and_manifest_agree_bidirectionally():
     files = {p.stem for p in (ROOT / "python").glob("nba_model_[0-9][0-9]_*.py")}
-    manifest = {Path(m["stage"]).stem for m in _models().values()}
+    spec = yaml.safe_load(MANIFEST.read_text(encoding="utf-8"))["suites"]["impact"]
+    manifest = {Path(m["stage"]).stem for m in spec["models"].values()}
+    manifest |= {Path(v).stem for v in spec.get("engine_stages", {}).values()}
     assert files == manifest, f"files-only={files - manifest}, manifest-only={manifest - files}"
 
 

@@ -15,9 +15,22 @@ suites:
   impact:
     models:
       player_impact:
-        stage: python/nba_model_01_player_impact.py
+        stage: python/nba_model_08_impact.py  # consolidated build+publish (engines: stages 01-07)
         wraps: nba_model_publish impact
         wraps_token: '"impact"'
         release_tag: nba_player_impact
         wired_via: .github/workflows/nba_models.yml
         notes: "Dispatch-only BY DESIGN (rate-budgeted long build; dry_run defaults true; full-history backfills run from the droplet scripts)."
+    # Per-engine pipelines (individualization directive 2026-09-01): parquet
+    # handoffs under build_out/impact_engines/{end_year}/; stage 08 is the
+    # consolidated build+publish (production CI path + schema authority).
+    # Semantics mirror the monolith at the builders seam, where the hermetic
+    # stubs validate both paths (tests/test_impact_stages.py).
+    engine_stages:
+      possessions: python/nba_model_01_possessions.py
+      rapm: python/nba_model_02_rapm.py
+      spm: python/nba_model_03_spm.py
+      adj_rapm: python/nba_model_04_adj_rapm.py
+      bpm: python/nba_model_05_bpm.py
+      war: python/nba_model_06_war.py
+      darko: python/nba_model_07_darko.py
