@@ -34,7 +34,32 @@ the minutes-played baseline by ~10% on the proxy tasks; per-run diagnostics
 live in the release card sidecar. Numeric publish-blocking floors are a
 recorded TODO in `models/REGISTRY.md` (stated, not yet encoded).
 
+## Evaluation on the published releases (2026-09-01)
+
+Computed from the released `nba_player_impact_{season}.parquet` assets (30 seasons, 1997-2026).
+
+- adj-RAPM vs RAPM agreement (2026 RS): Pearson r = 0.913
+- **DARKO forward validation** (projection in season t vs realized t+1 RAPM — out-of-sample by construction): weighted mean r = 0.362 over 28 season pairs
+
+| projection season | n joined | Pearson r | MAE |
+|---|---|---|---|
+| 2016 -> 2017 | 386 | 0.406 | 1.58 |
+| 2017 -> 2018 | 392 | 0.322 | 1.93 |
+| 2018 -> 2019 | 412 | 0.423 | 1.46 |
+| 2019 -> 2020 | 400 | 0.352 | 1.06 |
+| 2020 -> 2021 | 435 | 0.242 | 1.07 |
+| 2021 -> 2022 | 450 | 0.380 | 1.02 |
+| 2022 -> 2023 | 433 | 0.376 | 1.03 |
+| 2023 -> 2024 | 450 | 0.394 | 1.06 |
+| 2024 -> 2025 | 447 | 0.395 | 1.04 |
+| 2025 -> 2026 | 464 | 0.330 | 1.71 |
+
+Card: [`nba_player_impact_eval_card.json`](nba_player_impact_eval_card.json)
+
 ## Figures
 
-None committed yet — engine-level diagnostic figures are a recorded follow-up;
-the release card carries the per-run numbers in the meantime.
+![Engine distributions](figures/impact_engine_distributions_2026.png)
+
+![adj-RAPM vs RAPM](figures/impact_rapm_vs_adj_2026.png)
+
+![DARKO forward validation](figures/impact_darko_forward_validation.png)

@@ -1,0 +1,298 @@
+{
+  "model": "nba_player_impact (published-release evaluation)",
+  "generated": "2026-09-01T15:33:03+00:00",
+  "source": "released parquet assets on the nba_player_impact tag",
+  "seasons_evaluated": [
+    {
+      "season": 1997,
+      "rows": 632
+    },
+    {
+      "season": 1998,
+      "rows": 629
+    },
+    {
+      "season": 1999,
+      "rows": 629
+    },
+    {
+      "season": 2000,
+      "rows": 620
+    },
+    {
+      "season": 2001,
+      "rows": 630
+    },
+    {
+      "season": 2002,
+      "rows": 625
+    },
+    {
+      "season": 2003,
+      "rows": 615
+    },
+    {
+      "season": 2004,
+      "rows": 631
+    },
+    {
+      "season": 2005,
+      "rows": 651
+    },
+    {
+      "season": 2006,
+      "rows": 652
+    },
+    {
+      "season": 2007,
+      "rows": 649
+    },
+    {
+      "season": 2008,
+      "rows": 653
+    },
+    {
+      "season": 2009,
+      "rows": 644
+    },
+    {
+      "season": 2010,
+      "rows": 640
+    },
+    {
+      "season": 2011,
+      "rows": 644
+    },
+    {
+      "season": 2012,
+      "rows": 681
+    },
+    {
+      "season": 2013,
+      "rows": 678
+    },
+    {
+      "season": 2014,
+      "rows": 686
+    },
+    {
+      "season": 2015,
+      "rows": 700
+    },
+    {
+      "season": 2016,
+      "rows": 691
+    },
+    {
+      "season": 2017,
+      "rows": 701
+    },
+    {
+      "season": 2018,
+      "rows": 752
+    },
+    {
+      "season": 2019,
+      "rows": 742
+    },
+    {
+      "season": 2020,
+      "rows": 744
+    },
+    {
+      "season": 2021,
+      "rows": 779
+    },
+    {
+      "season": 2022,
+      "rows": 820
+    },
+    {
+      "season": 2023,
+      "rows": 756
+    },
+    {
+      "season": 2024,
+      "rows": 786
+    },
+    {
+      "season": 2025,
+      "rows": 788
+    },
+    {
+      "season": 2026,
+      "rows": 812
+    }
+  ],
+  "rapm_vs_adj_rapm_pearson_latest": 0.9131965174644664,
+  "darko_forward_validation": [
+    {
+      "season": 1998,
+      "n": 354,
+      "pearson_r": 0.4004,
+      "mae": 1.653
+    },
+    {
+      "season": 1999,
+      "n": 358,
+      "pearson_r": 0.2852,
+      "mae": 1.719
+    },
+    {
+      "season": 2000,
+      "n": 358,
+      "pearson_r": 0.3321,
+      "mae": 1.899
+    },
+    {
+      "season": 2001,
+      "n": 357,
+      "pearson_r": 0.4031,
+      "mae": 1.729
+    },
+    {
+      "season": 2002,
+      "n": 355,
+      "pearson_r": 0.3888,
+      "mae": 1.721
+    },
+    {
+      "season": 2003,
+      "n": 350,
+      "pearson_r": 0.3451,
+      "mae": 1.758
+    },
+    {
+      "season": 2004,
+      "n": 380,
+      "pearson_r": 0.3346,
+      "mae": 1.811
+    },
+    {
+      "season": 2005,
+      "n": 366,
+      "pearson_r": 0.3764,
+      "mae": 1.808
+    },
+    {
+      "season": 2006,
+      "n": 369,
+      "pearson_r": 0.3658,
+      "mae": 1.776
+    },
+    {
+      "season": 2007,
+      "n": 371,
+      "pearson_r": 0.3345,
+      "mae": 1.84
+    },
+    {
+      "season": 2008,
+      "n": 366,
+      "pearson_r": 0.3346,
+      "mae": 1.806
+    },
+    {
+      "season": 2009,
+      "n": 365,
+      "pearson_r": 0.3245,
+      "mae": 1.602
+    },
+    {
+      "season": 2010,
+      "n": 371,
+      "pearson_r": 0.3807,
+      "mae": 1.552
+    },
+    {
+      "season": 2011,
+      "n": 379,
+      "pearson_r": 0.4112,
+      "mae": 1.704
+    },
+    {
+      "season": 2012,
+      "n": 377,
+      "pearson_r": 0.3637,
+      "mae": 1.473
+    },
+    {
+      "season": 2013,
+      "n": 384,
+      "pearson_r": 0.3068,
+      "mae": 1.65
+    },
+    {
+      "season": 2014,
+      "n": 395,
+      "pearson_r": 0.3753,
+      "mae": 1.901
+    },
+    {
+      "season": 2015,
+      "n": 396,
+      "pearson_r": 0.4397,
+      "mae": 1.55
+    },
+    {
+      "season": 2016,
+      "n": 386,
+      "pearson_r": 0.4059,
+      "mae": 1.583
+    },
+    {
+      "season": 2017,
+      "n": 392,
+      "pearson_r": 0.3223,
+      "mae": 1.93
+    },
+    {
+      "season": 2018,
+      "n": 412,
+      "pearson_r": 0.423,
+      "mae": 1.456
+    },
+    {
+      "season": 2019,
+      "n": 400,
+      "pearson_r": 0.3524,
+      "mae": 1.061
+    },
+    {
+      "season": 2020,
+      "n": 435,
+      "pearson_r": 0.242,
+      "mae": 1.069
+    },
+    {
+      "season": 2021,
+      "n": 450,
+      "pearson_r": 0.3798,
+      "mae": 1.019
+    },
+    {
+      "season": 2022,
+      "n": 433,
+      "pearson_r": 0.3757,
+      "mae": 1.035
+    },
+    {
+      "season": 2023,
+      "n": 450,
+      "pearson_r": 0.3938,
+      "mae": 1.058
+    },
+    {
+      "season": 2024,
+      "n": 447,
+      "pearson_r": 0.3948,
+      "mae": 1.041
+    },
+    {
+      "season": 2025,
+      "n": 464,
+      "pearson_r": 0.3302,
+      "mae": 1.707
+    }
+  ]
+}
