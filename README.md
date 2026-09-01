@@ -97,6 +97,86 @@ Stage numbers are intended build order, not run order.
 
 [hoopR-kp-data repository (source: KenPom, dormant)](https://github.com/sportsdataverse/hoopR-kp-data)
 
+## Repository layout
+
+<!-- BEGIN GENERATED: layout -->
+
+```
+hoopR-nba-stats-data/
+├── R/   # R pipeline stages and publish toolchain
+│   ├── nba_stats_01_scrape_schedules.R
+│   ├── nba_stats_02_scrape_pbp.R
+│   ├── nba_stats_02_scrape_pbp_to_lineup.R
+│   ├── nba_stats_03_scrape_boxscoretraditionalv2.R
+│   ├── nba_stats_draftcombinedrillresults.R
+│   └── utils.R
+├── docs/   # explainers, model reports and dataset docs
+│   ├── datasets/
+│   ├── models/
+│   └── superpowers/
+├── logs/   # per-run logs (gitignored where large)
+├── models/   # model artifacts, cards and the registry
+├── nba_stats/
+│   ├── lineups/
+│   ├── pbp/
+│   ├── pbpv3/
+│   ├── possessions/
+│   ├── schedule_v3/
+│   └── schedules/
+├── ops/   # cron definitions and runbooks
+│   ├── init/
+│   └── oneoff/
+├── python/   # Python pipeline stages, numbered in build order
+│   ├── build_out/
+│   ├── hoopr_nba_stats_data_build.egg-info/
+│   ├── nba_data_build/
+│   ├── nba_model_publish/
+│   ├── nba_model_01_possessions.py
+│   ├── nba_model_02_rapm.py
+│   ├── nba_model_03_spm.py
+│   ├── nba_model_04_adj_rapm.py
+│   ├── nba_model_05_bpm.py
+│   ├── nba_model_06_war.py
+│   ├── nba_model_07_darko.py
+│   ├── nba_model_08_impact.py
+│   ├── nba_stats_01_standings_creation.py
+│   ├── nba_stats_02_player_season_stats_creation.py
+│   ├── nba_stats_03_team_season_stats_creation.py
+│   ├── nba_stats_04_lineups_creation.py
+│   └── … 12 more
+├── scripts/   # bash drivers (the daily/weekly entry points)
+│   ├── daily_nba_stats_python_processor.sh
+│   ├── hydrate_raw_store.sh
+│   ├── leaguedash_backfill.sh
+│   ├── nba_models.sh
+│   ├── render_model_docs.sh
+│   ├── run_impact_backfill.sh
+│   ├── run_v3_backfill.sh
+│   └── run_v3_cutover.sh
+├── tests/   # test suite
+│   ├── fixtures/
+│   ├── __init__.py
+│   ├── conftest.py
+│   ├── test_availability.py
+│   ├── test_backfill_no_publish.py
+│   ├── test_build.py
+│   ├── test_cache_guard.py
+│   ├── test_cli.py
+│   ├── test_docs.py
+│   ├── test_impact_publish_optin.py
+│   ├── test_impact_stages.py
+│   ├── test_incremental.py
+│   ├── test_io.py
+│   ├── test_live.py
+│   ├── test_model_manifest.py
+│   ├── test_model_matches_loader_schema.py
+│   └── … 25 more
+└── v3_staging/
+    └── _release_build/
+```
+
+<!-- END GENERATED: layout -->
+
 ## Datasets
 
 <!-- BEGIN GENERATED: datasets -->
