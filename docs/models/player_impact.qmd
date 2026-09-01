@@ -1,0 +1,282 @@
+---
+title: "NBA player impact — the six-engine suite"
+format:
+  gfm:
+    fig-dpi: 120
+execute:
+  echo: false
+  warning: false
+jupyter: python3
+---
+
+```{python}
+#| output: false
+import io
+import numpy as np
+import polars as pl
+import requests
+from pathlib import Path
+from plotnine import (
+    ggplot, aes, geom_point, geom_histogram, geom_line, geom_abline, geom_tile,
+    geom_text, labs, theme_minimal, facet_wrap, scale_fill_gradient2,
+)
+from great_tables import GT
+from IPython.display import HTML, display
+
+LEAGUE = "nba"
+TAG = f"{LEAGUE}_player_impact"
+BASE = f"https://github.com/sportsdataverse/sportsdataverse-data/releases/download/{TAG}"
+frames = []
+for season in range(1997, 2027):
+    r = requests.get(f"{BASE}/{TAG}_{season}.parquet", timeout=60)
+    if r.status_code == 200:
+        frames.append(pl.read_parquet(io.BytesIO(r.content)))
+imp = pl.concat(frames, how="diagonal_relaxed")
+SEASONS = sorted(imp["season"].unique().to_list())
+rs = imp.filter(pl.col("season_type") == "Regular Season")
+
+def gt_show(g):
+    display(HTML(g.as_raw_html()))
+```
+
+The consolidated player-impact suite publishes one row per player-season
+(regular season and playoffs) on the `nba_player_impact` release tag, with
+six engines' columns side by side:
+
+| engine | what it contributes |
+|---|---|
+| RAPM | possession on/off ridge (`o_rapm` / `d_rapm` / `rapm`) |
+| adj-RAPM | RAPM with an SPM-derived prior (previous season's RS+PO blend) |
+| SPM | box-score plus/minus, coefficients fit on RS RAPM targets |
+| BPM 2.0 | box logs + listed positions (`obpm` / `dbpm` / `bpm`) |
+| DARKO-style | cross-season Kalman filter + aging curve (projects next season) |
+| WAR | RAPM rating × calibrated pts-per-win, replacement level −2.0 |
+
+Seasons build earliest-to-latest because two engines carry state forward:
+SPM coefficients are fit ONCE per season on regular-season RAPM (a ~15-game
+playoff sample would train noise on noise), and adj-RAPM's prior is the
+*previous* season's possession-weighted RS+PO SPM blend — a gap season
+deliberately breaks the prior chain. DARKO runs a per-season Kalman step
+over the RAPM panel with an aging curve; playoff form enters as a
+possession-weighted blend rather than a second time step, because a second
+step would apply a season of aging twice.
+
+The substrate is the committed `hoopR-nba-stats-raw` store (per-game
+playbyplay / rotation / boxscore payloads plus season-level captures), read
+offline through the raw-store backend — `readonly` means OFFLINE: a store
+miss raises rather than silently completing over the network, so a build is
+reproducible or loudly incomplete, never quietly mixed. This document, by
+contrast, evaluates the **published releases**: every number and figure below
+is recomputed at render time from the release assets themselves, which is
+exactly what a consumer downloads.
+
+## Training data
+
+```{python}
+tbl = (
+    imp.group_by("season")
+    .agg(pl.len().alias("player_rows"),
+         (pl.col("season_type") == "Playoffs").sum().alias("playoff_rows"),
+         pl.col("off_poss").sum().alias("off_possessions"))
+    .sort("season")
+)
+gt_show(
+    GT(tbl.tail(12).to_pandas())
+    .tab_header(title=f"Published {TAG} assets — last 12 of {len(SEASONS)} seasons "
+                      f"({SEASONS[0]}–{SEASONS[-1]})",
+                subtitle="one row per player-season-seasontype; computed at render time from the release")
+    .fmt_number(columns=["off_possessions"], sep_mark=",", decimals=0)
+)
+```
+
+## Exploratory data analysis
+
+```{python}
+#| fig-cap: "Engine distributions, latest regular season — all engines center near zero on the per-100 scale except WAR (a counting stat)."
+latest = SEASONS[-1]
+cur = rs.filter(pl.col("season") == latest)
+long = cur.select("rapm", "adj_rapm", "spm", "bpm", "war").unpivot(
+    variable_name="engine", value_name="value").drop_nulls()
+(
+    ggplot(long.to_pandas(), aes("value"))
+    + geom_histogram(bins=50, fill="#2a6f97")
+    + facet_wrap("~engine", scales="free")
+    + labs(x="", y="players", title=f"Engine distributions — {latest} RS")
+    + theme_minimal()
+)
+```
+
+```{python}
+#| fig-cap: "Cross-engine agreement, latest regular season (Pearson r) — engines measure related but distinct things."
+cols = ["rapm", "adj_rapm", "spm", "bpm", "war", "darko_filtered_skill"]
+sub = cur.select(cols).drop_nulls().to_pandas()
+cm = sub.corr()
+rows = []
+for a in cols:
+    for b in cols:
+        rows.append({"a": a, "b": b, "r": float(cm.loc[a, b])})
+cd = pl.DataFrame(rows).to_pandas()
+(
+    ggplot(cd, aes("a", "b", fill="r"))
+    + geom_tile()
+    + geom_text(aes(label="round(r, 2)"), size=8)
+    + scale_fill_gradient2(low="#b2182b", mid="white", high="#2166ac", midpoint=0.5)
+    + labs(x="", y="", title=f"Engine correlation matrix — {latest} RS")
+    + theme_minimal()
+)
+```
+
+The correlation matrix is the suite's honesty check: RAPM and adj-RAPM agree
+strongly (the prior stabilizes, it does not overwrite), box engines (SPM,
+BPM) form their own cluster, and DARKO's filtered skill — which sees every
+prior season — correlates with everything while duplicating nothing.
+
+## Attribution
+
+The engines are linear models (ridge, regression, Kalman), so attribution is
+native: each engine's O/D split *is* its decomposition, and the published
+columns carry it (`o_rapm`/`d_rapm`, `ospm`/`dspm`, `obpm`/`dbpm`,
+`o_adj_rapm`/`d_adj_rapm`). No SHAP approximation is needed — the columns
+are the exact attributions. What the release does *not* carry is the SPM
+coefficient vector itself (it lives in the build artifacts under
+`build_out/impact_engines/`), an omission recorded in the avenues below.
+
+```{python}
+#| fig-cap: "adj-RAPM vs RAPM, latest regular season — the SPM prior shrinks, it does not overwrite."
+r_agree = float(cur.select(pl.corr("rapm", "adj_rapm")).item())
+(
+    ggplot(cur.to_pandas(), aes("rapm", "adj_rapm"))
+    + geom_abline(slope=1, intercept=0, linetype="dashed", color="gray")
+    + geom_point(alpha=0.25, color="#2a6f97", size=0.8)
+    + labs(x="RAPM", y="adj-RAPM",
+           title=f"Prior shrinkage — {latest} RS (r = {r_agree:.3f})")
+    + theme_minimal()
+)
+```
+
+## Evaluation
+
+**DARKO forward validation** is the suite's headline out-of-sample test: the
+projection made in season t (`darko_projected_rating`, which sees nothing
+after t) against the realized RAPM in season t+1. Recomputed at render time
+over every adjacent published season pair:
+
+```{python}
+proj = rs.select("player_id", "season", "darko_projected_rating")
+real = rs.select("player_id", (pl.col("season") - 1).alias("season"),
+                 pl.col("rapm").alias("next_rapm"),
+                 (pl.col("off_poss") + pl.col("def_poss")).alias("next_poss"))
+fwd = proj.join(real, on=["player_id", "season"], how="inner").drop_nulls()
+by = (
+    fwd.group_by("season")
+    .agg(pl.corr("darko_projected_rating", "next_rapm").alias("pearson"),
+         (pl.col("darko_projected_rating") - pl.col("next_rapm")).abs().mean().alias("MAE"),
+         pl.len().alias("n"))
+    .sort("season")
+)
+wmean = float((by["pearson"] * by["n"]).sum() / by["n"].sum())
+gt_show(
+    GT(by.tail(12).to_pandas())
+    .tab_header(title="DARKO forward validation — projection (t) vs realized RAPM (t+1)",
+                subtitle=f"out-of-sample by construction; weighted mean r = {wmean:.3f} over {by.height} season pairs")
+    .fmt_number(columns=["pearson", "MAE"], decimals=3)
+)
+```
+
+```{python}
+#| fig-cap: "DARKO forward correlation by projection season — modest and stable, capped by RAPM noise in the target."
+(
+    ggplot(by.to_pandas(), aes("season", "pearson"))
+    + geom_line(color="#2a6f97") + geom_point(aes(size="n"), color="#2a6f97")
+    + labs(x="projection season", y="Pearson r vs next-season RAPM",
+           title="DARKO forward validation across the panel")
+    + theme_minimal()
+)
+```
+
+```{python}
+stab = (
+    rs.select("player_id", "season", "rapm")
+    .join(rs.select("player_id", (pl.col("season") - 1).alias("season"),
+                    pl.col("rapm").alias("next_rapm")),
+          on=["player_id", "season"], how="inner")
+)
+r_yoy = float(stab.select(pl.corr("rapm", "next_rapm")).item())
+gt_show(
+    GT(pl.DataFrame({
+        "check": ["RAPM year-over-year reliability (same player, adjacent seasons)",
+                  f"adj-RAPM vs RAPM agreement ({latest} RS)"],
+        "pearson": [r_yoy, r_agree],
+        "pairs": [stab.height, cur.height],
+    }).to_pandas())
+    .tab_header(title="Reliability context for the forward validation",
+                subtitle="the projection's ceiling is bounded by how noisy the RAPM target itself is")
+    .fmt_number(columns="pearson", decimals=3)
+)
+```
+
+The forward-r is honest but modest, and the reliability row is why: DARKO
+cannot correlate with next-season RAPM more than next-season RAPM correlates
+with anything stable. The engines were additionally proxy-validated against
+the published RAPM/EPM oracle CSVs at build time (beating the minutes-played
+baseline by ~10%); numeric publish-blocking floors remain a recorded TODO in
+`models/REGISTRY.md`.
+
+## Results
+
+```{python}
+top = (
+    cur.filter(pl.col("min") >= 500)
+    .sort("war", descending=True).head(15)
+    .with_columns(
+        ("<img src='https://cdn.nba.com/headshots/nba/latest/260x190/"
+         + pl.col("player_id").cast(pl.Int64).cast(pl.Utf8) + ".png' height='40'/>").alias("headshot"))
+)
+gt_show(
+    GT(top.select("headshot", "player_name", "team_abbreviation", "gp", "min",
+                  "rapm", "adj_rapm", "bpm", "war").to_pandas())
+    .tab_header(title=f"Top 15 by WAR — {latest} regular season (min 500 minutes)")
+    .fmt_markdown(columns="headshot")
+    .fmt_number(columns=["min"], sep_mark=",", decimals=0)
+    .fmt_number(columns=["rapm", "adj_rapm", "bpm", "war"], decimals=2)
+    .cols_label(headshot="", player_name="Player", team_abbreviation="Team",
+                gp="GP", min="Min", rapm="RAPM", adj_rapm="adj-RAPM",
+                bpm="BPM", war="WAR")
+)
+```
+
+## Provenance & reproducibility
+
+- **Trained on:** the committed `hoopR-nba-stats-raw` store (possession
+  compile from per-game playbyplay/rotation/boxscore + season-level
+  leaguegamelog / playerindex / leaguedashplayerbiostats captures), seasons
+  1997–2026 (the corpus table above lists what the release carries), read
+  offline through the raw-store backend.
+- **Pipeline:** per-engine numbered stages `nba_model_01_possessions` …
+  `nba_model_07_darko` (parquet handoffs under `build_out/impact_engines/`;
+  hermetic stub tests cover the chain including cross-season prior
+  threading), consolidated build+publish as `nba_model_08_impact`. Retrain
+  is dispatch-only BY DESIGN (rate-budgeted; `dry_run` defaults true);
+  full-history backfills run from the droplet. Single home:
+  `models/manifest.yaml`.
+- **This document** evaluates the published `nba_player_impact` release
+  assets downloaded at render time — the exact frames consumers read.
+- **Rebuild:** `scripts/render_model_docs.sh` (Quarto → GFM;
+  `uv sync --group docs`). Requires network for the release download and the
+  headshot CDN.
+
+## Avenues for improvement & open issues
+
+- **Encode the numeric publish floors** — the registry states them as TODO;
+  the proxy-validation deltas are exactly the values to freeze.
+- **Publish the SPM coefficient vector** — the release carries the engine
+  outputs but not the fitted coefficients; shipping them (or a per-retrain
+  meta sidecar) would let this document show real coefficient importance
+  instead of describing where it lives.
+- **Uncertainty** — none of the engines ships an interval; a
+  cluster-respecting resample (games, not rows) is the recorded standard.
+- **DARKO ceiling** — the forward-r is capped by RAPM noise in the target;
+  validating against a multi-season blended target would separate projection
+  error from target noise.
+- **PlayIn season type is unsupported** by design; revisit if the sample
+  ever justifies it.
