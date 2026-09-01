@@ -1,0 +1,23 @@
+# Model stage manifest — single home for the model/stage list (Track C step 2).
+# One model = one numbered pipeline, flat in python/ beside the numbered data
+# stages; run subsets with scripts/nba_models.sh. tests/test_model_manifest.py
+# keeps this file, the stage scripts, and models/REGISTRY.md in lockstep
+# (file-based guards).
+#
+# Honest N/As (compute-on-demand / enrichment surfaces): no fitted artifacts
+# to commit (step 6); no fingerprint skip (inputs are living upstream data —
+# a skip is silent staleness); the published card sidecars carry the
+# per-publish metadata that a ledger.jsonl would otherwise hold.
+
+driver: scripts/nba_models.sh
+
+suites:
+  impact:
+    models:
+      player_impact:
+        stage: python/nba_model_01_player_impact.py
+        wraps: nba_model_publish impact
+        wraps_token: '"impact"'
+        release_tag: nba_player_impact
+        wired_via: .github/workflows/nba_models.yml
+        notes: "Dispatch-only BY DESIGN (rate-budgeted long build; dry_run defaults true; full-history backfills run from the droplet scripts)."

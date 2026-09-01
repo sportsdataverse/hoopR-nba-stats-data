@@ -20,6 +20,6 @@ def test_impact_row_present_with_card_and_tag():
     assert "nba_player_impact_card.json" in row, "row must name the card sidecar"
 
 
-def test_unwired_retrain_is_stated_honestly():
+def test_deliberate_no_cron_is_stated_honestly():
     text = REGISTRY.read_text(encoding="utf-8")
-    assert "NOT wired" in text, "the missing scheduled retrain must stay stated until wired"
+    assert "dispatch-only BY DESIGN" in text, "the deliberate no-cron decision must stay stated (rate-budgeted build)"
