@@ -34,6 +34,50 @@ the minutes-played baseline by ~10% on the proxy tasks; per-run diagnostics
 live in the release card sidecar. Numeric publish-blocking floors are a
 recorded TODO in `models/REGISTRY.md` (stated, not yet encoded).
 
+## Data
+
+Every substrate comes from the committed `hoopR-nba-stats-raw` store (per-game
+playbyplay/rotation/boxscore payloads plus the season-level leaguegamelog /
+playerindex / leaguedashplayerbiostats captures), read offline through the
+raw-store backend — `readonly` means OFFLINE: a store miss raises rather than
+silently completing over the network, so a build is reproducible or loudly
+incomplete, never quietly mixed.
+
+## Methodology
+
+Seasons run earliest-to-latest because two engines carry state forward:
+
+1. **RAPM** — possession on/off ridge per season and season type.
+2. **SPM** — box-score features regressed onto that season's RS RAPM
+   (coefficients fit ONCE on the regular season; the playoff pass reuses
+   them — a ~15-game playoff sample would train noise on noise).
+3. **adj-RAPM** — RAPM re-fit with an SPM-derived prior: the PREVIOUS
+   season's possession-weighted RS+PO SPM blend for the regular season, this
+   season's RS SPM for the playoffs. A gap season deliberately breaks the
+   prior chain.
+4. **BPM 2.0** — box logs + listed positions.
+5. **DARKO-style** — a per-season Kalman filter over the RAPM panel with an
+   aging curve, projecting NEXT season; playoff form enters as a
+   possession-weighted blend rather than a second time step (a second step
+   would apply a season of aging twice).
+6. **WAR** — RAPM rating x pts-per-win calibrated from that season's team
+   logs, replacement level -2.0 per 100.
+
+## Feature engineering
+
+The heavy lifting is the possession compile (lineup reconstruction with
+rotation fallbacks) and the box-feature substrate; per-engine stages
+(`nba_model_01_possessions` … `07_darko`) expose each step with parquet
+handoffs so one engine can be iterated without recomputing the other five.
+
+## Limitations
+
+The DARKO forward correlations below are honest but modest — next-season RAPM
+is itself a noisy target, so the ceiling on this metric is well below 1 even
+for a perfect projection. Engines share the possession substrate, so a lineup
+reconstruction error propagates to all of them; numeric publish-blocking
+floors remain a stated TODO in `models/REGISTRY.md`.
+
 ## Evaluation on the published releases (2026-09-01)
 
 Computed from the released `nba_player_impact_{season}.parquet` assets (30 seasons, 1997-2026).
@@ -63,3 +107,16 @@ Card: [`nba_player_impact_eval_card.json`](nba_player_impact_eval_card.json)
 ![adj-RAPM vs RAPM](figures/impact_rapm_vs_adj_2026.png)
 
 ![DARKO forward validation](figures/impact_darko_forward_validation.png)
+
+## Avenues for improvement & open issues
+
+- **Encode the numeric publish floors** — the registry states them as TODO;
+  the proxy-validation deltas measured here are exactly the values to freeze.
+- **Uncertainty** — none of the engines ships an interval; a
+  cluster-respecting resample (games, not rows) is the recorded standard.
+- **DARKO ceiling** — the forward-r is capped by RAPM noise in the target;
+  validating against a multi-season blended target would separate projection
+  error from target noise.
+- **PlayIn season type is unsupported** by design; revisit if the sample ever
+  matters.
+- **Known issue:** the `gamerotation` capture family is PARKED upstream; where rotation data is absent the lineup fallback carries more reconstruction noise into every engine.
