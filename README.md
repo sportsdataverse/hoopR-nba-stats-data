@@ -173,3 +173,41 @@ Stage numbers are intended build order, not run order.
 | [`nba_stats_team_season_stats`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_team_season_stats) | 90 | 9.3 MB | 2026-08-13 |
 
 <!-- END GENERATED: status -->
+
+## Consumers
+
+The packages that read what this repo produces:
+
+- **R:** [hoopR](https://hoopR.sportsdataverse.org) — docs at <https://hoopR.sportsdataverse.org>
+- **Python:** [`sportsdataverse.nba (nba_stats + load_nba_*)`](https://github.com/sportsdataverse/sportsdataverse-py) — docs at <https://py.sportsdataverse.org>
+
+## Stage inventory
+
+Every numbered pipeline stage in `python/` (auto-listed; run subsets with the `scripts/*.sh` drivers by number or name):
+
+- `python/nba_model_01_possessions.py`
+- `python/nba_model_02_rapm.py`
+- `python/nba_model_03_spm.py`
+- `python/nba_model_04_adj_rapm.py`
+- `python/nba_model_05_bpm.py`
+- `python/nba_model_06_war.py`
+- `python/nba_model_07_darko.py`
+- `python/nba_model_08_impact.py`
+- `python/nba_stats_01_standings_creation.py`
+- `python/nba_stats_02_player_season_stats_creation.py`
+- `python/nba_stats_03_team_season_stats_creation.py`
+- `python/nba_stats_04_lineups_creation.py`
+- `python/nba_stats_05_rosters_creation.py`
+- `python/nba_stats_06_coaches_creation.py`
+- `python/nba_stats_07_draft_creation.py`
+- `python/nba_stats_08_schedules_creation.py`
+- `python/nba_stats_09_player_game_logs_creation.py`
+- `python/nba_stats_10_pbp_creation.py`
+- `python/nba_stats_11_game_rosters_creation.py`
+- `python/nba_stats_12_officials_creation.py`
+- `python/nba_stats_13_player_boxscores_creation.py`
+- `python/nba_stats_14_team_boxscores_creation.py`
+- `python/nba_stats_15_shots_creation.py`
+- `python/nba_stats_99_schedule_master_creation.py`
+
+Model release tags published from here: `nba_player_impact`
