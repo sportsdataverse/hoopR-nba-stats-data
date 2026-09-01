@@ -127,6 +127,8 @@ Stage numbers are intended build order, not run order.
 
 | Report | What it is | Last updated |
 |---|---|---|
+| [Model registry](models/REGISTRY.md) | model | artifact | gates | retrain, one row per published model | 2026-09-01 |
+| [Model reports & cards](docs/models/) | 1 files, one per item | uncommitted |
 | [Dataset docs (column-level, generated)](docs/datasets/) | 17 files, one per item | 2026-08-13 |
 | [DONE: `nba_stats_draft` (Phase 3) — published 2026-08-12](docs/nba-draft-todo.md) | explainer | 2026-08-12 |
 | [NBA Stats v3 reshaper — implementation plan](docs/nba-reshaper-port-plan.md) | explainer | 2026-07-28 |
