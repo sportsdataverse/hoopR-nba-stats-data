@@ -264,7 +264,7 @@ is a valid cadence but must be stated explicitly.
   not the data fetch. Without secrets, calls go direct and eventually 429.
 - Workflow `.github/workflows/daily_nba_stats.yml`: cron `0 7 UTC` gated to in-season
   windows (Oct 18-31, Nov-Dec, Jan-Jun, full-July tail); `workflow_dispatch` takes
-  `start_year`/`end_year`/`rescrape`. Correctly invokes `scripts/daily_nba_stats_scraper.sh`.
+  `start_year`/`end_year`/`rescrape`. Invokes `scripts/daily_nba_stats_python_processor.sh` (the R scraper driver was deleted at the Python cutover).
 - `R/utils.R` top wipes globals then `library()`s everything — keep scripts as separate
   `Rscript` invocations, never `source()` one from another in a live session.
 
