@@ -81,9 +81,7 @@ def _variant_columns(variant: str | None) -> dict[str, str]:
     return {n: p for n, p in zip(names, parts)}
 
 
-def build_season_dataset(
-    root: str | Path, dataset: Dataset, season: int
-) -> pl.DataFrame:
+def build_season_dataset(root: str | Path, dataset: Dataset, season: int) -> pl.DataFrame:
     """One season-level dataset, binding every captured parameter variant."""
     if dataset.endpoint is None:
         raise ValueError(f"{dataset.key} is derived; build it with its own builder")
@@ -148,9 +146,7 @@ def build_game_dataset(
         headers, rows = raw.result_set(payload, dataset.result_set)
         if not headers:
             continue
-        frames.append(
-            frame_from_result_set(headers, rows, {"season": season, "game_id": gid})
-        )
+        frames.append(frame_from_result_set(headers, rows, {"season": season, "game_id": gid}))
 
     if not frames:
         return pl.DataFrame()
@@ -174,16 +170,10 @@ def pbp_rows(payload: Any) -> list[dict[str, Any]]:
     """Action rows from one captured ``playbyplayv3`` payload."""
     if not isinstance(payload, dict):
         return []
-    return [
-        a
-        for a in (payload.get("game") or {}).get("actions") or []
-        if isinstance(a, dict)
-    ]
+    return [a for a in (payload.get("game") or {}).get("actions") or [] if isinstance(a, dict)]
 
 
-def build_pbp(
-    root: str | Path, season: int, game_ids: list[str] | None = None
-) -> pl.DataFrame:
+def build_pbp(root: str | Path, season: int, game_ids: list[str] | None = None) -> pl.DataFrame:
     """Season play-by-play, bound across every captured game.
 
     Columns are snake-cased from the v3 camelCase field names. Rows are kept in
@@ -313,6 +303,113 @@ def build_boxscores(
     frames: list[pl.DataFrame] = []
     for gid, payload in raw.iter_game_payloads(root, "boxscoretraditionalv3", game_ids):
         rows = boxscore_rows(payload, team_level=team_level)
+        if not rows:
+            continue
+        df = pl.DataFrame(rows, infer_schema_length=None, strict=False)
+        df = df.rename({c: snake(c) for c in df.columns})
+        frames.append(df.with_columns(game_id=pl.lit(gid), season=pl.lit(season)))
+    if not frames:
+        return pl.DataFrame()
+    return pl.concat(frames, how="diagonal_relaxed")
+
+
+# -- per-game matchups ---------------------------------------------------------
+#
+# boxscorematchupsv3 nests one level deeper than the traditional boxscore:
+# boxScoreMatchups.{homeTeam,awayTeam}.players[] is that team's list of players,
+# and each of those carries a matchups[] list -- one entry per opponent they
+# shared the floor against -- with the pair's counting stats in a `statistics`
+# object. Flattening gives one row per (game, offensive player, defender).
+#
+# WHICH SIDE IS WHICH IS NOT GUESSWORK, and it is not what nba_api's parser says:
+# that parser names its loop variables `_def_pl` for the OUTER player and
+# `_off_pl` for the nested one, while its own header builder suffixes the outer
+# with "Off" and the nested with "Def" -- the two disagree inside one file, so
+# neither can be cited. Measured instead, on the committed 0022300001 fixture:
+# summing an outer player's matchup `playerPoints` reproduces that player's OWN
+# points in boxscoretraditionalv3 (Mitchell 38 = 38, Allen 10 = 10, Mathurin
+# 5 = 5), which holds only if the OUTER player is the one scoring. So outer =
+# offense, nested = defender, matching the OFF_PLAYER_ID / DEF_PLAYER_ID columns
+# the season-level `leagueseasonmatchups` endpoint publishes.
+# tests/test_reshape_matchups.py::test_outer_player_is_the_offensive_player is
+# that measurement, kept runnable -- getting this backwards would invert every
+# defensive metric built on the dataset while looking perfectly well-formed.
+
+#: The pair's own totals are not exact: points are credited per partial
+#: possession, so a player's summed matchup points can exceed or fall short of
+#: their game total (Turner 33 vs 27, Toppin 4 vs 6 in the same fixture). Only
+#: the players whose scoring happened entirely against tracked defenders match
+#: exactly, which is why the orientation test asserts on those and not on a
+#: whole-team sum.
+
+
+def matchup_rows(payload: Any) -> list[dict[str, Any]]:
+    """One row per (offensive player, defender) pair from a ``boxscorematchupsv3`` payload."""
+    if not isinstance(payload, dict):
+        return []
+    box = payload.get("boxScoreMatchups") or {}
+    if not isinstance(box, dict):
+        return []
+    # The defending team is the other side; take it from the envelope's own ids
+    # rather than the nested team object, which is 0 in uncovered captures.
+    opponent_id = {
+        "homeTeam": box.get("awayTeamId"),
+        "awayTeam": box.get("homeTeamId"),
+    }
+    rows: list[dict[str, Any]] = []
+    for side in ("homeTeam", "awayTeam"):
+        team = box.get(side) or {}
+        if not isinstance(team, dict):
+            continue
+        common = {
+            "off_team_id": team.get("teamId"),
+            "off_team_city": team.get("teamCity"),
+            "off_team_name": team.get("teamName"),
+            "off_team_tricode": team.get("teamTricode"),
+            "off_team_slug": team.get("teamSlug"),
+            "def_team_id": opponent_id[side],
+            "side": "home" if side == "homeTeam" else "away",
+        }
+        for off in team.get("players") or []:
+            if not isinstance(off, dict):
+                continue
+            off_cols = {f"off_{k}": v for k, v in off.items() if k != "matchups"}
+            for defender in off.get("matchups") or []:
+                if not isinstance(defender, dict):
+                    continue
+                def_cols = {f"def_{k}": v for k, v in defender.items() if k != "statistics"}
+                stats = defender.get("statistics") or {}
+                if not isinstance(stats, dict):
+                    # A truthy non-mapping ("statistics": "invalid") would raise
+                    # TypeError on the unpack below and abort the whole season
+                    # for one bad capture -- the trade read_result_sets already
+                    # makes. Skipped rather than emitted stats-less: a pair whose
+                    # entire counting block is null reads as a real zero, which
+                    # is worse than an absent pair. Silent, like the four sibling
+                    # guards above -- this module is deliberately logger-free
+                    # ("pure functions over payloads already on disk").
+                    continue
+                rows.append({**common, **off_cols, **def_cols, **stats})
+    return rows
+
+
+def build_matchups(
+    root: str | Path, season: int, game_ids: list[str] | None = None
+) -> pl.DataFrame:
+    """Season player-vs-player matchups, bound across every captured game.
+
+    Games whose payload carries empty ``players`` lists contribute no rows rather
+    than a schema-only stripe: NBA tracked matchups for only 21 of the 1,414
+    games in 2016-17 and for none at all before that, and the raw store holds a
+    well-formed empty envelope for each of those.
+    """
+    if game_ids is None:
+        game_ids = raw.season_game_ids(root, season) or raw.available_games(
+            root, "boxscorematchupsv3", season
+        )
+    frames: list[pl.DataFrame] = []
+    for gid, payload in raw.iter_game_payloads(root, "boxscorematchupsv3", game_ids):
+        rows = matchup_rows(payload)
         if not rows:
             continue
         df = pl.DataFrame(rows, infer_schema_length=None, strict=False)

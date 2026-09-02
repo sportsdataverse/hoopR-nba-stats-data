@@ -80,9 +80,29 @@ otherwise overwrite each other. `nba_stats_draft_combine` is the five
 floors: matchups 2017-2025, combine 2000-2026. All three share
 `raw_compile.py`, whose empty-frame skip is the real guard.
 
-**Not compiled: `boxscorematchupsv3`.** 25,732 PER-GAME payloads in the v3
-envelope (`{meta, boxScoreMatchups}`), not the `resultSets` shape these use --
-it belongs with the per-game v3 reshape, not a season compile.
+**`boxscorematchupsv3` is stage 16, `game_matchups`, in the reshaper** -- not in
+`matchups_cli`. Its 25,732 PER-GAME payloads are the v3 envelope
+(`{meta, boxScoreMatchups}`), not the `resultSets` shape the season compiles
+use, and it publishes to its own tag `nba_stats_game_matchups` on the reshaper's
+conventions (END-year asset names, parquet + rds + csv) rather than the season
+compiles' START-year parquet. Two things about it are load-bearing:
+
+- **The outer player is the OFFENSIVE one; the nested `matchups[]` are the
+  defenders.** nba_api's parser cannot be cited here -- it names the outer loop
+  variable `_def_pl` while its own headers suffix the outer fields `Off`, inside
+  one file. Measured instead on the committed 0022300001 fixture: summing an
+  outer player's matchup `playerPoints` reproduces THAT player's own points from
+  `boxscoretraditionalv3` (Mitchell 38 = 38, Allen 10 = 10, Mathurin 5 = 5).
+  Inverting it would silently mislabel every defensive metric built on the tag,
+  so `tests/test_reshape_matchups.py::test_outer_player_is_the_offensive_player`
+  keeps the measurement runnable.
+- **`season_floor=2017`.** 14,197 of the 25,732 payloads are well-formed EMPTY
+  envelopes, not capture gaps: nothing before 2016-17, and 2016-17 itself has
+  only 21 of its 1,414 games. Publishing a 1.5%-covered season would advertise
+  coverage we do not hold, which is the `ncaa_baseball` failure in another
+  costume. 2017-18 onward is complete (1,304-1,322 games per season;
+  2,160,589 rows over the nine seasons).
+
 **`run_impact_backfill.sh` also builds by default, but keeps a publish path.**
 `nba_model_publish impact` requires `--publish` to touch the release; without
 it the run builds and exits 0. The stronger no-upload-path-at-all treatment
@@ -321,21 +341,22 @@ is a valid cadence but must be stated explicitly.
 <!-- BEGIN GENERATED: datasets -->
 | Script | Dataset | Release tag | Last published |
 |---|---|---|---|
-| [`python/nba_stats_01_standings_creation.py`](python/nba_stats_01_standings_creation.py) | [`standings`](docs/datasets/standings.md) | [`nba_stats_standings`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_standings) | 2026-07-24 |
-| [`python/nba_stats_02_player_season_stats_creation.py`](python/nba_stats_02_player_season_stats_creation.py) | [`player_season_stats`](docs/datasets/player_season_stats.md) | [`nba_stats_player_season_stats`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_player_season_stats) | 2026-07-24 |
-| [`python/nba_stats_03_team_season_stats_creation.py`](python/nba_stats_03_team_season_stats_creation.py) | [`team_season_stats`](docs/datasets/team_season_stats.md) | [`nba_stats_team_season_stats`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_team_season_stats) | 2026-07-24 |
-| [`python/nba_stats_04_lineups_creation.py`](python/nba_stats_04_lineups_creation.py) | [`lineups`](docs/datasets/lineups.md) | [`nba_stats_lineups`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_lineups) | 2026-07-24 |
-| [`python/nba_stats_05_rosters_creation.py`](python/nba_stats_05_rosters_creation.py) | [`rosters`](docs/datasets/rosters.md) | [`nba_stats_rosters`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_rosters) | 2026-07-24 |
-| [`python/nba_stats_06_coaches_creation.py`](python/nba_stats_06_coaches_creation.py) | [`coaches`](docs/datasets/coaches.md) | [`nba_stats_coaches`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_coaches) | 2026-07-24 |
-| [`python/nba_stats_07_draft_creation.py`](python/nba_stats_07_draft_creation.py) | [`draft`](docs/datasets/draft.md) | [`nba_stats_draft`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_draft) | 2026-08-12 |
+| [`python/nba_stats_01_standings_creation.py`](python/nba_stats_01_standings_creation.py) | [`standings`](docs/datasets/standings.md) | [`nba_stats_standings`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_standings) | 2026-08-13 |
+| [`python/nba_stats_02_player_season_stats_creation.py`](python/nba_stats_02_player_season_stats_creation.py) | [`player_season_stats`](docs/datasets/player_season_stats.md) | [`nba_stats_player_season_stats`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_player_season_stats) | 2026-08-13 |
+| [`python/nba_stats_03_team_season_stats_creation.py`](python/nba_stats_03_team_season_stats_creation.py) | [`team_season_stats`](docs/datasets/team_season_stats.md) | [`nba_stats_team_season_stats`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_team_season_stats) | 2026-08-13 |
+| [`python/nba_stats_04_lineups_creation.py`](python/nba_stats_04_lineups_creation.py) | [`lineups`](docs/datasets/lineups.md) | [`nba_stats_lineups`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_lineups) | 2026-08-13 |
+| [`python/nba_stats_05_rosters_creation.py`](python/nba_stats_05_rosters_creation.py) | [`rosters`](docs/datasets/rosters.md) | [`nba_stats_rosters`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_rosters) | 2026-08-13 |
+| [`python/nba_stats_06_coaches_creation.py`](python/nba_stats_06_coaches_creation.py) | [`coaches`](docs/datasets/coaches.md) | [`nba_stats_coaches`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_coaches) | 2026-08-13 |
+| [`python/nba_stats_07_draft_creation.py`](python/nba_stats_07_draft_creation.py) | [`draft`](docs/datasets/draft.md) | [`nba_stats_draft`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_draft) | 2026-08-13 |
 | [`python/nba_stats_08_schedules_creation.py`](python/nba_stats_08_schedules_creation.py) | [`schedules`](docs/datasets/schedules.md) | [`nba_stats_schedules`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_schedules) | 2026-08-13 |
-| [`python/nba_stats_09_player_game_logs_creation.py`](python/nba_stats_09_player_game_logs_creation.py) | [`player_game_logs`](docs/datasets/player_game_logs.md) | [`nba_stats_player_game_logs`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_player_game_logs) | 2026-07-24 |
+| [`python/nba_stats_09_player_game_logs_creation.py`](python/nba_stats_09_player_game_logs_creation.py) | [`player_game_logs`](docs/datasets/player_game_logs.md) | [`nba_stats_player_game_logs`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_player_game_logs) | 2026-08-13 |
 | [`python/nba_stats_10_pbp_creation.py`](python/nba_stats_10_pbp_creation.py) | [`pbp`](docs/datasets/pbp.md) | [`nba_stats_pbp`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_pbp) | 2026-08-13 |
-| [`python/nba_stats_11_game_rosters_creation.py`](python/nba_stats_11_game_rosters_creation.py) | [`game_rosters`](docs/datasets/game_rosters.md) | [`nba_stats_game_rosters`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_game_rosters) | 2026-07-24 |
-| [`python/nba_stats_12_officials_creation.py`](python/nba_stats_12_officials_creation.py) | [`officials`](docs/datasets/officials.md) | [`nba_stats_officials`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_officials) | 2026-07-24 |
-| [`python/nba_stats_13_player_boxscores_creation.py`](python/nba_stats_13_player_boxscores_creation.py) | [`player_boxscores`](docs/datasets/player_boxscores.md) | [`nba_stats_player_boxscores`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_player_boxscores) | 2026-07-24 |
-| [`python/nba_stats_14_team_boxscores_creation.py`](python/nba_stats_14_team_boxscores_creation.py) | [`team_boxscores`](docs/datasets/team_boxscores.md) | [`nba_stats_team_boxscores`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_team_boxscores) | 2026-07-24 |
-| [`python/nba_stats_15_shots_creation.py`](python/nba_stats_15_shots_creation.py) | [`shots`](docs/datasets/shots.md) | [`nba_stats_shots`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_shots) | 2026-07-24 |
+| [`python/nba_stats_11_game_rosters_creation.py`](python/nba_stats_11_game_rosters_creation.py) | [`game_rosters`](docs/datasets/game_rosters.md) | [`nba_stats_game_rosters`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_game_rosters) | 2026-08-13 |
+| [`python/nba_stats_12_officials_creation.py`](python/nba_stats_12_officials_creation.py) | [`officials`](docs/datasets/officials.md) | [`nba_stats_officials`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_officials) | 2026-08-13 |
+| [`python/nba_stats_13_player_boxscores_creation.py`](python/nba_stats_13_player_boxscores_creation.py) | [`player_boxscores`](docs/datasets/player_boxscores.md) | [`nba_stats_player_boxscores`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_player_boxscores) | 2026-08-13 |
+| [`python/nba_stats_14_team_boxscores_creation.py`](python/nba_stats_14_team_boxscores_creation.py) | [`team_boxscores`](docs/datasets/team_boxscores.md) | [`nba_stats_team_boxscores`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_team_boxscores) | 2026-08-13 |
+| [`python/nba_stats_15_shots_creation.py`](python/nba_stats_15_shots_creation.py) | [`shots`](docs/datasets/shots.md) | [`nba_stats_shots`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_shots) | 2026-08-13 |
+| [`python/nba_stats_16_game_matchups_creation.py`](python/nba_stats_16_game_matchups_creation.py) | [`game_matchups`](docs/datasets/game_matchups.md) | [`nba_stats_game_matchups`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_game_matchups) | — |
 | [`python/nba_stats_99_schedule_master_creation.py`](python/nba_stats_99_schedule_master_creation.py) | [`schedule_master`](docs/datasets/schedule_master.md) | `nba_stats/nba_stats_schedule_master.parquet` (committed) | — |
 | [`python/nba_stats_99_schedule_master_creation.py`](python/nba_stats_99_schedule_master_creation.py) | [`games_in_data_repo`](docs/datasets/games_in_data_repo.md) | `nba_stats/nba_stats_games_in_data_repo.parquet` (committed) | — |
 <!-- END GENERATED: datasets -->

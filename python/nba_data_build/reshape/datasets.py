@@ -11,8 +11,8 @@ shows as the header, so published artifacts keep identifying themselves the same
 ``season_floor`` is the first start-year season with real data for a dataset's source
 endpoint (from the Phase 0 coverage probe). ``None`` means 1996 — the full history —
 applies. A season below the floor produces no artifact rather than shipping an empty
-release; only ``lineups`` (tracking-style lineup data begins 2007-08) has a floor
-above 1996.
+release; two datasets have a floor above 1996 — ``lineups`` (tracking-style lineup
+data begins 2007-08) and ``game_matchups`` (matchup tracking begins 2017-18).
 
 Datasets whose source is ``None`` are *derived* rather than reshaped from a single
 endpoint (shots comes out of play-by-play), and are built by dedicated code.
@@ -173,6 +173,26 @@ DATASETS: tuple[Dataset, ...] = (
         "nba_stats_shots",
         f"NBA Stats Shots {_R}",
         level="derived",
+    ),
+    # -- per-game, added after the original 15 ------------------------------------
+    #
+    # Appended rather than slotted next to the other per-game datasets: stage
+    # numbers follow this order and are stable dataset identities, so inserting
+    # in the middle would renumber shims that already exist.
+    Dataset(
+        "game_matchups",
+        "boxscorematchupsv3",
+        None,
+        "game_matchups",
+        "nba_stats_game_matchups",
+        f"NBA Stats Game Matchups {_R}",
+        level="game",
+        # Measured 2026-09-02 over the whole captured tree: matchup tracking is
+        # absent before 2016-17 (every payload back to 1996 is a well-formed
+        # EMPTY envelope, not a capture gap) and 2016-17 itself carries only 21
+        # of its 1,414 games -- 1.5% coverage, which a season asset would
+        # misrepresent as the season. 2017-18 onward is complete (1,304-1,322).
+        season_floor=2017,
     ),
 )
 
