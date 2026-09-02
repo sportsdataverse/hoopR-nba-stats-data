@@ -25,7 +25,6 @@ Example::
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import os
 import re
@@ -33,9 +32,9 @@ from pathlib import Path
 from typing import Optional
 
 import polars as pl
-from sportsdataverse.nba import parse_nba_stats_result_sets
 
 from .publish import upload_artifacts
+from .raw_compile import read_result_sets
 
 logger = logging.getLogger(__name__)
 
@@ -72,19 +71,10 @@ def raw_root() -> Path:
 def read_variant(path: Path) -> pl.DataFrame:
     """One payload -> a tidy frame, or an EMPTY frame when it carries no rows.
 
-    Empty is a real answer here (pre-2015 seasons and the in-progress season
-    return a well-formed envelope with an empty ``rowSet``), so callers skip on
-    ``height == 0`` rather than treating it as an error.
+    Thin alias kept for readability at the call site; the implementation is shared
+    with the matchups and combine compilers in :mod:`raw_compile`.
     """
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        logger.warning("synergy_unreadable file=%s error=%s", path.name, str(exc)[:120])
-        return pl.DataFrame()
-    frame = parse_nba_stats_result_sets(payload)
-    if isinstance(frame, dict):  # multi-set payload; synergy ships exactly one
-        frame = next((f for f in frame.values() if f.height), pl.DataFrame())
-    return frame
+    return read_result_sets(path)
 
 
 def _stamp(frame: pl.DataFrame, season: int, stem: str) -> pl.DataFrame:
