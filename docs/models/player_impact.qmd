@@ -409,7 +409,7 @@ gt_show(
 
 ## Avenues for improvement & open issues
 
-**Resolved (2026-09-01, PR #NBA_PR):**
+**Resolved (2026-09-01, PR #33):**
 
 - **Numeric publish floors are encoded** — seven gates in
   `nba_model_publish/gates.py`, each floor strictly below the value observed
