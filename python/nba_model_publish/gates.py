@@ -246,12 +246,26 @@ def load_frames_from_release(seasons: Iterable[int]) -> dict[int, pl.DataFrame]:
     import requests
 
     frames = {}
+    unavailable = {}
     for s in seasons:
         r = requests.get(f"{RELEASE_BASE}/{TAG}_{s}.parquet", timeout=120)
         if r.status_code == 200:
             frames[int(s)] = pl.read_parquet(io.BytesIO(r.content))
+        else:
+            unavailable[int(s)] = r.status_code
+    # Symmetric with load_frames_from_dir, which raises on a missing built asset. Dropping
+    # the season instead would evaluate a SHORTER season set than the caller asked for, and
+    # a forward gate that never ran reports SKIPPED -- which the CLI does not treat as a
+    # FAIL, so an absent release asset would exit 0. A requested season that is not there
+    # is an error, not an empty answer.
+    if unavailable:
+        raise SystemExit(
+            "gates: release assets unavailable for requested seasons "
+            + ", ".join(f"{s} (HTTP {c})" for s, c in sorted(unavailable.items()))
+            + " -- refusing to gate a partial season set (a SKIPPED gate is not a pass)"
+        )
     if not frames:
-        raise SystemExit("gates: no release assets found for the requested seasons")
+        raise SystemExit("gates: no seasons requested")
     return frames
 
 

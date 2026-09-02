@@ -288,6 +288,12 @@ def spm_coefficient_record(
     feature, so a reader can rank features by ``|coef| * sd`` (points per 100
     per 1-SD move) instead of by raw coefficient magnitude, which is only
     comparable when the features share a scale.
+
+    The record always carries every key the sidecar documents, including the two
+    ``reproduces_published_spm_*`` fields — null here, filled in by
+    :func:`spm_coefficients_from_frames`. A record shape that varied by which code
+    path wrote it would let the next publish replace the documented artifact with a
+    different schema.
     """
     import inspect
 
@@ -315,6 +321,14 @@ def spm_coefficient_record(
         "d_intercept": float(coef.d_intercept),
         "train_r_spm_vs_rapm": None if r is None else float(r),
         "train_mae_spm_vs_rapm": None if mae is None else float(mae),
+        # Declared on EVERY record so the published sidecar has ONE schema whichever
+        # path wrote it. They are populated only by spm_coefficients_from_frames, which
+        # refits against an already-published season and can therefore check itself;
+        # on the build path these coefficients ARE the release being produced, so there
+        # is nothing yet to reproduce and null means "check not applicable", never "check
+        # passed". A reader must treat null as unverified.
+        "reproduces_published_spm_r": None,
+        "reproduces_published_spm_max_abs_diff": None,
     }
 
 

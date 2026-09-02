@@ -107,6 +107,60 @@ def test_every_floor_has_a_gate_and_every_gate_a_floor():
     assert evaluated == set(G.FLOORS)
 
 
+def test_release_gates_refuse_a_partial_season_set(monkeypatch):
+    """A missing release asset must raise, not silently shorten the gated season set.
+
+    A dropped season leaves its forward gates SKIPPED, and SKIPPED is not a FAIL, so the
+    CLI would have exited 0 on a season it never actually evaluated.
+    """
+
+    import io as _io
+    import sys
+    import types
+
+    buf = _io.BytesIO()
+    pl.DataFrame({"player_id": [1]}).write_parquet(buf)
+    ok_bytes = buf.getvalue()
+
+    class _Resp:
+        def __init__(self, code):
+            self.status_code = code
+            self.content = ok_bytes if code == 200 else b""
+
+    stub = types.ModuleType("requests")
+    stub.get = lambda url, **kw: _Resp(200 if url.endswith("_2024.parquet") else 404)
+    monkeypatch.setitem(sys.modules, "requests", stub)
+    with pytest.raises(SystemExit, match="2025 .HTTP 404."):
+        G.load_frames_from_release([2024, 2025])
+
+
+def test_the_build_path_record_declares_the_reproduction_fields(tmp_path):
+    """One sidecar schema whichever path wrote it.
+
+    spm_coefficients_from_frames adds reproduces_published_spm_*; the build path could
+    not, so a publish from the build path replaced the documented artifact with a record
+    missing two keys. They are declared null there instead -- null = not applicable
+    (these coefficients ARE the release being produced), never "check passed".
+    """
+    from types import SimpleNamespace
+
+    from nba_model_publish.builders import spm_coefficient_record
+
+    coef = SimpleNamespace(
+        feature_names=["pts", "ast"],
+        o_coef=[0.11, 0.07],
+        d_coef=[-0.01, 0.02],
+        o_intercept=-3.0,
+        d_intercept=1.0,
+    )
+    bf = pl.DataFrame({"player_id": [1, 2, 3], "pts": [20.0, 10.0, 5.0], "ast": [5.0, 3.0, 1.0]})
+    spm = pl.DataFrame({"player_id": [1, 2, 3], "spm": [3.0, 0.5, -2.0]})
+    rapm = pl.DataFrame({"player_id": [1, 2, 3], "rapm": [2.8, 0.4, -1.9]})
+    rec = spm_coefficient_record(2024, coef, bf, spm, rapm)
+    assert rec["reproduces_published_spm_r"] is None
+    assert rec["reproduces_published_spm_max_abs_diff"] is None
+
+
 def test_spm_sidecar_round_trips_with_the_fields_the_writeup_reads(tmp_path):
     record = {
         "season": 2024,
