@@ -83,8 +83,9 @@ def _warm(unit) -> dict:
     """
     season, stype = unit
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/python")
-    from nba_data_build.scrape.proxy import RoundRobin, load_proxies
     from sportsdataverse.nba.nba_season_compile import compile_nba_season
+
+    from nba_data_build.scrape.proxy import RoundRobin, load_proxies
 
     t0 = time.monotonic()
     try:
