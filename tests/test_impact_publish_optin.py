@@ -53,9 +53,7 @@ def _read(path: Path) -> str:
 
 
 @pytest.fixture
-def impact_run(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> Callable[..., list[bool]]:
+def impact_run(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Callable[..., list[bool]]:
     """Run `impact` with the builder stubbed and every upload recorded, not performed.
 
     Returns a callable taking the extra CLI flags and returning the list of
@@ -75,6 +73,16 @@ def impact_run(
         return {"uploaded": 0 if dry_run else 1, "files": ["x"], "failed": []}
 
     monkeypatch.setattr(cli, "upload_artifacts", _fake_upload)
+
+    # The publish floors run against the BUILT assets; this builder is stubbed
+    # and writes none, so record the gate call instead of evaluating it. The
+    # gate's own teeth live in tests/test_impact_gates.py; what matters here is
+    # that it is reached, which `gate_calls` below pins.
+    gate_calls: list[list[int]] = []
+    monkeypatch.setattr(
+        cli, "check_publish_floors", lambda out, seasons, **kw: gate_calls.append(list(seasons))
+    )
+    cli._gate_calls_for_tests = gate_calls
 
     def run(*extra: str) -> list[bool]:
         calls.clear()
@@ -110,7 +118,9 @@ def test_publish_flag_performs_the_upload(impact_run: Callable[..., list[bool]])
     assert impact_run("--publish") == [False, False]
 
 
-def test_dry_run_plans_the_upload_without_performing_it(impact_run: Callable[..., list[bool]]) -> None:
+def test_dry_run_plans_the_upload_without_performing_it(
+    impact_run: Callable[..., list[bool]],
+) -> None:
     assert impact_run("--dry-run") == [True, True]
 
 
@@ -160,3 +170,15 @@ def test_workflow_flags_follow_the_subcommand() -> None:
 @pytest.mark.skipif(shutil.which("bash") is None, reason="bash not available")
 def test_launcher_is_syntactically_valid() -> None:
     assert subprocess.run([shutil.which("bash"), "-n", str(LAUNCHER)], timeout=60).returncode == 0
+
+
+# --- the gate runs before anything is uploaded ---------------------------------
+
+
+def test_the_publish_floors_run_on_every_invocation(impact_run: Callable[..., list[bool]]) -> None:
+    """Including the non-publishing default: a build whose gates fail must be
+    visible in the run that produced it, not first at upload time."""
+    impact_run()
+    assert cli._gate_calls_for_tests == [[2024]]
+    impact_run("--publish")
+    assert cli._gate_calls_for_tests[-1] == [2024]
