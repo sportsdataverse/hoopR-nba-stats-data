@@ -1,8 +1,11 @@
 import subprocess
+from pathlib import Path
 
 import pytest
 from nba_data_build.publish import plan_uploads, published_seasons, upload_artifacts
 
+#: release metadata sidecars -- asserted separately, not a data asset
+SIDECARS = ("timestamp.", "package_function.")
 
 def _mk(tmp_path):
     d = tmp_path / "rapm"
@@ -32,7 +35,12 @@ def test_upload_creates_release_when_missing_then_uploads(tmp_path):
     )
     # one 'release create' then one 'release upload --clobber' per file
     assert calls[0][:2] == ["release", "create"] and "nba_stats_rapm" in calls[0]
-    uploads = [c for c in calls if c[:2] == ["release", "upload"]]
+    uploads = [
+        c
+        for c in calls
+        if c[:2] == ["release", "upload"]
+        and not Path(c[3]).name.startswith(SIDECARS)
+    ]
     assert len(uploads) == 2 and all("--clobber" in c for c in uploads)
     assert res["uploaded"] == 2
 

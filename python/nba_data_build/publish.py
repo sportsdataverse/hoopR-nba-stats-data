@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 from typing import Callable, Iterable, Optional
 
+from sportsdataverse.release import upload_release_sidecars
+
 _GH_TIMEOUT = 600
 _SEASON_RE = re.compile(r"_(\d{4})\.parquet$")
 
@@ -38,6 +40,32 @@ def _gh_release_exists(tag: str, repo: str) -> bool:
         # already exists.
         return False
 
+
+#: Release sidecar metadata: the loader a consumer reads each tag through.
+#: R's sportsdataverse_save() writes this as package_function.txt/.json beside
+#: every published asset; this repo's hand-rolled `gh release upload` dropped it
+#: along with the timestamp pair. Values that the R producer already published to
+#: a tag are reused verbatim; the rest name the hoopR/sdv-py loader. A tag that is not
+#: listed still gets its timestamp re-stamped -- it just ships no package_function,
+#: which leaves whatever is already on the release untouched.
+PKG_FUNCTION: dict[str, str] = {
+    "nba_stats_coaches": "sportsdataverse.nba.load_nba_stats_coaches()",
+    "nba_stats_game_lineups": "sportsdataverse.nba.load_nba_stats_lineups_v3()",
+    "nba_stats_game_rosters": "sportsdataverse.nba.load_nba_stats_game_rosters()",
+    "nba_stats_lineups": "sportsdataverse.nba.load_nba_stats_lineups()",
+    "nba_stats_officials": "sportsdataverse.nba.load_nba_stats_officials()",
+    "nba_stats_pbp": "sportsdataverse.nba.load_nba_stats_pbp()",
+    "nba_stats_player_boxscores": "sportsdataverse.nba.load_nba_stats_player_boxscores()",
+    "nba_stats_player_game_logs": "sportsdataverse.nba.load_nba_stats_player_game_logs()",
+    "nba_stats_player_season_stats": "sportsdataverse.nba.load_nba_stats_player_season_stats()",
+    "nba_stats_possessions": "sportsdataverse.nba.load_nba_stats_possessions()",
+    "nba_stats_rosters": "sportsdataverse.nba.load_nba_stats_rosters()",
+    "nba_stats_schedules": "hoopR::load_nba_schedule()",
+    "nba_stats_shots": "sportsdataverse.nba.load_nba_stats_shots()",
+    "nba_stats_standings": "sportsdataverse.nba.load_nba_stats_standings()",
+    "nba_stats_team_boxscores": "sportsdataverse.nba.load_nba_stats_team_boxscores()",
+    "nba_stats_team_season_stats": "sportsdataverse.nba.load_nba_stats_team_season_stats()",
+}
 
 def plan_uploads(
     artifacts_dir: Path,
@@ -170,6 +198,11 @@ def upload_artifacts(
         except subprocess.CalledProcessError as exc:
             print(f"WARNING: upload failed for {f.name}: {exc}", file=sys.stderr)
             failed.append(f.name)
+    # stamp LAST so the timestamp describes a finished upload, and only when
+    # something actually uploaded -- a stamp on a no-op run would claim data
+    # moved when it did not
+    if uploaded:
+        upload_release_sidecars(tag, runner=run, pkg_function=PKG_FUNCTION.get(tag), repo=repo)
     return {
         "uploaded": len(uploaded),
         "failed": failed,
