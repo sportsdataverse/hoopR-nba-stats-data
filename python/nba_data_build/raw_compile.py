@@ -61,6 +61,27 @@ def write_asset(out: Path, tag: str, name: str, frame: pl.DataFrame) -> Path:
     return dest
 
 
+def clear_seasons(out: Path, tag: str, seasons: list[int]) -> int:
+    """Drop any existing ``*_<season>.parquet`` in the staging dir before rebuilding it.
+
+    Publishing uploads whatever the staging directory holds for the requested
+    seasons, so a file left by an EARLIER run would ride along -- including one
+    whose payload is now empty or unreadable and was therefore skipped this time.
+    That would defeat the empty-asset guard by the back door: the guard stops us
+    WRITING a bad asset, not uploading a stale one. Clearing first makes "what this
+    run produced" and "what is in the directory" the same set.
+    """
+    d = out / tag
+    if not d.is_dir():
+        return 0
+    stale = [f for season in seasons for f in d.glob(f"*_{season}.parquet")]
+    for f in stale:
+        f.unlink()
+    if stale:
+        logger.info("raw_cleared tag=%s seasons=%s files=%s", tag, len(seasons), len(stale))
+    return len(stale)
+
+
 def compile_season_dirs(
     raw: Path,
     endpoint: str,

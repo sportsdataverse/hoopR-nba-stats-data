@@ -34,7 +34,7 @@ from typing import Optional
 import polars as pl
 
 from .publish import upload_artifacts
-from .raw_compile import read_result_sets
+from .raw_compile import clear_seasons, read_result_sets
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +77,11 @@ def read_variant(path: Path) -> pl.DataFrame:
     return read_result_sets(path)
 
 
+def _norm(value: object) -> str:
+    """Compare labels ignoring case and separators: ``PRBallHandler`` == ``prballhandler``."""
+    return "".join(ch for ch in str(value).lower() if ch.isalnum())
+
+
 def _stamp(frame: pl.DataFrame, season: int, stem: str) -> pl.DataFrame:
     """Add the columns the filename carries that the payload does not.
 
@@ -87,12 +92,17 @@ def _stamp(frame: pl.DataFrame, season: int, stem: str) -> pl.DataFrame:
     m = _STEM.match(stem)
     if m is None:
         raise ValueError(f"unparseable synergy stem: {stem!r}")
-    if frame.height and "type_grouping" in frame.columns:
-        payload_grouping = {str(v).lower() for v in frame["type_grouping"].unique().to_list()}
-        if payload_grouping and payload_grouping != {m["grouping"]}:
+    # BOTH labels, not just the grouping: a payload named ..._cut_... that actually
+    # holds Isolation rows would otherwise be written and published AS the cut
+    # asset, silently corrupting that variant's statistics.
+    for column, expected in (("type_grouping", m["grouping"]), ("play_type", m["play_type"])):
+        if not frame.height or column not in frame.columns:
+            continue
+        seen = {_norm(v) for v in frame[column].unique().to_list()}
+        if seen and seen != {_norm(expected)}:
             raise ValueError(
-                f"{stem}: filename says grouping={m['grouping']!r} but payload says "
-                f"{sorted(payload_grouping)} -- capture is mislabelled"
+                f"{stem}: filename says {column}={expected!r} but payload says "
+                f"{sorted(seen)} -- capture is mislabelled"
             )
     return frame.with_columns(
         season=pl.lit(season, dtype=pl.Int64),
@@ -108,6 +118,9 @@ def build(seasons: list[int], out: Path, *, raw: Optional[Path] = None) -> dict[
     all empty writes NOTHING -- no zero-row asset is ever created.
     """
     raw = raw or raw_root()
+    # once, before any endpoint: a tag can carry several endpoints and clearing
+    # per endpoint would delete the previous one's freshly written assets
+    clear_seasons(out, _TAG, seasons)
     written: dict[str, int] = {}
     for season in seasons:
         season_dir = raw / _ENDPOINT / str(season)

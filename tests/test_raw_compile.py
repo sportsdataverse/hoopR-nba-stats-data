@@ -163,3 +163,67 @@ def test_both_clis_refuse_to_publish_when_nothing_built(tmp_path: Path, capsys) 
         == 0
     )
     assert "not publishing" in capsys.readouterr().out
+
+
+# --------------------------------------------------------------- stale-asset guard
+
+
+def test_a_stale_asset_is_cleared_so_publishing_cannot_ship_it(tmp_path: Path) -> None:
+    """The empty guard stops us WRITING a bad asset, not uploading an old one.
+
+    Publishing uploads whatever the staging dir holds for the requested seasons, so
+    a file from an earlier run — including one whose payload is now empty and was
+    skipped this time — would ride along and defeat the guard by the back door.
+    """
+    raw, out = tmp_path / "raw", tmp_path / "out"
+    _season_file(raw, "leagueseasonmatchups", 2024, "regular-season_totals", [["22024", 1, 2, 3.0]])
+    matchups_cli.build([2024], out, raw=raw)
+    assert (out / "nba_stats_matchups" / "leagueseasonmatchups_regular-season_totals_2024.parquet").exists()
+
+    # the capture is re-swept and now comes back empty
+    _season_file(raw, "leagueseasonmatchups", 2024, "regular-season_totals", [])
+    assert matchups_cli.build([2024], out, raw=raw) == {}
+    assert not list((out / "nba_stats_matchups").glob("*.parquet")), (
+        "the stale asset survived and would have been published"
+    )
+
+
+def test_clearing_happens_once_per_build_not_once_per_endpoint(tmp_path: Path) -> None:
+    """A tag carries several endpoints; clearing per endpoint would delete the
+    previous endpoint's freshly written assets, leaving only the last one."""
+    raw, out = tmp_path / "raw", tmp_path / "out"
+    row = ["22024", 201939, 2544, 4.2]
+    _season_file(raw, "leagueseasonmatchups", 2024, "regular-season_totals", [row])
+    _season_file(raw, "matchupsrollup", 2024, "regular-season_totals", [row])
+
+    matchups_cli.build([2024], out, raw=raw)
+
+    assert sorted(p.name for p in (out / "nba_stats_matchups").glob("*.parquet")) == [
+        "leagueseasonmatchups_regular-season_totals_2024.parquet",
+        "matchupsrollup_regular-season_totals_2024.parquet",
+    ]
+
+
+def test_combine_clearing_keeps_all_five_endpoints(tmp_path: Path) -> None:
+    raw, out = tmp_path / "raw", tmp_path / "out"
+    for ep in ("draftcombinestats", "draftcombineplayeranthro", "draftcombinedrillresults"):
+        _year_file(raw, ep, 2024, [[2024, 1, "A", 78.5]])
+
+    combine_cli.build([2024], out, raw=raw)
+
+    assert len(list((out / "nba_stats_draft_combine").glob("*.parquet"))) == 3
+
+
+def test_clearing_leaves_other_seasons_alone(tmp_path: Path) -> None:
+    raw, out = tmp_path / "raw", tmp_path / "out"
+    _season_file(raw, "matchupsrollup", 2023, "playoffs_totals", [["22023", 1, 2, 3.0]])
+    _season_file(raw, "matchupsrollup", 2024, "playoffs_totals", [["22024", 1, 2, 3.0]])
+    matchups_cli.build([2023, 2024], out, raw=raw)
+
+    # rebuild only 2024; 2023's asset must survive
+    matchups_cli.build([2024], out, raw=raw)
+
+    assert sorted(p.name for p in (out / "nba_stats_matchups").glob("*.parquet")) == [
+        "matchupsrollup_playoffs_totals_2023.parquet",
+        "matchupsrollup_playoffs_totals_2024.parquet",
+    ]

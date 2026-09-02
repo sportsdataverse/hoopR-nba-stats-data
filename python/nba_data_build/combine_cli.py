@@ -32,7 +32,7 @@ from typing import Optional
 import polars as pl
 
 from .publish import upload_artifacts
-from .raw_compile import REPO, compile_flat_years
+from .raw_compile import REPO, clear_seasons, compile_flat_years
 from .synergy_cli import raw_root
 
 logger = logging.getLogger(__name__)
@@ -60,6 +60,9 @@ def _stamp(frame: pl.DataFrame, year: int) -> pl.DataFrame:
 def build(years: list[int], out: Path, *, raw: Optional[Path] = None) -> dict[str, int]:
     """Compile all five combine endpoints into ``out/nba_stats_draft_combine/``."""
     raw = raw or raw_root()
+    # once, before any endpoint: a tag can carry several endpoints and clearing
+    # per endpoint would delete the previous one's freshly written assets
+    clear_seasons(out, _TAG, years)
     written: dict[str, int] = {}
     for endpoint in _ENDPOINTS:
         written.update(compile_flat_years(raw, endpoint, years, out, _TAG, stamp=_stamp))

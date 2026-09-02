@@ -35,7 +35,7 @@ from typing import Optional
 import polars as pl
 
 from .publish import upload_artifacts
-from .raw_compile import REPO, compile_season_dirs
+from .raw_compile import REPO, clear_seasons, compile_season_dirs
 from .synergy_cli import raw_root
 
 logger = logging.getLogger(__name__)
@@ -69,6 +69,9 @@ def build(seasons: list[int], out: Path, *, raw: Optional[Path] = None) -> dict[
     ``leagueseasonmatchups_regular-season_totals_2024.parquet``.
     """
     raw = raw or raw_root()
+    # once, before any endpoint: a tag can carry several endpoints and clearing
+    # per endpoint would delete the previous one's freshly written assets
+    clear_seasons(out, _TAG, seasons)
     written: dict[str, int] = {}
     for endpoint in _ENDPOINTS:
         written.update(

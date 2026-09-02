@@ -42,8 +42,10 @@ def _write(raw: Path, season: int, stem: str, rows: list[list[object]]) -> None:
     (d / f"{stem}.json").write_text(json.dumps(_payload(rows)), encoding="utf-8")
 
 
-def _row(grouping: str = "Offensive") -> list[object]:
-    return ["22024", 201939, "Player One", 1610612744, "Cut", grouping, 0.81]
+def _row(grouping: str = "Offensive", play_type: str = "Cut") -> list[object]:
+    """A row must agree with the stem it is written under -- the builder now
+    rejects a payload whose play_type or grouping contradicts the filename."""
+    return ["22024", 201939, "Player One", 1610612744, play_type, grouping, 0.81]
 
 
 def test_builds_one_asset_per_populated_variant(tmp_path: Path) -> None:
@@ -91,7 +93,7 @@ def test_a_mixed_season_keeps_only_the_populated_variants(tmp_path: Path) -> Non
 
 def test_the_filename_stamps_reach_the_frame(tmp_path: Path) -> None:
     raw, out = tmp_path / "raw", tmp_path / "out"
-    _write(raw, 2024, "playoffs_postup_defensive_totals", [_row("Defensive")])
+    _write(raw, 2024, "playoffs_postup_defensive_totals", [_row("Defensive", "Postup")])
 
     synergy_cli.build([2024], out, raw=raw)
     df = pl.read_parquet(
@@ -155,3 +157,25 @@ def test_main_refuses_to_publish_when_nothing_built(tmp_path: Path, capsys) -> N
 
     assert rc == 0
     assert "not publishing" in capsys.readouterr().out
+
+
+def test_a_mislabelled_play_type_is_refused_too(tmp_path: Path) -> None:
+    """Not just the grouping: a file named ..._cut_... holding Isolation rows would
+    otherwise be published AS the cut asset, corrupting that variant's stats."""
+    raw, out = tmp_path / "raw", tmp_path / "out"
+    row = ["22024", 201939, "Player One", 1610612744, "Isolation", "Offensive", 0.81]
+    _write(raw, 2024, "regular-season_cut_offensive_pergame", [row])
+
+    with pytest.raises(ValueError, match="play_type"):
+        synergy_cli.build([2024], out, raw=raw)
+
+
+def test_play_type_comparison_ignores_case_and_separators(tmp_path: Path) -> None:
+    """`PRBallHandler` in the payload vs `prballhandler` in the filename is a match."""
+    raw, out = tmp_path / "raw", tmp_path / "out"
+    row = ["22024", 1, "P", 2, "PRBallHandler", "Offensive", 0.5]
+    _write(raw, 2024, "regular-season_prballhandler_offensive_totals", [row])
+
+    written = synergy_cli.build([2024], out, raw=raw)
+
+    assert written == {"nba_stats_synergy/regular-season_prballhandler_offensive_totals": 1}

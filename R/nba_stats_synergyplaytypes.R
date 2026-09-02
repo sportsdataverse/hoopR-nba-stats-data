@@ -21,7 +21,15 @@
 #' with zero rows, and writing those produces schema-only files that make a tag
 #' advertise coverage it does not have.
 
-library(dplyr)
+# Declare exactly what this file calls -- hoopR, readr, tibble -- so a missing
+# package fails here with a clear message instead of deep inside the season loop.
+# (dplyr was in the original header and is NOT used; carrying it would have been
+# a dependency the file does not have.)
+for (pkg in c("hoopR", "readr", "tibble")) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    stop(sprintf("nba_stats_synergyplaytypes.R needs the %s package", pkg), call. = FALSE)
+  }
+}
 
 # 88 variants = season_type x play_type x type_grouping x per_mode.
 play_types <- c(
@@ -75,5 +83,6 @@ synergy_season <- function(season_year, out_dir = "nba/synergy") {
 }
 
 # Seasons with rows, measured 2026-09-02: 1996-2005 and the in-progress season
-# hold responses with zero rows, so the default range starts at 2015.
+# return zero rows. This function takes ONE season and has no default range --
+# the Python producer owns the 2015-2025 default; call this per season.
 # synergy_season(2024)
