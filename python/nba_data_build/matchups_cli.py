@@ -28,14 +28,16 @@ from __future__ import annotations
 
 import argparse
 import logging
-import re
 from pathlib import Path
 from typing import Optional
 
-import polars as pl
-
 from .publish import upload_artifacts
-from .raw_compile import REPO, clear_seasons, compile_season_dirs
+from .raw_compile import (
+    REPO,
+    clear_seasons,
+    compile_season_dirs,
+    stamp_season_type_per_mode,
+)
 from .synergy_cli import raw_root
 
 logger = logging.getLogger(__name__)
@@ -47,20 +49,6 @@ _ENDPOINTS = ("leagueseasonmatchups", "matchupsrollup")
 #: 1996-2005 and the in-progress season hold payloads with an empty rowSet.
 FIRST_SEASON = 2017
 LAST_SEASON = 2025
-
-_STEM = re.compile(r"^(?P<season_type>regular-season|playoffs)_(?P<per_mode>pergame|totals)$")
-
-
-def _stamp(frame: pl.DataFrame, season: int, stem: str) -> pl.DataFrame:
-    m = _STEM.match(stem)
-    if m is None:
-        raise ValueError(f"unparseable matchups stem: {stem!r}")
-    return frame.with_columns(
-        season=pl.lit(season, dtype=pl.Int64),
-        season_type=pl.lit(m["season_type"]),
-        per_mode=pl.lit(m["per_mode"]),
-    )
-
 
 def build(seasons: list[int], out: Path, *, raw: Optional[Path] = None) -> dict[str, int]:
     """Compile both matchup endpoints into ``out/nba_stats_matchups/``.
@@ -76,7 +64,7 @@ def build(seasons: list[int], out: Path, *, raw: Optional[Path] = None) -> dict[
     for endpoint in _ENDPOINTS:
         written.update(
             compile_season_dirs(
-                raw, endpoint, seasons, out, _TAG, stamp=_stamp, prefix=f"{endpoint}_"
+                raw, endpoint, seasons, out, _TAG, stamp=stamp_season_type_per_mode, prefix=f"{endpoint}_"
             )
         )
     return written

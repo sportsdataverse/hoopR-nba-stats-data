@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from pathlib import Path
 
 import polars as pl
@@ -33,6 +34,32 @@ from sportsdataverse.nba import parse_nba_stats_result_sets
 logger = logging.getLogger(__name__)
 
 REPO = "sportsdataverse/sportsdataverse-data"
+
+#: ``{season_type}_{per_mode}`` -- the stem the season sweep writes for any
+#: endpoint whose only swept axes are season type and per-mode. Two families
+#: share it exactly (matchups, hustle), so the grammar lives here rather than
+#: being re-typed per CLI: a divergent copy would not fail, it would stamp a
+#: playoff frame as regular season.
+_SEASON_TYPE_PER_MODE = re.compile(
+    r"^(?P<season_type>regular-season|playoffs)_(?P<per_mode>pergame|totals)$"
+)
+
+
+def stamp_season_type_per_mode(frame: pl.DataFrame, season: int, stem: str) -> pl.DataFrame:
+    """Add the columns the payload does not carry, read off the filename.
+
+    Raises on an unparseable stem rather than stamping a guess: the filename is
+    the only record of which slice a payload is, so a stem this does not
+    recognise means the capture layout changed and the compile must stop.
+    """
+    m = _SEASON_TYPE_PER_MODE.match(stem)
+    if m is None:
+        raise ValueError(f"unparseable season_type/per_mode stem: {stem!r}")
+    return frame.with_columns(
+        season=pl.lit(season, dtype=pl.Int64),
+        season_type=pl.lit(m["season_type"]),
+        per_mode=pl.lit(m["per_mode"]),
+    )
 
 
 def read_result_sets(path: Path) -> pl.DataFrame:
@@ -91,12 +118,19 @@ def compile_season_dirs(
     *,
     stamp,
     prefix: str = "",
+    skip=None,
 ) -> dict[str, int]:
     """``{endpoint}/{season}/{variant}.json`` -> one asset per populated variant.
 
     ``stamp(frame, season, stem)`` adds the filename-derived columns and may raise
     to reject a mislabelled capture. ``prefix`` disambiguates asset names when one
     tag carries more than one endpoint.
+
+    ``skip(season, stem) -> bool`` drops a variant that is populated but too thin
+    to be the thing its name claims. The empty-payload guard above cannot catch
+    that case: a slice with two games of data is a non-empty frame, so it writes
+    an asset a consumer reads as a whole season. Default ``None`` = keep every
+    populated variant.
     """
     written: dict[str, int] = {}
     for season in seasons:
@@ -105,6 +139,11 @@ def compile_season_dirs(
             logger.warning("raw_missing_season endpoint=%s season=%s", endpoint, season)
             continue
         for path in sorted(season_dir.glob("*.json")):
+            if skip is not None and skip(season, path.stem):
+                logger.info(
+                    "raw_skip_thin endpoint=%s season=%s variant=%s", endpoint, season, path.stem
+                )
+                continue
             frame = read_result_sets(path)
             if not frame.height:
                 logger.info(
