@@ -1,9 +1,10 @@
 """Reader for the ``hoopR-nba-stats-raw`` store — the only input the reshaper has.
 
 Every dataset compiled here is reshaped from payloads that ``hoopR-nba-stats-raw``
-already captured, so a compile makes **no network calls** and is reproducible from a
-checkout. That is what makes the builders testable: point ``root`` at a fixture tree
-and the whole pipeline runs offline.
+already captured — this repo never calls stats.nba.com. Point ``root`` at a fixture
+tree or a sibling checkout and the whole pipeline runs offline, which is what makes
+the builders testable; point it at :data:`RAW_BASE` and the same code reads each JSON
+file over HTTP instead (what the daily workflow does, having no checkout of the store).
 
 The store has two layouts, because the endpoints are keyed differently:
 
@@ -31,6 +32,8 @@ job can run against a sibling clone on disk or read the tree straight from GitHu
 from __future__ import annotations
 
 import json
+import os
+import time
 import urllib.error
 import urllib.request
 from collections.abc import Iterator
@@ -39,7 +42,9 @@ from typing import Any
 
 from ..scrape.raw_store import season_of as game_season_of
 
-RAW_BASE = "https://raw.githubusercontent.com/sportsdataverse/hoopR-nba-stats-raw/main/nba_stats/json"
+RAW_BASE = (
+    "https://raw.githubusercontent.com/sportsdataverse/hoopR-nba-stats-raw/main/nba_stats/json"
+)
 
 # Per-game endpoints are keyed by the season END year (start + 1); every other
 # endpoint is keyed by the season START year. This tuple is the whole basis of the
@@ -67,26 +72,60 @@ def _is_url(root: str | Path) -> bool:
     return str(root).startswith(("http://", "https://"))
 
 
+def _http_retries() -> int:
+    """Transient-error attempts beyond the first. ``SDV_PY_HTTP_RETRIES`` bounds it."""
+    try:
+        return max(0, int(os.environ.get("SDV_PY_HTTP_RETRIES", "3")))
+    except ValueError:
+        return 3
+
+
 def _read_json(root: str | Path, rel: str) -> Any | None:
-    """Load ``rel`` under ``root`` from disk or over HTTP; ``None`` when absent."""
+    """Load ``rel`` under ``root`` from disk or over HTTP; ``None`` when absent.
+
+    "Absent" means the store never captured it: a local miss, or a 404. Every
+    OTHER HTTP failure -- 5xx, a rate-limit, a dropped connection, a timeout --
+    is TRANSIENT, and must not be reported as absence.
+
+    This used to soft-miss all of them, on the reasoning that a blip should not
+    abort a whole season mid-build. The trade is the other way round: a season
+    reads ~1,300 per-game payloads over HTTP, so one swallowed 5xx is one game
+    silently missing from a PUBLISHED season, on a green run, with nothing in
+    the log. A failed build is recoverable in a way a quietly-truncated release
+    is not -- the twin (wehoop-wnba-stats-data) reached the same conclusion the
+    hard way after 33 days of green runs that published nothing. Retry with
+    backoff, then raise.
+
+    The LOCAL branch is unchanged: a missing or corrupt file stays a soft miss.
+    A gap in a checked-out store is real and expected, and a corrupt file is a
+    permanent local fact rather than something a retry could fix. Only the
+    OSError catch went away with the reasoning that justified it -- it existed
+    to "match the HTTP branch's failure semantics", and those semantics are the
+    thing this change reverses.
+    """
     if _is_url(root):
-        try:
-            with urllib.request.urlopen(
-                f"{str(root).rstrip('/')}/{rel}", timeout=60
-            ) as resp:
-                return json.loads(resp.read())
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
-            return None
+        url = f"{str(root).rstrip('/')}/{rel}"
+        attempts = _http_retries() + 1
+        for attempt in range(1, attempts + 1):
+            try:
+                with urllib.request.urlopen(url, timeout=60) as resp:
+                    return json.loads(resp.read())
+            except urllib.error.HTTPError as exc:
+                if exc.code in (404, 410):
+                    return None  # never captured; retrying cannot change that
+                if attempt == attempts:
+                    raise
+            except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+                if attempt == attempts:
+                    raise
+            time.sleep(min(2 ** (attempt - 1), 8))
+        return None
     path = Path(root) / rel
     if not path.exists():
         return None
     try:
         return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        # Match the HTTP branch's failure semantics: a transient read error or an
-        # unreadable file is a soft miss, not an exception that aborts a whole
-        # season mid-build. Without OSError here the two roots diverge, and a
-        # permissions blip on one file kills the run.
+    except json.JSONDecodeError:
         return None
 
 
@@ -96,12 +135,7 @@ def game_payload_path(root: str | Path, endpoint: str, game_id: str) -> Path:
     The directory is decoded from the game id itself (season end year), so this is
     correct regardless of which start-year season the caller thinks the game belongs to.
     """
-    return (
-        Path(root)
-        / endpoint
-        / str(game_season_of(game_id))
-        / f"{str(game_id).zfill(10)}.json"
-    )
+    return Path(root) / endpoint / str(game_season_of(game_id)) / f"{str(game_id).zfill(10)}.json"
 
 
 def read_game(root: str | Path, endpoint: str, game_id: str) -> Any | None:
@@ -134,9 +168,7 @@ def available_games(root: str | Path, endpoint: str, season: int) -> list[str]:
     against RAW_BASE should drive from :func:`season_game_ids`.
     """
     if _is_url(root):
-        raise ValueError(
-            "available_games needs a local root; use season_game_ids for URLs"
-        )
+        raise ValueError("available_games needs a local root; use season_game_ids for URLs")
     d = Path(root) / endpoint / str(store_dir(endpoint, season))
     if not d.is_dir():
         return []
@@ -201,9 +233,7 @@ def season_payload(
     return read_season(root, endpoint, season, variant)
 
 
-def result_set(
-    payload: Any, name: str | None = None
-) -> tuple[list[str], list[list[Any]]]:
+def result_set(payload: Any, name: str | None = None) -> tuple[list[str], list[list[Any]]]:
     """``(headers, rows)`` from a stats.com ``resultSets`` envelope.
 
     Returns the named set, or the first non-empty one when ``name`` is omitted.

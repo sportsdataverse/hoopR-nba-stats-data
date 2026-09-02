@@ -188,3 +188,60 @@ def test_available_games_rejects_url_roots() -> None:
     """GitHub serves files, not listings — fail loudly rather than return nothing."""
     with pytest.raises(ValueError, match="local root"):
         raw.available_games(raw.RAW_BASE, "playbyplayv3", 2013)
+
+
+def _http_error(code: int) -> raw.urllib.error.HTTPError:
+    return raw.urllib.error.HTTPError(
+        "https://raw.githubusercontent.com/x", code, "boom", {}, None
+    )
+
+
+def test_a_404_is_absence_but_a_transient_is_not(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Absence and failure must stay distinguishable over HTTP.
+
+    A season reads ~1,300 per-game payloads from raw.githubusercontent, so
+    mapping a 5xx / rate-limit / timeout to "never captured" drops that game
+    from a PUBLISHED season on a green run. Only 404/410 may return None.
+    """
+    monkeypatch.setattr(raw.time, "sleep", lambda _s: None)
+    monkeypatch.setenv("SDV_PY_HTTP_RETRIES", "2")
+
+    def _raise(code: int):
+        def _open(url, timeout: int = 60):
+            raise _http_error(code)
+
+        return _open
+
+    monkeypatch.setattr(raw.urllib.request, "urlopen", _raise(404))
+    assert raw._read_json(raw.RAW_BASE, "playbyplayv3/2025/0022400001.json") is None
+
+    for code in (500, 502, 403):
+        monkeypatch.setattr(raw.urllib.request, "urlopen", _raise(code))
+        with pytest.raises(raw.urllib.error.HTTPError):
+            raw._read_json(raw.RAW_BASE, "playbyplayv3/2025/0022400001.json")
+
+
+def test_a_transient_recovers_within_the_retry_budget(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(raw.time, "sleep", lambda _s: None)
+    monkeypatch.setenv("SDV_PY_HTTP_RETRIES", "3")
+    calls: list[int] = []
+
+    class _Resp:
+        def __enter__(self) -> "_Resp":
+            return self
+
+        def __exit__(self, *exc: object) -> bool:
+            return False
+
+        def read(self) -> bytes:
+            return b'{"ok": 1}'
+
+    def _flaky_then_ok(url, timeout: int = 60):
+        calls.append(1)
+        if len(calls) < 3:
+            raise _http_error(503)
+        return _Resp()
+
+    monkeypatch.setattr(raw.urllib.request, "urlopen", _flaky_then_ok)
+    assert raw._read_json(raw.RAW_BASE, "leaguestandingsv3/2025.json") == {"ok": 1}
+    assert len(calls) == 3
