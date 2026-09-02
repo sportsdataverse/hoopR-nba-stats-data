@@ -166,6 +166,64 @@ def _min_of(values: Iterable[Optional[float]]) -> Optional[float]:
     return min(vals) if vals else None
 
 
+#: Publish-blocking SCALE bands. Every gate in FLOORS above is a CORRELATION or a
+#: row count, and a correlation is invariant to an affine rescale -- a season whose
+#: ratings all came out 10x too large passes every one of them. That is exactly how
+#: mis-scaled "xwOBA" of .44-.73 shipped on 2026-09-01 (baseballr-data 75d29ddbc5).
+#:
+#: Two-sided bands on the qualified league LEVEL, set strictly outside the values
+#: observed on the published release (seasons 1997-2026, measured 2026-09-02 with
+#: off_poss >= 500); the comment records the observation that set each one.
+#: Never widen a band to make a publish pass -- debug the build.
+SCALE_QUALIFY_POSS = 500
+SCALE_BANDS: dict[str, tuple[float, float]] = {
+    "mean_rapm": (-1.0, 1.0),  # observed |mean| <= 0.19
+    "sd_rapm": (0.5, 3.5),  # observed 0.99 - 2.27
+    "mean_adj_rapm": (-3.0, 3.0),  # observed |mean| <= 1.00
+    "sd_adj_rapm": (3.0, 8.0),  # observed 4.47 - 6.20
+}
+
+
+def scale_checks(frames: dict[int, pl.DataFrame]) -> list[dict]:
+    """Evaluate every season's qualified level against SCALE_BANDS.
+
+    A season with too few qualified players to measure is SKIPPED, which is not
+    PASS -- the printed table says which seasons actually ran.
+    """
+    out: list[dict] = []
+    for season in sorted(frames):
+        frame = frames[season]
+        missing = [c for c in ("off_poss", "rapm", "adj_rapm") if c not in frame.columns]
+        if missing:
+            # cannot measure a level without these -- SKIPPED, never PASS
+            out.append({"season": season, "gate": "scale", "status": "SKIPPED",
+                        "reason": f"frame has no {', '.join(missing)}"})
+            continue
+        qualified = frame.filter(pl.col("off_poss") >= SCALE_QUALIFY_POSS)
+        if qualified.height < 20:
+            out.append({"season": season, "gate": "scale", "status": "SKIPPED",
+                        "reason": f"only {qualified.height} qualified players"})
+            continue
+        stats = {
+            "mean_rapm": qualified["rapm"].mean(),
+            "sd_rapm": qualified["rapm"].std(),
+            "mean_adj_rapm": qualified["adj_rapm"].mean(),
+            "sd_adj_rapm": qualified["adj_rapm"].std(),
+        }
+        for name, (lo, hi) in SCALE_BANDS.items():
+            observed = stats[name]
+            if observed is None:
+                out.append({"season": season, "gate": name, "status": "SKIPPED",
+                            "reason": "not computable"})
+                continue
+            observed = float(observed)
+            out.append({
+                "season": season, "gate": name, "observed": observed, "band": [lo, hi],
+                "status": "PASS" if lo <= observed <= hi else "FAIL",
+            })
+    return out
+
+
 def gate_report(frames: dict[int, pl.DataFrame], *, oracle_dir: Optional[Path] = None) -> dict:
     """Compute every diagnostic and evaluate it against ``FLOORS``.
 
@@ -285,12 +343,30 @@ def check_publish_floors(
     report = gate_report(
         load_frames_from_dir(out_dir, seasons), oracle_dir=Path(odir) if odir else None
     )
+    scale = scale_checks(load_frames_from_dir(out_dir, seasons))
+    report["scale"] = scale
+    scale_failed = [c for c in scale if c["status"] == "FAIL"]
+    scale_ran = [c for c in scale if c["status"] != "SKIPPED"]
+    print(
+        f"gates: scale bands (qualified off_poss >= {SCALE_QUALIFY_POSS}) — "
+        f"{len(scale_ran) - len(scale_failed)}/{len(scale_ran)} pass"
+    )
     print("gates: publish floors (models/REGISTRY.md)\n" + format_report(report))
     card = out_dir / f"{TAG}_card.json"
     if card.is_file():
         payload = json.loads(card.read_text(encoding="utf-8"))
         payload["publish_gates"] = {"seasons_gated": seasons, **report}
         card.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    if scale_failed:
+        raise SystemExit(
+            "gates: publish SCALE BLOCKED — "
+            + "; ".join(
+                f"{c['season']} {c['gate']} observed {c['observed']:.4f} "
+                f"outside band {c['band'][0]}..{c['band'][1]}"
+                for c in scale_failed
+            )
+            + " (a correlation gate cannot see a rescale; never widen a band to pass)"
+        )
     failed = [c for c in report["checks"] if c["status"] == "FAIL"]
     if failed:
         raise SystemExit(
