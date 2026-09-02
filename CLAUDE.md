@@ -36,6 +36,7 @@ python -m nba_data_build.synergy_cli --seasons 2024 2025          # synergy cube
 python -m nba_data_build.synergy_cli --seasons 2024 --publish     # publish (deliberate)
 python -m nba_data_build.matchups_cli --seasons 2024 2025         # matchups, BUILD-ONLY
 python -m nba_data_build.combine_cli                              # draft combine, BUILD-ONLY
+python -m nba_data_build.hustle_cli --seasons 2024 2025           # hustle, BUILD-ONLY
 bash scripts/run_impact_backfill.sh        # nba_player_impact full-history backfill, BUILD-ONLY
 bash scripts/run_impact_backfill.sh 2025 --publish   # ...and upload to the release (deliberate)
 bash scripts/nightly_nba_impact.sh --dry-run         # current season, plan only, no commit
@@ -79,6 +80,42 @@ otherwise overwrite each other. `nba_stats_draft_combine` is the five
 `nba_stats_draft`, which is draft HISTORY and carries no measurements. Measured
 floors: matchups 2017-2025, combine 2000-2026. All three share
 `raw_compile.py`, whose empty-frame skip is the real guard.
+
+**`hustle_cli` is the fourth, and the one where the empty-frame skip is not
+enough.** `nba_stats_hustle` carries `leaguehustlestatsplayer` +
+`leaguehustlestatsteam` on the same `{season}/{season_type}_{per_mode}.json`
+layout as matchups, so it is that CLI with the endpoint names swapped -- both
+stamp through the shared `raw_compile.stamp_season_type_per_mode`, because a
+divergent second copy of that grammar would not fail, it would stamp a playoff
+frame as regular season. Measured floor 2015-2025 (2013-14 and 2014-15 answer a
+valid zero-row envelope), and:
+
+- **2015-16's REGULAR SEASON is 2 games and is dropped; its PLAYOFFS are
+  complete and are kept.** 147 players / 15 teams / `max(g) == 2` against 211
+  players / all 16 teams / `max(g) == 24` -- consistent with the league having
+  launched hustle tracking at the 2016 playoffs. 147 rows is not an empty frame,
+  so the empty-payload guard writes it happily and a consumer reads 256
+  league-wide deflections as the 2015-16 regular season, against 38,174 the
+  following year. Hence `hustle_cli._THIN` and the new `skip=` predicate on
+  `compile_season_dirs`: a coverage floor scoped to the season TYPE, so dropping
+  the trial does not also throw away a complete playoffs. The raw store keeps
+  all four variants -- capture records what upstream served; this is the publish
+  decision layered on top.
+- **Player rows sum EXACTLY to team rows**, every season, both season types,
+  across deflections / contested shots / screen assists / charges drawn / box
+  outs. That identity is the family's real integrity gate -- it exercises the
+  capture, the parse and the id handling at once -- and is kept runnable as
+  `tests/test_hustle_cli.py::test_player_rows_sum_to_the_team_rows` (marked
+  `archive`; it needs the raw store).
+
+**`hustlestatsboxscore` is the PER-GAME half and is NOT captured.** It is parked
+in the raw repo's `ENDPOINT_MIN_SEASON`. Unlike `boxscorematchupsv3` it returns
+the plain `resultSets` envelope (`HustleStatsAvailable` / `PlayerStats` /
+`TeamStats`, verified live 2026-09-02), so when it lands it needs NO new builder
+code -- a `Dataset("game_hustle", "hustlestatsboxscore", "PlayerStats", ...,
+level="game")` row drives the reshaper's generic `build_game_dataset`. Prefer it
+over `boxscorehustlev2`, which is the nested envelope and is ruled OUT with the
+rest of the `boxscore*v2` family.
 
 **`boxscorematchupsv3` is stage 16, `game_matchups`, in the reshaper** -- not in
 `matchups_cli`. Its 25,732 PER-GAME payloads are the v3 envelope
