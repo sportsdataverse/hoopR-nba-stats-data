@@ -39,8 +39,12 @@ from __future__ import annotations
 
 import argparse
 import os
+from pathlib import Path
 
 from nba_data_build.publish import upload_artifacts
+
+from . import gates
+from .gates import check_publish_floors
 
 _REPO_DEFAULT = "sportsdataverse/sportsdataverse-data"
 
@@ -220,6 +224,13 @@ def build_parser() -> argparse.ArgumentParser:
         "-- so a cloud runner needs no proxy for a season already in the store. "
         "Defaults to $SDV_PY_NBA_RAW_JSON_DIR.",
     )
+    imp.add_argument(
+        "--oracle-dir",
+        default=None,
+        help="Directory holding the published oracle CSVs (rapm_ryan_davis.csv, "
+        "*_EPM_data.csv) for the concurrent-validity floors; defaults to "
+        "$SDV_PY_NBA_ORACLE_DIR. Absent -> those gates report SKIPPED (never PASS).",
+    )
     imp.add_argument("--tag", default="nba_player_impact", help="GitHub release tag.")
     imp.add_argument(
         "--publish",
@@ -230,6 +241,30 @@ def build_parser() -> argparse.ArgumentParser:
         "droplet cron passes it (scripts/P0_DROPLET_RUNBOOK.md).",
     )
     _add_repo_dry(imp)
+
+    g = sub.add_parser(
+        "gates",
+        help="Evaluate the publish floors against a built directory or the published release.",
+    )
+    g.add_argument("--seasons", default="1997:2026", help="END years, e.g. 2024 or 2024:2026.")
+    g.add_argument(
+        "--dir", default=None, help="Built artifact directory (default: read the release)."
+    )
+    g.add_argument("--from-release", action="store_true", help="Read the published release assets.")
+    g.add_argument(
+        "--oracle-dir", default=None, help="Oracle CSV directory (default $SDV_PY_NBA_ORACLE_DIR)."
+    )
+    g.add_argument("--json-out", default=None, help="Write the full report JSON here.")
+
+    sc = sub.add_parser(
+        "spm-coefficients",
+        help="Rebuild the SPM coefficient sidecar from published seasons + the committed raw store.",
+    )
+    sc.add_argument("--seasons", default="1997:2026", help="END years, e.g. 2024 or 2024:2026.")
+    sc.add_argument(
+        "--raw-store-dir", required=True, help="Local hoopR-nba-stats-raw checkout (offline)."
+    )
+    sc.add_argument("--out", required=True, help="Directory to write the sidecar into.")
 
     up = sub.add_parser(
         "upload",
@@ -318,6 +353,13 @@ def main(argv=None) -> int:
             raw_store_dir=args.raw_store_dir,
         )
         total_rows = sum(b["rows"] for b in built)
+        if built:
+            # Publish floors (models/REGISTRY.md). Runs on EVERY invocation, not
+            # only the publishing ones: a build whose gates fail must be visible
+            # in the ad-hoc run that produced it, not first at upload time.
+            check_publish_floors(
+                Path(args.out), [b["season"] for b in built], oracle_dir=args.oracle_dir
+            )
         if not (args.publish or args.dry_run):
             # Publishing is opt-in: return before upload_artifacts is reached at
             # all, rather than relying on a dry_run kwarg deeper down.
@@ -342,7 +384,9 @@ def main(argv=None) -> int:
             args.out,
             args.tag,
             args.repo,
-            pattern="*_card.json",
+            # Both json sidecars: the model card and the additive SPM coefficient
+            # vector (feature names + coefficients + train-time fit metrics).
+            pattern="*.json",
             notes=_IMPACT_RELEASE_NOTES,
             dry_run=args.dry_run,
         )
@@ -355,6 +399,30 @@ def main(argv=None) -> int:
             f"files={len(res['files']) + len(card_res['files'])}"
             f"{failed_part} -> {args.repo}:{args.tag}{suffix}"
         )
+    elif args.cmd == "gates":
+        import json as _json
+
+        seasons = _parse_seasons(args.seasons)
+        odir = args.oracle_dir or os.environ.get(gates.ORACLE_DIR_ENV)
+        frames = (
+            gates.load_frames_from_release(seasons)
+            if (args.from_release or not args.dir)
+            else gates.load_frames_from_dir(Path(args.dir), seasons)
+        )
+        report = gates.gate_report(frames, oracle_dir=Path(odir) if odir else None)
+        print(gates.format_report(report))
+        if args.json_out:
+            Path(args.json_out).write_text(_json.dumps(report, indent=2), encoding="utf-8")
+        return 1 if any(c["status"] == "FAIL" for c in report["checks"]) else 0
+    elif args.cmd == "spm-coefficients":
+        from .builders import spm_coefficients_from_frames, write_spm_coefficients
+
+        frames = gates.load_frames_from_release(_parse_seasons(args.seasons))
+        records = spm_coefficients_from_frames(frames, raw_store_dir=args.raw_store_dir)
+        out = Path(args.out)
+        out.mkdir(parents=True, exist_ok=True)
+        path = write_spm_coefficients(out, records)
+        print(f"spm-coefficients: {len(records)} seasons -> {path}")
     elif args.cmd == "upload":
         res = upload_artifacts(
             args.artifacts_dir,
