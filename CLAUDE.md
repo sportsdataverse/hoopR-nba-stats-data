@@ -59,12 +59,13 @@ module invocation
 **`run_impact_backfill.sh` also builds by default, but keeps a publish path.**
 `nba_model_publish impact` requires `--publish` to touch the release; without
 it the run builds and exits 0. The stronger no-upload-path-at-all treatment
-was rejected HERE because this publisher is wired. **Correction 2026-09-02: the
-"daily droplet cron" this paragraph relied on does not exist** — the droplet
-crontab has no `nba_player_impact` entry, and never did; the publish paths are
-this script, `scripts/nightly_nba_impact.sh`, and a manual `nba_models.yml`
-dispatch (which has never run). The argument still holds for the runbook job,
-which is multi-hour and would become a silent no-op. The runbook backfill line
+was rejected HERE because this publisher is wired. **Correction 2026-09-02:**
+the "daily droplet cron" this paragraph originally cited did not exist — the
+crontab had no `nba_player_impact` entry. One exists now, but it drives
+`scripts/nightly_nba_impact.sh`, not this script: `0 4` on the NBA window
+(Oct 18-31, Nov-Dec, Jan-Jun, Jul 1-12), passing `--publish`. The publish-path
+argument still holds for THIS script, which is the multi-hour full-history
+backfill and would become a silent no-op without it. The runbook backfill line
 passes `--publish`; `tests/test_impact_publish_optin.py`
 pins both halves. `--dry-run` still plans the upload and beats `--publish`.
 

@@ -16,7 +16,11 @@
 # models/REGISTRY.md. csv stays release-only (largest format, adds nothing over
 # the parquet), matching the twin.
 #
-# Cron (droplet, ET): the NBA window, after the raw store is refreshed.
+# Cron (droplet, ET): 0 4 on the NBA window -- Oct 18-31, Nov-Dec, Jan-Jun and
+# the Jul 1-12 tail, mirroring daily_nba_stats.yml. Droplet-viable despite the
+# disabled nba-stats SCRAPE cron: this makes ONE live proxied leaguegamelog call
+# and then computes offline from the committed store (verified 2026-09-02 at 98%
+# CPU, not the socket stall that killed the scrape).
 set -uo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_DIR" || exit 1
