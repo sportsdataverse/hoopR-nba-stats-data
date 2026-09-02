@@ -50,7 +50,7 @@ def _gh_release_exists(tag: str, repo: str) -> bool:
 #: which leaves whatever is already on the release untouched.
 PKG_FUNCTION: dict[str, str] = {
     "nba_stats_coaches": "sportsdataverse.nba.load_nba_stats_coaches()",
-    "nba_stats_game_lineups": "sportsdataverse.nba.load_nba_stats_lineups_v3()",
+    "nba_stats_game_lineups": "sportsdataverse.nba.load_nba_stats_game_lineups()",
     "nba_stats_game_rosters": "sportsdataverse.nba.load_nba_stats_game_rosters()",
     "nba_stats_lineups": "sportsdataverse.nba.load_nba_stats_lineups()",
     "nba_stats_officials": "sportsdataverse.nba.load_nba_stats_officials()",

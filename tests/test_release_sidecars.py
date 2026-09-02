@@ -9,6 +9,7 @@ wrong answer.
 import json
 from pathlib import Path
 
+import pytest
 from nba_data_build.publish import PKG_FUNCTION, upload_artifacts
 
 SIDECAR_NAMES = [
@@ -95,3 +96,35 @@ def test_sidecars_carry_the_loader_and_a_timestamp(tmp_path):
     assert seen["package_function.txt"].strip() == PKG_FUNCTION[TAG] == "sportsdataverse.nba.load_nba_stats_pbp()"
     assert json.loads(seen["package_function.json"])["package_function"] == PKG_FUNCTION[TAG]
     assert json.loads(seen["timestamp.json"])["last_updated"].strip()
+
+
+@pytest.mark.parametrize(("tag", "expected"), sorted(PKG_FUNCTION.items()))
+def test_every_mapping_reaches_the_sidecar_verbatim(tmp_path, tag, expected):
+    """Pin every tag's loader name, not just the one the happy path uses.
+
+    A wrong value here ships to consumers as the canonical way to read the tag,
+    so each mapping is asserted on the bytes that actually land.
+    """
+    seen: dict[str, str] = {}
+
+    def _runner(argv: list[str]) -> None:
+        path = Path(argv[3])
+        if path.name.startswith(("timestamp.", "package_function.")):
+            seen[path.name] = path.read_text()
+
+    upload_artifacts(
+        _stage(tmp_path),
+        tag=tag,
+        repo="r/r",
+        runner=_runner,
+        exists_check=lambda t, r: True,
+    )
+
+    assert seen["package_function.txt"].strip() == expected
+    assert json.loads(seen["package_function.json"])["package_function"] == expected
+
+
+def test_no_mapping_names_a_deprecated_loader():
+    """sdv-py keeps deprecated aliases importable; naming one in consumer-facing
+    metadata would point every reader at the alias instead of its replacement."""
+    assert "lineups_v3" not in " ".join(PKG_FUNCTION.values())
