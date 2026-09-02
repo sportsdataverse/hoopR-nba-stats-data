@@ -16,10 +16,14 @@ game_id: >-
   stats.nba.com game id, zero-padded 10-char string ("0022300001"; the "00"
   prefix is the NBA league id, so the id must never round-trip through int).
 season: >-
-  Season the row belongs to. Stats-API span form for NBA ("2023-24") in the
-  released season assets; the schedule master carries the same span form.
-  `draft` is the exception: it carries the four-digit draft year as an integer
-  (2003 = the June 2003 draft, which precedes the 2003-04 season).
+  Season the row belongs to. On the reshaped release assets it is the season's
+  ENDING year as an integer, matching the asset filename (2024 = the 2023-24
+  season) -- the 2026-08-13 republish moved every `nba_stats_*` asset onto
+  END-year names and the column was converted with them. The span form
+  ("2023-24") survives only where a payload carries its own season column.
+  `draft` and `draft_combine` are the exception in the other direction: their
+  integer is the four-digit draft year (2003 = the June 2003 draft, which
+  precedes the 2003-04 season).
 season_id: >-
   stats.nba.com composite season id: season-type digit + start year
   ("22023" = 2023-24 regular season).
@@ -227,3 +231,117 @@ player_profile_flag: >-
   (166 of 1,773 picks 1996-2025). Largely tracks whether the pick ever reached
   the NBA, but it is a profile-existence flag rather than a games-played one,
   so it should not be read as a career indicator on its own.
+
+# --- per-game matchups (`game_matchups`) --------------------------------------
+#
+# One row per (game, offensive player, defender). `off_` is the player being
+# guarded and `def_` the player guarding -- measured against the traditional
+# boxscore, not taken from the payload's field order (see
+# `reshape/build.py::matchup_rows`).
+side: >-
+  Which side of the game the OFFENSIVE player's team was on: "home" or "away".
+off_person_id: >-
+  stats.nba.com person id of the offensive player -- the one being guarded.
+def_person_id: >-
+  stats.nba.com person id of the defender guarding the offensive player.
+off_team_id: >-
+  Team id of the offensive player. Taken from the payload's team block.
+def_team_id: >-
+  Team id of the defender, read from the game envelope's homeTeamId/awayTeamId
+  rather than the nested team object, which is 0 on uncovered captures.
+matchup_minutes: >-
+  Time the pair were matched up, as the payload's MM:SS string; use
+  `matchup_minutes_sort` for arithmetic.
+matchup_minutes_sort: >-
+  The same matchup time in seconds, as a float -- the sortable/summable form.
+partial_possessions: >-
+  Possessions credited to the matchup. Fractional because a possession is split
+  across every defender who guarded the ball-handler during it, which is why
+  matchup counting stats do not sum exactly to a player's game totals.
+percentage_offensive_total_time: >-
+  Share of the offensive player's floor time spent guarded by this defender.
+percentage_defender_total_time: >-
+  Share of the defender's floor time spent guarding this offensive player.
+percentage_total_time_both_on: >-
+  Share of the time both players were on the floor together that they were
+  matched up.
+switches_on: >-
+  Times the defense switched this defender onto the offensive player.
+player_points: >-
+  Points the offensive player scored while guarded by this defender.
+team_points: >-
+  Points the offensive player's team scored while this matchup was on.
+matchup_assists: >-
+  Assists by the offensive player while guarded by this defender.
+matchup_potential_assists: >-
+  Passes by the offensive player that would have been assists had the shot
+  fallen, while guarded by this defender.
+matchup_turnovers: >-
+  Turnovers by the offensive player while guarded by this defender.
+matchup_blocks: >-
+  Shots by the offensive player blocked by this defender.
+matchup_field_goals_made: >-
+  Field goals made by the offensive player against this defender.
+matchup_field_goals_attempted: >-
+  Field goals attempted by the offensive player against this defender.
+matchup_field_goals_percentage: >-
+  Field-goal percentage of the offensive player against this defender.
+matchup_three_pointers_made: >-
+  Three-pointers made by the offensive player against this defender.
+matchup_three_pointers_attempted: >-
+  Three-pointers attempted by the offensive player against this defender.
+matchup_three_pointers_percentage: >-
+  Three-point percentage of the offensive player against this defender.
+matchup_free_throws_made: >-
+  Free throws made by the offensive player on trips drawn against this defender.
+matchup_free_throws_attempted: >-
+  Free throws attempted by the offensive player on trips drawn against this
+  defender.
+help_blocks: >-
+  Blocks by this defender on the offensive player when helping off another
+  assignment rather than as the primary defender.
+help_field_goals_made: >-
+  Field goals the offensive player made against this defender in help defense.
+help_field_goals_attempted: >-
+  Field goals the offensive player attempted against this defender in help
+  defense.
+help_field_goals_percentage: >-
+  Field-goal percentage allowed by this defender in help defense.
+shooting_fouls: >-
+  Shooting fouls committed by this defender on the offensive player.
+off_team_city: >-
+  City/market of the offensive player's team ("Indiana").
+off_team_name: >-
+  Nickname of the offensive player's team ("Pacers") -- pair with
+  `off_team_city` for the full club name.
+off_team_tricode: >-
+  Three-letter abbreviation of the offensive player's team ("IND").
+off_team_slug: >-
+  URL slug of the offensive player's team ("pacers").
+off_first_name: >-
+  First name of the offensive player.
+off_family_name: >-
+  Family name of the offensive player.
+off_name_i: >-
+  Offensive player's abbreviated display name ("B. Mathurin").
+off_player_slug: >-
+  URL slug of the offensive player ("bennedict-mathurin").
+off_position: >-
+  Starting position of the offensive player as the payload reports it; empty
+  for players who did not start.
+off_comment: >-
+  Availability note on the offensive player (DNP reason); empty when they
+  played.
+off_jersey_num: >-
+  Jersey number of the offensive player, as a string (it can carry a leading
+  zero, e.g. "00").
+def_first_name: >-
+  First name of the defender.
+def_family_name: >-
+  Family name of the defender.
+def_name_i: >-
+  Defender's abbreviated display name ("J. Allen").
+def_player_slug: >-
+  URL slug of the defender ("jarrett-allen").
+def_jersey_num: >-
+  Jersey number of the defender, as a string (it can carry a leading zero).

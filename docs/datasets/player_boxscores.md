@@ -8,7 +8,7 @@ NBA Stats Player Boxscores from hoopR data repository — `boxscoretraditionalv3
 | **Release tag** | [`nba_stats_player_boxscores`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_player_boxscores) |
 | **File stem** | `player_boxscores_{season}.{parquet,csv,rds}` |
 | **Seasons built** | 1996-97–2025-26 (28 seasons, non-contiguous) |
-| **Last published** | 2026-07-24 (newest release asset) |
+| **Last published** | 2026-08-13 (newest release asset) |
 | **Tag created** | 2023-03-30 |
 | **Release assets** | 90 |
 
@@ -23,7 +23,7 @@ NBA Stats Player Boxscores from hoopR data repository — `boxscoretraditionalv3
 | `team_id` | Int64 | stats.nba.com team id (Int64, e.g. 1610612737 = Atlanta Hawks). |
 | `team_name` | String | Team nickname or full name as the source endpoint ships it. |
 | `team_tricode` | String | Three-letter team code as the v3 endpoints name it ("ATL"). |
-| `side` | String |  |
+| `side` | String | Which side of the game the OFFENSIVE player's team was on: "home" or "away". |
 | `person_id` | Int64 | stats.nba.com person id of the player (or official) the row describes; the same id space as player_id. |
 | `first_name` | String |  |
 | `family_name` | String |  |
@@ -53,7 +53,7 @@ NBA Stats Player Boxscores from hoopR data repository — `boxscoretraditionalv3
 | `points` | Int64 |  |
 | `plus_minus_points` | Float64 |  |
 | `game_id` | String | stats.nba.com game id, zero-padded 10-char string ("0022300001"; the "00" prefix is the NBA league id, so the id must never round-trip through int). |
-| `season` | Int64 | Season the row belongs to. Stats-API span form for NBA ("2023-24") in the released season assets; the schedule master carries the same span form. `draft` is the exception: it carries the four-digit draft year as an integer (2003 = the June 2003 draft, which precedes the 2003-04 season). |
+| `season` | Int64 | Season the row belongs to. On the reshaped release assets it is the season's ENDING year as an integer, matching the asset filename (2024 = the 2023-24 season) -- the 2026-08-13 republish moved every `nba_stats_*` asset onto END-year names and the column was converted with them. The span form ("2023-24") survives only where a payload carries its own season column. `draft` and `draft_combine` are the exception in the other direction: their integer is the four-digit draft year (2003 = the June 2003 draft, which precedes the 2003-04 season). |
 
 ## Coverage
 

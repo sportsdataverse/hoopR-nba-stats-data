@@ -1129,6 +1129,67 @@ class GamesInDataRepo(NbaStatsDataset):
     week_number: Optional[int] = None
 
 
+class GameMatchups(NbaStatsDataset):
+    """`game_matchups` — declared from the real compiled 2025-26 parquet.
+
+    One row per (game, offensive player, defender). The ``off_``/``def_``
+    prefixes are the payload's nesting, measured rather than assumed: the outer
+    player is the scorer (see ``reshape/build.py::matchup_rows``). ``game_id``
+    is Utf8 for the usual reason — "0022500001" loses its padding as an int —
+    while both person ids and both team ids are Int64.
+    """
+
+    off_team_id: Optional[int] = None
+    off_team_city: Optional[str] = None
+    off_team_name: Optional[str] = None
+    off_team_tricode: Optional[str] = None
+    off_team_slug: Optional[str] = None
+    def_team_id: Optional[int] = None
+    side: Optional[str] = None
+    off_person_id: Optional[int] = None
+    off_first_name: Optional[str] = None
+    off_family_name: Optional[str] = None
+    off_name_i: Optional[str] = None
+    off_player_slug: Optional[str] = None
+    off_position: Optional[str] = None
+    off_comment: Optional[str] = None
+    off_jersey_num: Optional[str] = None
+    def_person_id: Optional[int] = None
+    def_first_name: Optional[str] = None
+    def_family_name: Optional[str] = None
+    def_name_i: Optional[str] = None
+    def_player_slug: Optional[str] = None
+    def_jersey_num: Optional[str] = None
+    matchup_minutes: Optional[str] = None
+    matchup_minutes_sort: Optional[float] = None
+    partial_possessions: Optional[float] = None
+    percentage_defender_total_time: Optional[float] = None
+    percentage_offensive_total_time: Optional[float] = None
+    percentage_total_time_both_on: Optional[float] = None
+    switches_on: Optional[int] = None
+    player_points: Optional[int] = None
+    team_points: Optional[int] = None
+    matchup_assists: Optional[int] = None
+    matchup_potential_assists: Optional[int] = None
+    matchup_turnovers: Optional[int] = None
+    matchup_blocks: Optional[int] = None
+    matchup_field_goals_made: Optional[int] = None
+    matchup_field_goals_attempted: Optional[int] = None
+    matchup_field_goals_percentage: Optional[float] = None
+    matchup_three_pointers_made: Optional[int] = None
+    matchup_three_pointers_attempted: Optional[int] = None
+    matchup_three_pointers_percentage: Optional[float] = None
+    help_blocks: Optional[int] = None
+    help_field_goals_made: Optional[int] = None
+    help_field_goals_attempted: Optional[int] = None
+    help_field_goals_percentage: Optional[float] = None
+    matchup_free_throws_made: Optional[int] = None
+    matchup_free_throws_attempted: Optional[int] = None
+    shooting_fouls: Optional[int] = None
+    game_id: Optional[str] = None
+    season: Optional[int] = None
+
+
 MODELS: dict[str, type[NbaStatsDataset]] = {
     "standings": Standings,
     "player_season_stats": PlayerSeasonStats,
@@ -1145,6 +1206,7 @@ MODELS: dict[str, type[NbaStatsDataset]] = {
     "player_boxscores": PlayerBoxscores,
     "team_boxscores": TeamBoxscores,
     "shots": Shots,
+    "game_matchups": GameMatchups,
     "schedule_master": ScheduleMaster,
     "games_in_data_repo": GamesInDataRepo,
 }

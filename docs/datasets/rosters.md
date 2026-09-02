@@ -8,7 +8,7 @@ NBA Stats Rosters from hoopR data repository — `commonteamroster` (season-leve
 | **Release tag** | [`nba_stats_rosters`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_rosters) |
 | **File stem** | `rosters_{season}.{parquet,csv,rds}` |
 | **Seasons built** | — |
-| **Last published** | 2026-07-24 (newest release asset) |
+| **Last published** | 2026-08-13 (newest release asset) |
 | **Tag created** | 2026-07-24 |
 | **Release assets** | 90 |
 
@@ -21,7 +21,7 @@ NBA Stats Rosters from hoopR data repository — `commonteamroster` (season-leve
 | col_name | type | description |
 |---|---|---|
 | `team_id` | Int64 | stats.nba.com team id (Int64, e.g. 1610612737 = Atlanta Hawks). |
-| `season` | Int64 | Season the row belongs to. Stats-API span form for NBA ("2023-24") in the released season assets; the schedule master carries the same span form. `draft` is the exception: it carries the four-digit draft year as an integer (2003 = the June 2003 draft, which precedes the 2003-04 season). |
+| `season` | Int64 | Season the row belongs to. On the reshaped release assets it is the season's ENDING year as an integer, matching the asset filename (2024 = the 2023-24 season) -- the 2026-08-13 republish moved every `nba_stats_*` asset onto END-year names and the column was converted with them. The span form ("2023-24") survives only where a payload carries its own season column. `draft` and `draft_combine` are the exception in the other direction: their integer is the four-digit draft year (2003 = the June 2003 draft, which precedes the 2003-04 season). |
 | `league_id` | String | stats.nba.com league id ("00" = NBA). |
 | `player` | String |  |
 | `nickname` | String |  |

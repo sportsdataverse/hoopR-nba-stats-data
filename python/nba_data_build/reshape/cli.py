@@ -8,11 +8,13 @@ when ``--publish`` is passed and ``--dry-run`` is not — uploads them to the
 Build dispatch
 --------------
 Most datasets go through :func:`~nba_data_build.reshape.build.build` (the resultSets
-path). Three v3-nested datasets need their dedicated builders instead, and the
+path). The v3-nested datasets need their dedicated builders instead, and the
 CLI is where that routing lives:
 
 * ``pbp`` -> :func:`~nba_data_build.reshape.build.build_pbp` (rows under ``game.actions``)
 * ``player_boxscores`` / ``team_boxscores`` -> :func:`~nba_data_build.reshape.build.build_boxscores`
+* ``game_matchups`` -> :func:`~nba_data_build.reshape.build.build_matchups` (players
+  nested inside players)
 * ``shots`` -> :func:`~nba_data_build.reshape.build.build_shots`, *derived* from that
   season's pbp frame — so pbp is built once per season and reused, never twice.
 
@@ -155,6 +157,8 @@ def build_dataset(
         return _build.build_boxscores(root, season, team_level=False)
     if dataset.key == "team_boxscores":
         return _build.build_boxscores(root, season, team_level=True)
+    if dataset.key == "game_matchups":
+        return _build.build_matchups(root, season)
     return _build.build(root, dataset, season)
 
 

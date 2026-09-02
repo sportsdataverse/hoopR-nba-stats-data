@@ -8,7 +8,7 @@ NBA Stats League Standings V3 from hoopR data repository — `leaguestandingsv3`
 | **Release tag** | [`nba_stats_standings`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_standings) |
 | **File stem** | `standings_{season}.{parquet,csv,rds}` |
 | **Seasons built** | — |
-| **Last published** | 2026-07-24 (newest release asset) |
+| **Last published** | 2026-08-13 (newest release asset) |
 | **Tag created** | 2026-07-24 |
 | **Release assets** | 90 |
 
@@ -112,7 +112,7 @@ NBA Stats League Standings V3 from hoopR data repository — `leaguestandingsv3`
 | `playoff_seeding` | Int64 |  |
 | `clinched_post_season` | Int64 |  |
 | `neutral` | String |  |
-| `season` | Int64 | Season the row belongs to. Stats-API span form for NBA ("2023-24") in the released season assets; the schedule master carries the same span form. `draft` is the exception: it carries the four-digit draft year as an integer (2003 = the June 2003 draft, which precedes the 2003-04 season). |
+| `season` | Int64 | Season the row belongs to. On the reshaped release assets it is the season's ENDING year as an integer, matching the asset filename (2024 = the 2023-24 season) -- the 2026-08-13 republish moved every `nba_stats_*` asset onto END-year names and the column was converted with them. The span form ("2023-24") survives only where a payload carries its own season column. `draft` and `draft_combine` are the exception in the other direction: their integer is the four-digit draft year (2003 = the June 2003 draft, which precedes the 2003-04 season). |
 | `season_type` | String | Season type the capture was made under ("Regular Season", "Playoffs", ...). |
 
 ## Coverage

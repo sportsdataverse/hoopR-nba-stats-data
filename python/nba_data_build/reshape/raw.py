@@ -54,6 +54,7 @@ GAME_ENDPOINTS = (
     "boxscoretraditionalv3",
     "boxscoretraditionalv3_period",
     "boxscoresummaryv2",
+    "boxscorematchupsv3",
 )
 
 

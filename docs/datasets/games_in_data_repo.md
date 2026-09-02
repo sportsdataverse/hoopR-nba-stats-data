@@ -66,7 +66,7 @@ Stage-99 schedule-master artifact (spec D34/D36): only games present in at least
 | `league_id` | String | stats.nba.com league id ("00" = NBA). |
 | `month_num` | Int64 | Schedule-feed month ordinal. |
 | `postponed_status` | String | Postponement flag from the schedule feed ("A" = active/none). |
-| `season` | String | Season the row belongs to. Stats-API span form for NBA ("2023-24") in the released season assets; the schedule master carries the same span form. `draft` is the exception: it carries the four-digit draft year as an integer (2003 = the June 2003 draft, which precedes the 2003-04 season). |
+| `season` | String | Season the row belongs to. On the reshaped release assets it is the season's ENDING year as an integer, matching the asset filename (2024 = the 2023-24 season) -- the 2026-08-13 republish moved every `nba_stats_*` asset onto END-year names and the column was converted with them. The span form ("2023-24") survives only where a payload carries its own season column. `draft` and `draft_combine` are the exception in the other direction: their integer is the four-digit draft year (2003 = the June 2003 draft, which precedes the 2003-04 season). |
 | `season_type_description` | String | Human-readable season type ("Regular Season", "Playoffs", "PlayIn"). |
 | `season_type_id` | String | Leading digit of season_id encoding the season type (2 = regular season, 4 = playoffs, 5 = play-in). |
 | `series_game_number` | String | Playoff series game number ("Game 5"; empty otherwise). |

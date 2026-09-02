@@ -73,6 +73,7 @@ BUILDER = {
     "player_boxscores": "python/nba_stats_13_player_boxscores_creation.py",
     "team_boxscores": "python/nba_stats_14_team_boxscores_creation.py",
     "shots": "python/nba_stats_15_shots_creation.py",
+    "game_matchups": "python/nba_stats_16_game_matchups_creation.py",
     "schedule_master": "python/nba_stats_99_schedule_master_creation.py",
     "games_in_data_repo": "python/nba_stats_99_schedule_master_creation.py",
 }
@@ -85,7 +86,7 @@ MASTERS = {
     "games_in_data_repo": "nba_stats/nba_stats_games_in_data_repo.parquet",
 }
 
-#: Every documented page: the 15 registry datasets + the 2 master artifacts.
+#: Every documented page: the 16 registry datasets + the 2 master artifacts.
 PAGES: tuple[str, ...] = tuple(d.key for d in DATASETS) + tuple(MASTERS)
 
 AUTOMATION = (
