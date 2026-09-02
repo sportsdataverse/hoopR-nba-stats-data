@@ -64,6 +64,27 @@ synergy_season <- function(season_year, out_dir = "nba/synergy") {
             message(sprintf("synergy_empty %s %s %s %s %s", season, st, pt, tg, pm))
             next
           }
+          # The response carries PLAY_TYPE/TYPE_GROUPING; the filename below is
+          # built from the REQUESTED pt/tg. Writing without comparing them files a
+          # mislabelled response under the wrong variant, and the two disagreeing
+          # is the only signal it happened -- the same guard the Python builder's
+          # `_stamp` applies, with the same separator-insensitive normalisation so
+          # "PRRollMan" matches "PRRollman".
+          norm <- function(x) gsub("[^a-z0-9]", "", tolower(as.character(x)))
+          for (chk in list(
+            list(col = "PLAY_TYPE", want = pt),
+            list(col = "TYPE_GROUPING", want = tg)
+          )) {
+            if (!chk$col %in% names(res)) next
+            got <- unique(norm(res[[chk$col]]))
+            got <- got[!is.na(got) & nzchar(got)]
+            if (length(got) && !identical(got, norm(chk$want))) {
+              stop(sprintf(
+                "%s %s %s %s %s: request says %s=%s but payload says %s -- capture is mislabelled",
+                season, st, pt, tg, pm, chk$col, chk$want, paste(sort(got), collapse = ",")
+              ), call. = FALSE)
+            }
+          }
           stem <- sprintf(
             "%s_%s_%s_%s",
             ifelse(st == "Regular Season", "regular-season", "playoffs"),
