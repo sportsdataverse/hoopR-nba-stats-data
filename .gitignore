@@ -17,6 +17,11 @@ daily_basketball_scraper.sh
 .nba_pipeline_cache/
 logs/
 python/build_out/
+# out/ is the documented --out for manual model runs and what nba_models.yml
+# uses on a runner. The nightly driver builds into a mktemp dir and copies the
+# artifacts it means to keep into nba_stats/player_impact/, so nothing here is
+# ever the artifact of record.
+out/
 # --- SDV repo template ---------------------------------------------------
 /*.out
 /*.log

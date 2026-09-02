@@ -34,6 +34,8 @@ bash scripts/leaguedash_backfill.sh -s 2026 -e 2026 -n   # ...plan uploads, uplo
 python -m nba_data_build.leaguedash_cli --seasons 2026 --publish   # publish (deliberate)
 bash scripts/run_impact_backfill.sh        # nba_player_impact full-history backfill, BUILD-ONLY
 bash scripts/run_impact_backfill.sh 2025 --publish   # ...and upload to the release (deliberate)
+bash scripts/nightly_nba_impact.sh --dry-run         # current season, plan only, no commit
+bash scripts/nightly_nba_impact.sh 2026 --publish    # ...publish AND commit the artifacts
 bash scripts/run_v3_backfill.sh -s 1997 -e 2026   # Program V v3 backfill (resumable)
 bash scripts/run_v3_cutover.sh -s 1997 -e 2026    # D26d cutover -- DRY RUN by default
 python -m nba_data_build.warm_possession_cache 2000:2024   # warm the possession cache
@@ -57,11 +59,13 @@ module invocation
 **`run_impact_backfill.sh` also builds by default, but keeps a publish path.**
 `nba_model_publish impact` requires `--publish` to touch the release; without
 it the run builds and exits 0. The stronger no-upload-path-at-all treatment
-was rejected HERE because this publisher is wired: a daily droplet cron exists
-to publish `nba_player_impact` (`scripts/P0_DROPLET_RUNBOOK.md` §6), so
-removing the path would have converted a multi-hour job into a silent no-op —
-worse than the accidental publish, because nothing errors. The cron and the
-runbook backfill line pass `--publish`; `tests/test_impact_publish_optin.py`
+was rejected HERE because this publisher is wired. **Correction 2026-09-02: the
+"daily droplet cron" this paragraph relied on does not exist** — the droplet
+crontab has no `nba_player_impact` entry, and never did; the publish paths are
+this script, `scripts/nightly_nba_impact.sh`, and a manual `nba_models.yml`
+dispatch (which has never run). The argument still holds for the runbook job,
+which is multi-hour and would become a silent no-op. The runbook backfill line
+passes `--publish`; `tests/test_impact_publish_optin.py`
 pins both halves. `--dry-run` still plans the upload and beats `--publish`.
 
 `daily_nba_stats_python_processor.sh` remains a publisher by design, so read a
@@ -119,6 +123,22 @@ change both together.
   needs a live stats.nba.com scrape off-droplet. The other 14 datasets are complete.
 - The R scrapers above remain the **capture** path; the reshaper is the **build+publish**
   path from that captured raw.
+
+### Model artifacts ARE committed (decision 2026-09-02)
+
+`reshape/io.py` says released datasets are not committed to this repo, and D36
+retired the in-tree csv/rds copies on 2026-08-07. That governs the **reshaped
+`nba_stats_*` datasets**. It does not govern **model** output: the
+`nba_player_impact` parquet + rds + `*_card.json` are committed under
+`nba_stats/player_impact/` by `scripts/nightly_nba_impact.sh`.
+
+The reason the two differ: a release asset is overwritten in place and keeps no
+history, so for a reshaped dataset (deterministic from the raw store, rebuildable
+any time) that costs nothing, while for a model it destroys the only record of
+what a given run produced. csv stays release-only either way. Do not "restore
+consistency" by deleting `nba_stats/player_impact/` — that is this decision, not
+a D36 leak. The twin does the same thing at
+`wehoop-wnba-stats-data/wnba_stats/player_impact/`.
 
 ## Model registry
 

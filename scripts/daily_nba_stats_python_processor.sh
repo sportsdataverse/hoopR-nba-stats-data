@@ -15,6 +15,8 @@
 #
 # Artifacts are release-only (io.py: parquet+rds+csv all ship to tags, none are
 # committed here), so this writes to a scratch dir and uploads -- no git commit.
+# That is about the RESHAPED datasets. The nba_player_impact MODEL artifacts ARE
+# committed, by scripts/nightly_nba_impact.sh -- see CLAUDE.md (2026-09-02).
 
 set -uo pipefail
 
