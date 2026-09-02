@@ -26,7 +26,7 @@ NBA Stats Game Matchups from hoopR data repository — `boxscorematchupsv3` (gam
 | `off_team_tricode` | String | Three-letter abbreviation of the offensive player's team ("IND"). |
 | `off_team_slug` | String | URL slug of the offensive player's team ("pacers"). |
 | `def_team_id` | Int64 | Team id of the defender, read from the game envelope's homeTeamId/awayTeamId rather than the nested team object, which is 0 on uncovered captures. |
-| `side` | String | Which side of the game the OFFENSIVE player's team was on: "home" or "away". |
+| `side` | String | Which side of the game the row's team was on: "home" or "away". In `game_matchups`, where a row carries two teams, it is the OFFENSIVE player's team (`off_team_id`) -- the defender is always the other side. |
 | `off_person_id` | Int64 | stats.nba.com person id of the offensive player -- the one being guarded. |
 | `off_first_name` | String | First name of the offensive player. |
 | `off_family_name` | String | Family name of the offensive player. |
@@ -68,7 +68,7 @@ NBA Stats Game Matchups from hoopR data repository — `boxscorematchupsv3` (gam
 | `matchup_free_throws_attempted` | Int64 | Free throws attempted by the offensive player on trips drawn against this defender. |
 | `shooting_fouls` | Int64 | Shooting fouls committed by this defender on the offensive player. |
 | `game_id` | String | stats.nba.com game id, zero-padded 10-char string ("0022300001"; the "00" prefix is the NBA league id, so the id must never round-trip through int). |
-| `season` | Int64 | Season the row belongs to. On the reshaped release assets it is the season's ENDING year as an integer, matching the asset filename (2024 = the 2023-24 season) -- the 2026-08-13 republish moved every `nba_stats_*` asset onto END-year names and the column was converted with them. The span form ("2023-24") survives only where a payload carries its own season column. `draft` and `draft_combine` are the exception in the other direction: their integer is the four-digit draft year (2003 = the June 2003 draft, which precedes the 2003-04 season). |
+| `season` | Int64 | Season the row belongs to, in one of two forms depending on the artifact. On the reshaped RELEASE assets it is the season's ENDING year as an Int (2024 = the 2023-24 season), matching the asset filename -- the 2026-08-13 republish moved every `nba_stats_*` asset onto END-year names and converted the column with them. On the stage-99 master artifacts committed to `nba_stats/` (`schedule_master`, `games_in_data_repo`) it is the span STRING "1996-97" ... "2025-26", which is what those parquets store and what the schedule builder writes. `draft` and `draft_combine` are an Int in a third sense: the four-digit draft year (2003 = the June 2003 draft, which precedes the 2003-04 season). |
 
 ## Coverage
 

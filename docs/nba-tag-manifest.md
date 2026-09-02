@@ -52,7 +52,7 @@ existing content is overwritten.
 start-year filenames. It is a broad *combined legacy dump* spanning these families (one
 `{family}_{startyear}.{ext}` set each):
 
-```
+```text
 standings                                            <- overlaps new nba_stats_standings
 player_stats_{base,advanced,defense,misc,scoring,usage}   <- overlaps new nba_stats_player_season_stats
 team_stats_{base,advanced,defense,fourfactors,misc,opponent,scoring}  <- overlaps new nba_stats_team_season_stats

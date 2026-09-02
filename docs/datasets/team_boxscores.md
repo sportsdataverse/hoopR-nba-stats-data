@@ -23,7 +23,7 @@ NBA Stats Team Boxscores from hoopR data repository — `boxscoretraditionalv3` 
 | `team_id` | Int64 | stats.nba.com team id (Int64, e.g. 1610612737 = Atlanta Hawks). |
 | `team_name` | String | Team nickname or full name as the source endpoint ships it. |
 | `team_tricode` | String | Three-letter team code as the v3 endpoints name it ("ATL"). |
-| `side` | String | Which side of the game the OFFENSIVE player's team was on: "home" or "away". |
+| `side` | String | Which side of the game the row's team was on: "home" or "away". In `game_matchups`, where a row carries two teams, it is the OFFENSIVE player's team (`off_team_id`) -- the defender is always the other side. |
 | `minutes` | String |  |
 | `field_goals_made` | Int64 |  |
 | `field_goals_attempted` | Int64 |  |
@@ -45,7 +45,7 @@ NBA Stats Team Boxscores from hoopR data repository — `boxscoretraditionalv3` 
 | `points` | Int64 |  |
 | `plus_minus_points` | Float64 |  |
 | `game_id` | String | stats.nba.com game id, zero-padded 10-char string ("0022300001"; the "00" prefix is the NBA league id, so the id must never round-trip through int). |
-| `season` | Int64 | Season the row belongs to. On the reshaped release assets it is the season's ENDING year as an integer, matching the asset filename (2024 = the 2023-24 season) -- the 2026-08-13 republish moved every `nba_stats_*` asset onto END-year names and the column was converted with them. The span form ("2023-24") survives only where a payload carries its own season column. `draft` and `draft_combine` are the exception in the other direction: their integer is the four-digit draft year (2003 = the June 2003 draft, which precedes the 2003-04 season). |
+| `season` | Int64 | Season the row belongs to, in one of two forms depending on the artifact. On the reshaped RELEASE assets it is the season's ENDING year as an Int (2024 = the 2023-24 season), matching the asset filename -- the 2026-08-13 republish moved every `nba_stats_*` asset onto END-year names and converted the column with them. On the stage-99 master artifacts committed to `nba_stats/` (`schedule_master`, `games_in_data_repo`) it is the span STRING "1996-97" ... "2025-26", which is what those parquets store and what the schedule builder writes. `draft` and `draft_combine` are an Int in a third sense: the four-digit draft year (2003 = the June 2003 draft, which precedes the 2003-04 season). |
 
 ## Coverage
 

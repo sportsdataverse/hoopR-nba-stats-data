@@ -81,9 +81,7 @@ def _variant_columns(variant: str | None) -> dict[str, str]:
     return {n: p for n, p in zip(names, parts)}
 
 
-def build_season_dataset(
-    root: str | Path, dataset: Dataset, season: int
-) -> pl.DataFrame:
+def build_season_dataset(root: str | Path, dataset: Dataset, season: int) -> pl.DataFrame:
     """One season-level dataset, binding every captured parameter variant."""
     if dataset.endpoint is None:
         raise ValueError(f"{dataset.key} is derived; build it with its own builder")
@@ -148,9 +146,7 @@ def build_game_dataset(
         headers, rows = raw.result_set(payload, dataset.result_set)
         if not headers:
             continue
-        frames.append(
-            frame_from_result_set(headers, rows, {"season": season, "game_id": gid})
-        )
+        frames.append(frame_from_result_set(headers, rows, {"season": season, "game_id": gid}))
 
     if not frames:
         return pl.DataFrame()
@@ -174,16 +170,10 @@ def pbp_rows(payload: Any) -> list[dict[str, Any]]:
     """Action rows from one captured ``playbyplayv3`` payload."""
     if not isinstance(payload, dict):
         return []
-    return [
-        a
-        for a in (payload.get("game") or {}).get("actions") or []
-        if isinstance(a, dict)
-    ]
+    return [a for a in (payload.get("game") or {}).get("actions") or [] if isinstance(a, dict)]
 
 
-def build_pbp(
-    root: str | Path, season: int, game_ids: list[str] | None = None
-) -> pl.DataFrame:
+def build_pbp(root: str | Path, season: int, game_ids: list[str] | None = None) -> pl.DataFrame:
     """Season play-by-play, bound across every captured game.
 
     Columns are snake-cased from the v3 camelCase field names. Rows are kept in
@@ -389,6 +379,16 @@ def matchup_rows(payload: Any) -> list[dict[str, Any]]:
                     continue
                 def_cols = {f"def_{k}": v for k, v in defender.items() if k != "statistics"}
                 stats = defender.get("statistics") or {}
+                if not isinstance(stats, dict):
+                    # A truthy non-mapping ("statistics": "invalid") would raise
+                    # TypeError on the unpack below and abort the whole season
+                    # for one bad capture -- the trade read_result_sets already
+                    # makes. Skipped rather than emitted stats-less: a pair whose
+                    # entire counting block is null reads as a real zero, which
+                    # is worse than an absent pair. Silent, like the four sibling
+                    # guards above -- this module is deliberately logger-free
+                    # ("pure functions over payloads already on disk").
+                    continue
                 rows.append({**common, **off_cols, **def_cols, **stats})
     return rows
 
