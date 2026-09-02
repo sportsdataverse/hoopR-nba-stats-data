@@ -32,6 +32,10 @@ bash scripts/hydrate_raw_store.sh          # clone-free hydrate of the raw store
 bash scripts/leaguedash_backfill.sh        # league-dash cube, BUILD-ONLY; .done_<mode>_<season> on rc 0
 bash scripts/leaguedash_backfill.sh -s 2026 -e 2026 -n   # ...plan uploads, upload nothing
 python -m nba_data_build.leaguedash_cli --seasons 2026 --publish   # publish (deliberate)
+python -m nba_data_build.synergy_cli --seasons 2024 2025          # synergy cube, BUILD-ONLY
+python -m nba_data_build.synergy_cli --seasons 2024 --publish     # publish (deliberate)
+python -m nba_data_build.matchups_cli --seasons 2024 2025         # matchups, BUILD-ONLY
+python -m nba_data_build.combine_cli                              # draft combine, BUILD-ONLY
 bash scripts/run_impact_backfill.sh        # nba_player_impact full-history backfill, BUILD-ONLY
 bash scripts/run_impact_backfill.sh 2025 --publish   # ...and upload to the release (deliberate)
 bash scripts/nightly_nba_impact.sh --dry-run         # current season, plan only, no commit
@@ -56,6 +60,29 @@ can be typed by accident or copied out of a runbook line, whereas a script
 carrying no upload path cannot publish at all. Publishing is the deliberate
 module invocation
 `python -m nba_data_build.leaguedash_cli --seasons <y> --publish`.
+
+**`synergy_cli` compiles `nba_stats_synergy` from the raw store and makes no
+network calls** -- every payload is already committed in `hoopR-nba-stats-raw`
+(22 season dirs, 1,096 files, 88 variants). It writes one asset per
+`(variant, season)` and **never writes a zero-row asset**: seasons 1996-2005 and
+the in-progress season return well-formed payloads with an empty `rowSet`, and
+publishing those is exactly how 84 schema-only `ncaa_baseball` assets reached a
+release and had to be deleted. Default seasons are 2015-2025, the measured range
+that actually carries rows. `R/nba_stats_synergyplaytypes.R` is the language
+twin (no `sportsdataverse_save()` -- publishing stays on the Python path).
+
+**`matchups_cli` and `combine_cli` are the same compile on the other two layouts.**
+`nba_stats_matchups` carries BOTH `leagueseasonmatchups` and `matchupsrollup`,
+so asset names are endpoint-prefixed -- the two use identical stems and would
+otherwise overwrite each other. `nba_stats_draft_combine` is the five
+`draftcombine*` endpoints, flat `{year}.json`, and is distinct from
+`nba_stats_draft`, which is draft HISTORY and carries no measurements. Measured
+floors: matchups 2017-2025, combine 2000-2026. All three share
+`raw_compile.py`, whose empty-frame skip is the real guard.
+
+**Not compiled: `boxscorematchupsv3`.** 25,732 PER-GAME payloads in the v3
+envelope (`{meta, boxScoreMatchups}`), not the `resultSets` shape these use --
+it belongs with the per-game v3 reshape, not a season compile.
 **`run_impact_backfill.sh` also builds by default, but keeps a publish path.**
 `nba_model_publish impact` requires `--publish` to touch the release; without
 it the run builds and exits 0. The stronger no-upload-path-at-all treatment
