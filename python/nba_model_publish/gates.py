@@ -152,13 +152,45 @@ def oracle_metrics(frames: dict[int, pl.DataFrame], oracle_dir: Path) -> dict:
             rs = _rs(frames[season]).select("player_id", "rapm", "adj_rapm", "min")
             assert rs.schema["player_id"] == o.schema["player_id"] == pl.Int64
             m = rs.join(o, on="player_id", how="inner")
+            # Scale ratios against the SAME oracle rows we already correlate on.
+            # SCALE_BANDS below are calibrated from our own published history, so
+            # they can only catch a CHANGE -- never a miscalibration that was
+            # already there when the band was set. These ratios are the missing
+            # EXTERNAL anchor: 1.0 means we match EPM's dispersion on the joined
+            # players. Measured 2026-09-03 on the published 2026 tag,
+            # adj_rapm/epm came out ~2.1x while rapm/epm was ~0.96, and
+            # o_adj_rapm peaked at +22.0 where no oracle rating exceeds +6.4.
+            sd_epm = _sd(m, "epm")
             res["epm"][str(season)] = {
                 "n": m.height,
                 "r_rapm": _pearson(m, "rapm", "epm"),
                 "r_adj_rapm": _pearson(m, "adj_rapm", "epm"),
                 "r_minutes": _pearson(m, "min", "epm"),
+                "sd_ratio_rapm": _ratio(_sd(m, "rapm"), sd_epm),
+                "sd_ratio_adj_rapm": _ratio(_sd(m, "adj_rapm"), sd_epm),
             }
     return res
+
+
+def _sd(frame: pl.DataFrame, col: str) -> Optional[float]:
+    """Sample SD of *col*, or None when it cannot be measured."""
+    if col not in frame.columns or frame.height < 2:
+        return None
+    # drop_nans() as well as drop_nulls(): polars keeps IEEE NaN through
+    # drop_nulls(), one NaN makes .std() return nan, and json.dumps writes a
+    # non-standard `NaN` token that strict model-card consumers reject.
+    v = frame[col].drop_nulls().drop_nans()
+    if v.len() < 2:
+        return None
+    sd = float(v.std())
+    return None if math.isnan(sd) or math.isinf(sd) else sd
+
+
+def _ratio(num: Optional[float], den: Optional[float]) -> Optional[float]:
+    """num / den, or None when either side is missing or the denominator is ~0."""
+    if num is None or den is None or abs(den) < 1e-9:
+        return None
+    return float(num / den)
 
 
 def _min_of(values: Iterable[Optional[float]]) -> Optional[float]:
@@ -175,6 +207,19 @@ def _min_of(values: Iterable[Optional[float]]) -> Optional[float]:
 #: observed on the published release (seasons 1997-2026, measured 2026-09-02 with
 #: off_poss >= 500); the comment records the observation that set each one.
 #: Never widen a band to make a publish pass -- debug the build.
+#:
+#: KNOWN LIMIT of these bands, and it is not a small one. They are set from OUR OWN
+#: published values, so they can only catch a CHANGE -- never a miscalibration that
+#: was already present when the band was drawn. `sd_adj_rapm` is the worked example:
+#: the band (3.0, 8.0) was set around "observed 4.47 - 6.20", but the external
+#: oracles put a player-rating SD near 2.3 (EPM 2.281, DARKO 1.760) on the same
+#: 2026 rows. So the band's FLOOR already sits above the true scale, and an
+#: adj_rapm that is ~2.1x too wide passes it by construction. See the
+#: `sd_ratio_*` metrics in oracle_checks(), which anchor to EPM instead; a ratio
+#: near 1.0 is the target, and adj_rapm currently reports ~2.1.
+#: Do NOT tighten this band before the model is retuned -- it would block every
+#: publish rather than fix anything. Fix the scale, then draw the band from the
+#: oracle rather than from our own history.
 SCALE_QUALIFY_POSS = 500
 SCALE_BANDS: dict[str, tuple[float, float]] = {
     "mean_rapm": (-1.0, 1.0),  # observed |mean| <= 0.19
@@ -291,6 +336,11 @@ def format_report(report: dict) -> str:
 
 
 def load_frames_from_dir(out_dir: Path, seasons: Iterable[int]) -> dict[int, pl.DataFrame]:
+    seasons = list(seasons)
+    if not seasons:
+        # Returning {} here made check_publish_floors() emit only SKIPPED rows and
+        # exit 0 -- every publish gate bypassed, looking exactly like a pass.
+        raise SystemExit("gates: no seasons requested; refusing to report an all-SKIPPED pass")
     frames = {}
     for s in seasons:
         p = Path(out_dir) / f"{TAG}_{s}.parquet"
@@ -353,10 +403,15 @@ def check_publish_floors(
     )
     print("gates: publish floors (models/REGISTRY.md)\n" + format_report(report))
     card = out_dir / f"{TAG}_card.json"
-    if card.is_file():
-        payload = json.loads(card.read_text(encoding="utf-8"))
-        payload["publish_gates"] = {"seasons_gated": seasons, **report}
-        card.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    if not card.is_file():
+        # builders.py writes this unconditionally at the end of a build, and gates
+        # run after one -- so an absent card means the build did not finish. The
+        # publish-gate contract is that the card RECORDS the gates; skipping the
+        # write silently would let a publish succeed with no gate record at all.
+        raise SystemExit(f"gates: model card missing at {card}; the build did not complete")
+    payload = json.loads(card.read_text(encoding="utf-8"))
+    payload["publish_gates"] = {"seasons_gated": seasons, **report}
+    card.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     if scale_failed:
         raise SystemExit(
             "gates: publish SCALE BLOCKED — "
