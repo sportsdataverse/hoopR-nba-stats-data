@@ -176,8 +176,14 @@ def _sd(frame: pl.DataFrame, col: str) -> Optional[float]:
     """Sample SD of *col*, or None when it cannot be measured."""
     if col not in frame.columns or frame.height < 2:
         return None
-    v = frame[col].drop_nulls()
-    return float(v.std()) if v.len() >= 2 else None
+    # drop_nans() as well as drop_nulls(): polars keeps IEEE NaN through
+    # drop_nulls(), one NaN makes .std() return nan, and json.dumps writes a
+    # non-standard `NaN` token that strict model-card consumers reject.
+    v = frame[col].drop_nulls().drop_nans()
+    if v.len() < 2:
+        return None
+    sd = float(v.std())
+    return None if math.isnan(sd) or math.isinf(sd) else sd
 
 
 def _ratio(num: Optional[float], den: Optional[float]) -> Optional[float]:
@@ -330,6 +336,11 @@ def format_report(report: dict) -> str:
 
 
 def load_frames_from_dir(out_dir: Path, seasons: Iterable[int]) -> dict[int, pl.DataFrame]:
+    seasons = list(seasons)
+    if not seasons:
+        # Returning {} here made check_publish_floors() emit only SKIPPED rows and
+        # exit 0 -- every publish gate bypassed, looking exactly like a pass.
+        raise SystemExit("gates: no seasons requested; refusing to report an all-SKIPPED pass")
     frames = {}
     for s in seasons:
         p = Path(out_dir) / f"{TAG}_{s}.parquet"
@@ -392,10 +403,15 @@ def check_publish_floors(
     )
     print("gates: publish floors (models/REGISTRY.md)\n" + format_report(report))
     card = out_dir / f"{TAG}_card.json"
-    if card.is_file():
-        payload = json.loads(card.read_text(encoding="utf-8"))
-        payload["publish_gates"] = {"seasons_gated": seasons, **report}
-        card.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    if not card.is_file():
+        # builders.py writes this unconditionally at the end of a build, and gates
+        # run after one -- so an absent card means the build did not finish. The
+        # publish-gate contract is that the card RECORDS the gates; skipping the
+        # write silently would let a publish succeed with no gate record at all.
+        raise SystemExit(f"gates: model card missing at {card}; the build did not complete")
+    payload = json.loads(card.read_text(encoding="utf-8"))
+    payload["publish_gates"] = {"seasons_gated": seasons, **report}
+    card.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     if scale_failed:
         raise SystemExit(
             "gates: publish SCALE BLOCKED — "
