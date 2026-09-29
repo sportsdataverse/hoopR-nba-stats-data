@@ -29,7 +29,7 @@ NBA Stats Play-by-Play from hoopR data repository — `playbyplayv3` (game-level
 | `player_name` | String | Player display name as the stats API ships it ("LeBron James"). |
 | `player_name_i` | String | Abbreviated player name ("L. James"). |
 | `x_legacy` | Int64 | Shot x-coordinate in the legacy stats.nba.com coordinate frame (tenths of feet from the basket centerline; null for non-shots). |
-| `y_legacy` | Int64 | Shot y-coordinate in the legacy coordinate frame (tenths of feet from the baseline; null for non-shots). |
+| `y_legacy` | Int64 | Shot y-coordinate in the legacy coordinate frame (tenths of feet from the basket toward half court, so 0 at the basket and negative for a shot from behind it; null for non-shots). |
 | `shot_distance` | Int64 | Shot distance in feet (0 for non-shots). |
 | `shot_result` | String | "Made" / "Missed" for shot actions; empty otherwise. |
 | `is_field_goal` | Int64 | 1 when the action is a field-goal attempt, else 0. |

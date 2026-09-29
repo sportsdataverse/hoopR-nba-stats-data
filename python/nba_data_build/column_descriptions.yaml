@@ -74,7 +74,8 @@ x_legacy: >-
   feet from the basket centerline; null for non-shots).
 y_legacy: >-
   Shot y-coordinate in the legacy coordinate frame (tenths of feet from the
-  baseline; null for non-shots).
+  basket toward half court, so 0 at the basket and negative for a shot from
+  behind it; null for non-shots).
 shot_distance: >-
   Shot distance in feet (0 for non-shots).
 shot_result: >-
