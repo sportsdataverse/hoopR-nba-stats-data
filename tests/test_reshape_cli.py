@@ -70,7 +70,7 @@ def test_boxscores_route_to_team_and_player_levels(monkeypatch) -> None:
 def test_season_floor_skips_pre_floor_season_and_builds_at_the_floor(
     monkeypatch, tmp_path: Path
 ) -> None:
-    """lineups (season_floor=2007) must be skipped for 2006 and built for 2007."""
+    """lineups (season_floor=2008) must be skipped for 2007 and built for 2008."""
     built_seasons: list[int] = []
 
     def fake_build(root, dataset, season):
@@ -82,14 +82,14 @@ def test_season_floor_skips_pre_floor_season_and_builds_at_the_floor(
     monkeypatch.setattr(
         cli,
         "write_release_formats",
-        lambda *a, **k: {"parquet": Path("lineups_2007.parquet")},
+        lambda *a, **k: {"parquet": Path("lineups_2008.parquet")},
     )
 
     rc = cli.main(
         [
             "--seasons",
-            "2006",
             "2007",
+            "2008",
             "--datasets",
             "lineups",
             "--out",
@@ -98,21 +98,15 @@ def test_season_floor_skips_pre_floor_season_and_builds_at_the_floor(
     )
 
     assert rc == 0
-    assert built_seasons == [2007], "2006 gated by season_floor, 2007 built"
-
-
-def test_published_season_is_the_end_year() -> None:
-    """START year in, END year out — the whole publish-name contract."""
-    assert cli._published_season(1996) == 1997
-    assert cli._published_season(2025) == 2026
+    assert built_seasons == [2008], "2007 gated by season_floor, 2008 built"
 
 
 def test_build_writes_the_end_year_stem_and_stamps_the_column(monkeypatch, tmp_path: Path) -> None:
-    """Filename and `season` column must move together.
+    """Filename and `season` column carry the same END year as ``--seasons``.
 
-    sdv-db's ingest asserts ``frame.season == requested + 1`` and refuses the
-    write otherwise, so a stem that shifted without the column (or the reverse)
-    is a broken publish rather than a cosmetic one.
+    sdv-db's ingest refuses a frame whose ``season`` disagrees with the asset
+    year, so a stem that shifted without the column (or the reverse) is a broken
+    publish rather than a cosmetic one.
     """
     seen: dict[str, object] = {}
 
@@ -127,18 +121,18 @@ def test_build_writes_the_end_year_stem_and_stamps_the_column(monkeypatch, tmp_p
 
     monkeypatch.setattr(cli, "write_release_formats", fake_write)
 
-    rc = cli.main(["--seasons", "2013", "--datasets", "coaches", "--out", str(tmp_path)])
+    rc = cli.main(["--seasons", "2014", "--datasets", "coaches", "--out", str(tmp_path)])
     assert rc == 0
     assert seen["stem"].endswith("_2014"), "the 2013-14 season publishes as _2014"
     assert seen["season_col"] == [2014]
 
 
 def test_publish_scopes_uploads_by_the_published_year(monkeypatch, tmp_path: Path) -> None:
-    """`upload_artifacts` filters by filename year, so it needs the END year.
+    """`upload_artifacts` filters by filename year, which is the ``--seasons`` year.
 
-    Passing the requested START year matches no file on disk and uploads NOTHING
-    while still reporting success — a silent no-op publish, which is why this is
-    asserted rather than left to the caller.
+    A year that matches no file on disk uploads NOTHING while still reporting
+    success — a silent no-op publish, which is why this is asserted rather than
+    left to the caller.
     """
     monkeypatch.setattr(
         cli._build, "build", lambda root, dataset, season: pl.DataFrame({"season": [season]})
@@ -155,7 +149,7 @@ def test_publish_scopes_uploads_by_the_published_year(monkeypatch, tmp_path: Pat
     monkeypatch.setattr(cli, "upload_artifacts", fake_upload)
 
     rc = cli.main(
-        ["--seasons", "2013", "--datasets", "coaches", "--out", str(tmp_path), "--dry-run"]
+        ["--seasons", "2014", "--datasets", "coaches", "--out", str(tmp_path), "--dry-run"]
     )
     assert rc == 0
     assert got["seasons"] == [2014]

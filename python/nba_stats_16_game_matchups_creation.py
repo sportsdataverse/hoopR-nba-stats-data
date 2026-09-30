@@ -11,7 +11,7 @@ registry rather than slotted beside the other per-game datasets, because a
 number is a stable dataset identity -- inserting in the middle would renumber
 shims that already exist.
 
-Matchup tracking begins in 2017-18 (``season_floor=2017``); earlier seasons are
+Matchup tracking begins in 2017-18 (``season_floor=2018``, END year); earlier seasons are
 skipped before the build rather than shipping an empty asset.
 
 Equivalent to::

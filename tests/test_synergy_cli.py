@@ -141,10 +141,10 @@ def test_unreadable_payload_is_skipped_not_fatal(tmp_path: Path) -> None:
 
 
 def test_default_seasons_exclude_the_empty_eras() -> None:
-    """Measured 2026-09-02: 1996-2005 and 2026 hold files with zero rows."""
+    """Measured 2026-09-02: 1996-97..2005-06 and 2026-27 hold files with zero rows."""
     seasons = synergy_cli._parser().parse_args([]).seasons
-    assert seasons[0] == 2015 and seasons[-1] == 2025
-    assert 2026 not in seasons and 2003 not in seasons
+    assert seasons[0] == 2016 and seasons[-1] == 2026  # END years
+    assert 2027 not in seasons and 2003 not in seasons
 
 
 def test_main_refuses_to_publish_when_nothing_built(tmp_path: Path, capsys) -> None:

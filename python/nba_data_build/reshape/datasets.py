@@ -8,10 +8,10 @@ live in one place rather than scattered across ten scripts.
 ``hoopR:::make_hoopR_data(type, timestamp)`` and it is what ``print.hoopR_data``
 shows as the header, so published artifacts keep identifying themselves the same way.
 
-``season_floor`` is the first start-year season with real data for a dataset's source
-endpoint (from the Phase 0 coverage probe). ``None`` means 1996 — the full history —
+``season_floor`` is the first END-year season with real data for a dataset's source
+endpoint (from the Phase 0 coverage probe). ``None`` means 1997 (1996-97) — the full history —
 applies. A season below the floor produces no artifact rather than shipping an empty
-release; two datasets have a floor above 1996 — ``lineups`` (tracking-style lineup
+release; two datasets have a floor above 1997 — ``lineups`` (tracking-style lineup
 data begins 2007-08) and ``game_matchups`` (matchup tracking begins 2017-18).
 
 Datasets whose source is ``None`` are *derived* rather than reshaped from a single
@@ -38,7 +38,7 @@ class Dataset(NamedTuple):
     nba_type: str
     #: "season" = one payload per season; "game" = one per game, bound per season.
     level: str = "season"
-    #: First start-year season with real data; None means the full history (1996).
+    #: First END-year season with real data; None means the full history (1997).
     season_floor: int | None = None
 
 
@@ -76,7 +76,7 @@ DATASETS: tuple[Dataset, ...] = (
         "lineups",
         "nba_stats_lineups",
         f"NBA Stats Lineups {_R}",
-        season_floor=2007,
+        season_floor=2008,  # 2007-08
     ),
     Dataset(
         "rosters",
@@ -192,7 +192,7 @@ DATASETS: tuple[Dataset, ...] = (
         # EMPTY envelope, not a capture gap) and 2016-17 itself carries only 21
         # of its 1,414 games -- 1.5% coverage, which a season asset would
         # misrepresent as the season. 2017-18 onward is complete (1,304-1,322).
-        season_floor=2017,
+        season_floor=2018,  # 2017-18
     ),
 )
 

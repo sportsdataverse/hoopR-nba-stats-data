@@ -7,9 +7,9 @@ name: Annual NBA Draft Update
 # drafthistory raw capture) and uploads it to its release tag on
 # sportsdataverse-data.
 #
-# Season keying differs from every other dataset in this repo: the daily job
-# labels seasons by END year, but drafthistory keys on the DRAFT YEAR, so the
-# 2026 draft builds as --seasons 2026 (it precedes the 2026-27 season).
+# Season keying: the input/SEASON is the DRAFT YEAR, but reshape --seasons (and
+# the raw store, re-keyed 2026-09-30) are END years. The 2026 draft feeds the
+# 2026-27 season, so it builds as --seasons 2027 and publishes draft_2027.
 on:
   schedule:
     - cron: "0 8 27 6 *" # late June, ~day after the NBA draft (2024: Jun 26-27, 2025: Jun 25-26)
@@ -53,7 +53,7 @@ jobs:
         run: |
           uv run python -m nba_data_build.reshape \
             --root "https://raw.githubusercontent.com/sportsdataverse/hoopR-nba-stats-raw/main/nba_stats/json" \
-            --seasons "$SEASON" \
+            --seasons "$((SEASON + 1))" \
             --datasets draft \
             --out build_out \
             --publish

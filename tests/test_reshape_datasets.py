@@ -21,7 +21,7 @@ def test_release_tags_are_nba_stats_and_unique() -> None:
 def test_lineups_maps_to_the_classic_tag_not_v3() -> None:
     d = BY_KEY["lineups"]
     assert d.release_tag == "nba_stats_lineups"  # NOT nba_stats_lineups_v3
-    assert d.season_floor == 2007
+    assert d.season_floor == 2008  # 2007-08, END year
 
 
 def test_draft_endpoint_is_drafthistory() -> None:
@@ -33,10 +33,10 @@ def test_the_floored_datasets_are_the_two_tracking_ones() -> None:
 
     lineups: tracking-style lineup data begins 2007-08. game_matchups: matchup
     tracking begins 2017-18 (2016-17 holds 21 of 1,414 games, everything earlier
-    is a well-formed empty envelope).
+    is a well-formed empty envelope). Floors are END years.
     """
     floored = {d.key: d.season_floor for d in DATASETS if d.season_floor is not None}
-    assert floored == {"lineups": 2007, "game_matchups": 2017}
+    assert floored == {"lineups": 2008, "game_matchups": 2018}
 
 
 def test_nba_type_strings_describe_the_repo() -> None:

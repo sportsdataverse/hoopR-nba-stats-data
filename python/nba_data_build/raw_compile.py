@@ -14,8 +14,8 @@ Everything else is common: parse the one result set, skip an empty one, stamp th
 columns the payload does not carry, and write a parquet named for the asset.
 
 **The empty skip is the point.** The raw store holds well-formed payloads with an
-empty ``rowSet`` for seasons a family does not cover — synergy before 2015,
-matchups before 2017, the combine before 2000, and the in-progress season in all
+empty ``rowSet`` for seasons a family does not cover — synergy before 2015-16,
+matchups before 2017-18, the combine before 2000, and the in-progress season in all
 of them. Writing those produces schema-only assets that make a tag advertise
 coverage it does not have, which is exactly how 84 empty ``ncaa_baseball`` assets
 reached a release and had to be deleted (ledger L54).

@@ -12,7 +12,9 @@ This is distinct from ``nba_stats_draft``, which is draft **history** (who was
 picked where) and carries none of the measurements.
 
 Layout is flat -- ``{endpoint}/{year}.json`` -- so there is no season directory
-and no variant stem; the year is the only stamp.
+and no variant stem; the year is the only stamp. ``year`` is the END year of the
+season the combine feeds (the 2026 combine precedes 2026-27, so it is ``2027``),
+matching the rest of the raw store since the 2026-09-30 re-key.
 
 Makes no network calls.
 
@@ -46,11 +48,11 @@ _ENDPOINTS = (
     "draftcombinenonstationaryshooting",
 )
 
-#: Measured 2026-09-02: rows exist 2000-2026. The 1996-1999 files are present but
-#: empty for four of the five endpoints, so the floor is the data's, not the
-#: directory listing's.
-FIRST_YEAR = 2000
-LAST_YEAR = 2026
+#: Measured 2026-09-02: rows exist for the 2000-2026 combines (END years
+#: 2001-2027). The 1996-1999 combines are present but empty for four of the
+#: five endpoints, so the floor is the data's, not the directory listing's.
+FIRST_YEAR = 2001
+LAST_YEAR = 2027
 
 
 def _stamp(frame: pl.DataFrame, year: int) -> pl.DataFrame:

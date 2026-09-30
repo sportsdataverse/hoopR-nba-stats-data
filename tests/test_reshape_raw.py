@@ -2,8 +2,8 @@
 
 Most run against a synthetic tree so they work anywhere; the real-store tests use the
 sibling ``hoopR-nba-stats-raw`` checkout when present and skip otherwise, so CI without
-the sibling still passes. The load-bearing assertion is the start↔end season split:
-game endpoints key by the season END year, league endpoints by the START year.
+the sibling still passes. The load-bearing assertion: every store dir -- per-game and
+season-level alike -- is the season END year, so ``dir = season`` with no shift.
 """
 
 from __future__ import annotations
@@ -26,22 +26,7 @@ def _write(root: Path, rel: str, payload: object) -> None:
     p.write_text(json.dumps(payload), encoding="utf-8")
 
 
-# -- the split (unit) ---------------------------------------------------------------
-
-
-def test_store_dir_shifts_game_endpoints_to_end_year() -> None:
-    for ep in raw.GAME_ENDPOINTS:
-        assert raw.store_dir(ep, 2013) == 2014, ep
-
-
-def test_store_dir_leaves_league_endpoints_on_start_year() -> None:
-    for ep in (
-        "leaguestandingsv3",
-        "leaguedashlineups",
-        "leaguegamelog",
-        "drafthistory",
-    ):
-        assert raw.store_dir(ep, 2013) == 2013, ep
+# -- end-year dirs (unit) -----------------------------------------------------------
 
 
 def test_game_payload_path_uses_end_year_dir() -> None:
@@ -54,7 +39,7 @@ def test_game_payload_path_uses_end_year_dir() -> None:
 
 @needs_real_store
 def test_game_endpoint_season_2013_resolves_under_end_year_dir() -> None:
-    """A start-year-2013 game must be found in the 2014 (end-year) directory."""
+    """A 2013-14 game must be found in the 2014 (end-year) directory."""
     gid = "0021300001"
     expected = REAL_STORE / "playbyplayv3" / "2014" / f"{gid}.json"
     assert raw.game_payload_path(REAL_STORE, "playbyplayv3", gid) == expected
@@ -64,23 +49,22 @@ def test_game_endpoint_season_2013_resolves_under_end_year_dir() -> None:
 
 
 @needs_real_store
-def test_league_endpoint_season_2013_resolves_under_start_year_dir() -> None:
-    """A league endpoint keeps the start-year dir (2013), no shift."""
-    assert raw.store_dir("leaguestandingsv3", 2013) == 2013
-    payload = raw.read_season(REAL_STORE, "leaguestandingsv3", 2013, "regular-season")
+def test_league_endpoint_season_2014_resolves_under_end_year_dir() -> None:
+    """A league endpoint reads the end-year dir (2014 = 2013-14), no shift."""
+    payload = raw.read_season(REAL_STORE, "leaguestandingsv3", 2014, "regular-season")
     assert isinstance(payload, dict)
 
 
 @needs_real_store
 def test_available_games_enumerates_a_real_season() -> None:
-    games = raw.available_games(REAL_STORE, "playbyplayv3", 2013)
-    assert games, "expected captured play-by-play for start-year 2013"
+    games = raw.available_games(REAL_STORE, "playbyplayv3", 2014)
+    assert games, "expected captured play-by-play for 2013-14"
     assert all(g.isdigit() and len(g) == 10 for g in games)
 
 
 @needs_real_store
 def test_iter_game_payloads_yields_a_real_payload() -> None:
-    games = raw.available_games(REAL_STORE, "playbyplayv3", 2013)[:3]
+    games = raw.available_games(REAL_STORE, "playbyplayv3", 2014)[:3]
     got = list(raw.iter_game_payloads(REAL_STORE, "playbyplayv3", games))
     assert got, "expected at least one real payload"
     gid, payload = got[0]
@@ -89,8 +73,11 @@ def test_iter_game_payloads_yields_a_real_payload() -> None:
 
 @needs_real_store
 def test_season_game_ids_indexes_a_real_season() -> None:
-    ids = raw.season_game_ids(REAL_STORE, 2013)
+    ids = raw.season_game_ids(REAL_STORE, 2014)
     assert ids and all(len(i) == 10 for i in ids)
+    # The season-level index must hold the SAME season as the per-game dirs: every
+    # id in leaguegamelog/2014 decodes to end year 2014 (fails on a START-keyed store).
+    assert {raw.game_season_of(i) for i in ids} == {2014}
 
 
 # -- offline behaviour --------------------------------------------------------------
@@ -99,7 +86,7 @@ def test_season_game_ids_indexes_a_real_season() -> None:
 def test_missing_payload_returns_none(tmp_path: Path) -> None:
     """A gap must read as None, not raise — sweeps are always partially complete."""
     assert raw.read_game(tmp_path, "playbyplayv3", "0021300001") is None
-    assert raw.read_season(tmp_path, "leaguestandingsv3", 2013) is None
+    assert raw.read_season(tmp_path, "leaguestandingsv3", 2014) is None
 
 
 def test_corrupt_payload_returns_none(tmp_path: Path) -> None:
@@ -110,20 +97,20 @@ def test_corrupt_payload_returns_none(tmp_path: Path) -> None:
 
 
 def test_read_season_variant_paths(tmp_path: Path) -> None:
-    _write(tmp_path, "leaguedashlineups/2013/base_playoffs.json", {"ok": 1})
-    _write(tmp_path, "leaguestandingsv3/2013.json", {"ok": 2})
-    assert raw.read_season(tmp_path, "leaguedashlineups", 2013, "base_playoffs") == {
+    _write(tmp_path, "leaguedashlineups/2014/base_playoffs.json", {"ok": 1})
+    _write(tmp_path, "leaguestandingsv3/2014.json", {"ok": 2})
+    assert raw.read_season(tmp_path, "leaguedashlineups", 2014, "base_playoffs") == {
         "ok": 1
     }
-    assert raw.read_season(tmp_path, "leaguestandingsv3", 2013) == {"ok": 2}
-    assert raw.season_payload(tmp_path, "leaguestandingsv3", 2013) == {"ok": 2}
+    assert raw.read_season(tmp_path, "leaguestandingsv3", 2014) == {"ok": 2}
+    assert raw.season_payload(tmp_path, "leaguestandingsv3", 2014) == {"ok": 2}
 
 
-def test_available_games_reads_end_year_dir_for_game_endpoints(tmp_path: Path) -> None:
+def test_available_games_reads_the_season_dir_unshifted(tmp_path: Path) -> None:
     _write(tmp_path, "playbyplayv3/2014/0021300001.json", {"a": 1})
-    assert raw.available_games(tmp_path, "playbyplayv3", 2013) == ["0021300001"]
-    # start-year dir must not be consulted for a game endpoint
-    assert raw.available_games(tmp_path, "playbyplayv3", 2014) == []
+    assert raw.available_games(tmp_path, "playbyplayv3", 2014) == ["0021300001"]
+    # no +1/-1 shift: a neighbouring dir must not be consulted
+    assert raw.available_games(tmp_path, "playbyplayv3", 2013) == []
 
 
 def test_season_game_ids_unions_both_season_types(tmp_path: Path) -> None:
@@ -136,11 +123,11 @@ def test_season_game_ids_unions_both_season_types(tmp_path: Path) -> None:
 
     _write(
         tmp_path,
-        "leaguegamelog/2013/regular-season.json",
+        "leaguegamelog/2014/regular-season.json",
         log(["0021300001", "0021300002"]),
     )
-    _write(tmp_path, "leaguegamelog/2013/playoffs.json", log(["0041300001"]))
-    assert raw.season_game_ids(tmp_path, 2013) == [
+    _write(tmp_path, "leaguegamelog/2014/playoffs.json", log(["0041300001"]))
+    assert raw.season_game_ids(tmp_path, 2014) == [
         "0021300001",
         "0021300002",
         "0041300001",
@@ -151,10 +138,10 @@ def test_season_game_ids_zero_pads(tmp_path: Path) -> None:
     """stats.com sometimes returns the id as an int, which drops the leading zeros."""
     _write(
         tmp_path,
-        "leaguegamelog/2013/regular-season.json",
+        "leaguegamelog/2014/regular-season.json",
         {"resultSets": [{"headers": ["GAME_ID"], "rowSet": [[21300001]]}]},
     )
-    assert raw.season_game_ids(tmp_path, 2013) == ["0021300001"]
+    assert raw.season_game_ids(tmp_path, 2014) == ["0021300001"]
 
 
 def test_iter_game_payloads_skips_misses(tmp_path: Path) -> None:

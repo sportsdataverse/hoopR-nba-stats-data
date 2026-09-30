@@ -3,7 +3,7 @@
 Same guard as synergy, on the two other layouts: season directories with a
 variant stem (matchups) and flat per-year files (combine). Both hold well-formed
 payloads with an empty ``rowSet`` for years the family does not cover -- matchups
-before 2017, the combine before 2000, and the in-progress season in both -- and
+before 2017-18, the combine before 2000, and the in-progress season in both -- and
 writing those is how a tag comes to advertise coverage it does not have.
 """
 
@@ -86,8 +86,8 @@ def test_matchups_stamps_the_filename_columns(tmp_path: Path) -> None:
 
 def test_matchups_default_seasons_start_where_the_data_does() -> None:
     seasons = matchups_cli._parser().parse_args([]).seasons
-    assert seasons[0] == 2017 and seasons[-1] == 2025
-    assert 2026 not in seasons
+    assert seasons[0] == 2018 and seasons[-1] == 2026  # END years
+    assert 2027 not in seasons
 
 
 # --------------------------------------------------------------------------- combine
@@ -141,7 +141,7 @@ def test_combine_missing_year_file_is_skipped_not_fatal(tmp_path: Path) -> None:
 
 def test_combine_default_years_start_where_the_data_does() -> None:
     years = combine_cli._parser().parse_args([]).years
-    assert years[0] == 2000 and years[-1] == 2026
+    assert years[0] == 2001 and years[-1] == 2027  # the 2000-2026 combines, END-keyed
 
 
 def test_both_clis_refuse_to_publish_when_nothing_built(tmp_path: Path, capsys) -> None:

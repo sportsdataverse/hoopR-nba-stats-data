@@ -3,7 +3,7 @@
 Synthetic payloads for the unit cases; the real-store cases read the sibling
 ``hoopR-nba-stats-raw`` checkout and skip when it is absent. Ported from the WNBA
 reshaper's ``test_build.py`` — the v3 nesting is identical, so the extractors and
-their tests port over; the real-store seasons are NBA ones (2013, well-covered per
+their tests port over; the real-store seasons are NBA ones (2014 = 2013-14, well-covered per
 ``docs/nba-v3-coverage.md``).
 """
 
@@ -76,13 +76,13 @@ def test_variant_columns_carry_the_parameters() -> None:
 
 
 def test_season_dataset_reads_the_unparameterized_form(tmp_path: Path) -> None:
-    _write(tmp_path, "leaguestandingsv3/2013.json", _rs(["TEAM_ID"], [[1]]))
-    assert build.build_season_dataset(tmp_path, BY_KEY["standings"], 2013).height == 1
+    _write(tmp_path, "leaguestandingsv3/2014.json", _rs(["TEAM_ID"], [[1]]))
+    assert build.build_season_dataset(tmp_path, BY_KEY["standings"], 2014).height == 1
 
 
 def test_derived_dataset_refuses_the_generic_builder() -> None:
     with pytest.raises(ValueError, match="derived"):
-        build.build_season_dataset("/tmp", BY_KEY["shots"], 2013)
+        build.build_season_dataset("/tmp", BY_KEY["shots"], 2014)
 
 
 # -- against the real store ----------------------------------------------------
@@ -90,16 +90,16 @@ def test_derived_dataset_refuses_the_generic_builder() -> None:
 
 @needs_real
 def test_standings_from_real_store() -> None:
-    df = build.build(REAL, BY_KEY["standings"], 2013)
+    df = build.build(REAL, BY_KEY["standings"], 2014)
     assert df.height > 0, "standings built empty from the real store"
     assert not [c for c in df.columns if "_i_d" in c], df.columns
     assert "season" in df.columns
-    assert df["season"].unique().to_list() == [2013]  # START year
+    assert df["season"].unique().to_list() == [2014]  # END year (2013-14)
 
 
 @needs_real
 def test_player_season_stats_from_real_store() -> None:
-    df = build.build(REAL, BY_KEY["player_season_stats"], 2013)
+    df = build.build(REAL, BY_KEY["player_season_stats"], 2014)
     assert df.height > 0, "player_season_stats built empty from the real store"
     assert not [c for c in df.columns if "_i_d" in c], df.columns
 
@@ -107,14 +107,14 @@ def test_player_season_stats_from_real_store() -> None:
 @needs_real
 def test_game_rosters_from_real_store() -> None:
     """boxscoresummaryv2 resultSets path (InactivePlayers)."""
-    df = build.build(REAL, BY_KEY["game_rosters"], 2013)
+    df = build.build(REAL, BY_KEY["game_rosters"], 2014)
     assert df.height > 0, "game_rosters built empty from the real store"
     assert {"game_id", "season"} <= set(df.columns)
 
 
 @needs_real
 def test_pbp_from_real_store() -> None:
-    df = build.build_pbp(REAL, 2013)
+    df = build.build_pbp(REAL, 2014)
     assert df.height > 0, "pbp built empty from the real store"
     assert {"game_id", "season"} <= set(df.columns)
     # game_id stays a zero-padded 10-char Utf8 id, never a float cast
@@ -125,14 +125,14 @@ def test_pbp_from_real_store() -> None:
 @needs_real
 @pytest.mark.parametrize("team_level", [False, True])
 def test_boxscores_from_real_store(team_level: bool) -> None:
-    df = build.build_boxscores(REAL, 2013, team_level=team_level)
+    df = build.build_boxscores(REAL, 2014, team_level=team_level)
     assert df.height > 0, f"boxscores(team_level={team_level}) built empty"
     assert {"game_id", "season", "team_id"} <= set(df.columns)
 
 
 @needs_real
 def test_shots_derived_from_real_pbp() -> None:
-    shots = build.build_shots(build.build_pbp(REAL, 2013))
+    shots = build.build_shots(build.build_pbp(REAL, 2014))
     assert shots.height > 0, "shots derived empty from real pbp"
     # every retained row is a field-goal action
     assert "is_field_goal" not in shots.columns  # filtered, not carried
@@ -143,12 +143,12 @@ def test_shots_derived_from_real_pbp() -> None:
 def test_draft_builds_from_the_real_store() -> None:
     """draft routes through build_season_dataset (endpoint ``drafthistory``).
 
-    The 2013 draft is 60 picks over two rounds. Asserting the count rather than
-    just non-emptiness is deliberate: an unfiltered drafthistory call answers
+    The 2013 draft (it feeds 2013-14, END year 2014) is 60 picks over two rounds.
+    Asserting the count rather than just non-emptiness is deliberate: an unfiltered drafthistory call answers
     with the FULL 1947-2026 history, so a season that silently lost its season
     filter would still be "non-empty" — it would just be wrong.
     """
-    df = build.build(REAL, BY_KEY["draft"], 2013)
+    df = build.build(REAL, BY_KEY["draft"], 2014)
     assert df.height == 60, f"2013 draft built {df.height} rows, expected 60"
-    assert set(df["season"].unique().to_list()) == {2013}
+    assert set(df["season"].unique().to_list()) == {2014}
     assert sorted(df["round_number"].unique().to_list()) == [1, 2]

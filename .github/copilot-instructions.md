@@ -98,7 +98,7 @@ into `v3_staging/` (never clobbering the live tree) and is verified by
 `python -m nba_data_build.v3_gate`; it is operator-run, not workflow-wired.
 Its game universe covers **every** season type: `leaguegamelog` (captured only
 at regular-season + playoffs) supplies the metadata it has, and
-`scheduleleaguev2/{START}.json` supplies the ids it never covered — preseason
+`scheduleleaguev2/{season}.json` (END year) supplies the ids it never covered — preseason
 `001`, All-Star `003`, play-in `005`, NBA Cup final `006`. `season_type` comes
 from the game-id type digit; digit `9` is an arena hold and is dropped. Older
 eras legitimately lack the later types. Points and `W`/`L` come only from a
@@ -160,10 +160,10 @@ comment says so explicitly and derives the default with an October rollover
 **start year**; that inversion is the kind that silently labels a whole season
 wrong, so treat the workflow's rule as the source of truth.
 
-Two documented exceptions:
+The raw store is END-keyed too (`{endpoint}/2024/` holds 2023-24 for both the
+per-game and season-level halves, since the 2026-09-30 re-key). One documented
+exception:
 
-- The **season-level** half of the raw store keys its dirs by start year
-  (`{endpoint}/2023/` holds 2023-24).
 - Several stats.nba.com endpoints require the span spelling `"2023-24"` and
   return a silent zero-row frame for a bare year. That spelling is owned by the
   shared engine (`sportsdataverse.scrape.stats`, league-keyed), not here.

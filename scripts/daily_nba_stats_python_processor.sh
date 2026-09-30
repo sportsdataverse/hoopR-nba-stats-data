@@ -79,7 +79,7 @@ for i in $(seq "${START_YEAR}" "${END_YEAR}"); do
         echo "=== season ${i} started $(date -u +'%F %T')Z ==="
         "${PYBIN}" -m nba_data_build.reshape \
             --root "${RAW_ROOT}" \
-            --seasons "$((i - 1))" \
+            --seasons "${i}" \
             --out "${OUT_DIR}" \
             --publish
         py_rc=$?
@@ -96,12 +96,9 @@ for i in $(seq "${START_YEAR}" "${END_YEAR}"); do
         # publish that already happened.
         #
         # -s/-e and ${i} are END years (2026 = 2025-26), the ecosystem convention
-        # (owner, 2026-09-30) and what daily_nba_stats.yml passes. Stage 99's
-        # --season is END too. The one START-keyed seam is `reshape --seasons`
-        # above (the raw store's season-level layout, raw.store_dir), hence
-        # $((i - 1)) there. Before this, the workflow's END year went straight
-        # into reshape as a START year: the first in-season compile would have
-        # built NEXT season and published nothing.
+        # (owner, 2026-09-30) and what daily_nba_stats.yml passes. `reshape
+        # --seasons`, the raw store (re-keyed 2026-09-30) and Stage 99's --season
+        # are all END too -- no START/END seam anywhere.
         "${PYBIN}" python/nba_stats_99_schedule_master_creation.py \
             --built-dir "${OUT_DIR}" --season "${i}" --stamp-only \
             2>&1 | tee -a "${LOGFILE}" \

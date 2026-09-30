@@ -14,8 +14,8 @@ The committed tree is untouched until the section-9.3 gate (:mod:`.v3_gate`)
 passes; the cutover move + tag swap (D26d) is a separate operator decision.
 
 Season convention: CLI seasons are **END years** (2006 = the 2005-06 season),
-matching the raw store's game-endpoint directories. ``leaguegamelog`` and
-``scheduleleaguev2`` season dirs/files are keyed by START year (end - 1).
+matching every raw-store directory -- per-game and season-level alike
+(``leaguegamelog``, ``scheduleleaguev2``) since the 2026-09-30 re-key.
 
 Game universe: **every** season type, not just the two ``leaguegamelog`` was
 captured at. ``leaguegamelog`` (regular-season + playoffs) stays the metadata
@@ -156,7 +156,7 @@ def _read_gamelog(
             / "nba_stats"
             / "json"
             / "leaguegamelog"
-            / str(season_end - 1)
+            / str(season_end)
             / f"{variant}.json"
         )
         if not path.exists():
@@ -307,13 +307,13 @@ def schedule_from_league_schedule(raw_root: Union[str, Path], season_end: int) -
 
     Args:
         raw_root: Raw-store root (``hoopR-nba-stats-raw``).
-        season_end: Season **END** year (2026 = 2025-26). The payload file is
-            keyed by START year, matching ``leaguegamelog``.
+        season_end: Season **END** year (2026 = 2025-26), which is also the
+            payload's file name.
 
     Returns:
         One row per game in ``_SCHEDULE_SCHEMA``; empty frame when uncaptured.
     """
-    path = Path(raw_root) / "nba_stats" / "json" / "scheduleleaguev2" / f"{season_end - 1}.json"
+    path = Path(raw_root) / "nba_stats" / "json" / "scheduleleaguev2" / f"{season_end}.json"
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):

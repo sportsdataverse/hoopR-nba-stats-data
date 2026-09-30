@@ -90,24 +90,25 @@ def test_ids_stay_int64_join_keys(tmp_path: Path) -> None:
 def test_an_empty_season_ships_no_asset(tmp_path: Path) -> None:
     """2013-14 and 2014-15 answer a valid envelope with no rows; those are skipped."""
     raw, out = tmp_path / "raw", tmp_path / "out"
-    _season_file(raw, "leaguehustlestatsplayer", 2014, "regular-season_totals", _PLAYER_HEADERS, [])
-    _both(raw, 2015, "regular-season_totals")
+    _season_file(raw, "leaguehustlestatsplayer", 2015, "regular-season_totals", _PLAYER_HEADERS, [])
+    _both(raw, 2017, "regular-season_totals")
 
-    written = hustle_cli.build([2014, 2015], out, raw=raw)
+    written = hustle_cli.build([2015, 2017], out, raw=raw)
 
-    assert not list((out / _TAG).glob("*_2014.parquet"))
+    assert not list((out / _TAG).glob("*_2015.parquet"))
     assert all(rows > 0 for rows in written.values())
 
 
 def test_the_floor_is_the_measured_one() -> None:
-    """2015, from a live probe of the endpoint -- not from where capture happens to start.
+    """2016 (2015-16, END year), from a live probe of the endpoint -- not from where
+    capture happens to start.
 
     Lowering it would ship 2013-14/2014-15 as schema-only assets, which is how a
     tag comes to advertise coverage it does not have.
     """
     seasons = hustle_cli._parser().parse_args([]).seasons
-    assert seasons[0] == 2015 and seasons[-1] == 2025
-    assert 2026 not in seasons  # the in-progress season is still filling
+    assert seasons[0] == 2016 and seasons[-1] == 2026
+    assert 2027 not in seasons  # the in-progress season is still filling
 
 
 def test_a_stem_the_layout_does_not_produce_raises(tmp_path: Path) -> None:
@@ -120,37 +121,37 @@ def test_a_stem_the_layout_does_not_produce_raises(tmp_path: Path) -> None:
         hustle_cli.build([2024], out, raw=raw)
 
 
-def test_the_2015_regular_season_is_dropped_and_its_playoffs_kept(tmp_path: Path) -> None:
-    """2015-16 regular season is 2 games; its playoffs are complete.
+def test_the_2015_16_regular_season_is_dropped_and_its_playoffs_kept(tmp_path: Path) -> None:
+    """2015-16 (END 2016) regular season is 2 games; its playoffs are complete.
 
     Both halves are populated, so only the season-type-scoped skip separates
     them -- the empty-payload guard sees two non-empty frames.
     """
     raw, out = tmp_path / "raw", tmp_path / "out"
-    _both(raw, 2015, "regular-season_totals")
-    _both(raw, 2015, "playoffs_totals")
+    _both(raw, 2016, "regular-season_totals")
+    _both(raw, 2016, "playoffs_totals")
 
-    written = hustle_cli.build([2015], out, raw=raw)
+    written = hustle_cli.build([2016], out, raw=raw)
 
     names = sorted(p.name for p in (out / _TAG).glob("*.parquet"))
     assert names == [
-        "leaguehustlestatsplayer_playoffs_totals_2015.parquet",
-        "leaguehustlestatsteam_playoffs_totals_2015.parquet",
+        "leaguehustlestatsplayer_playoffs_totals_2016.parquet",
+        "leaguehustlestatsteam_playoffs_totals_2016.parquet",
     ]
     assert not any("regular-season" in k for k in written)
 
 
-def test_the_thin_skip_applies_to_2015_only(tmp_path: Path) -> None:
+def test_the_thin_skip_applies_to_2016_only(tmp_path: Path) -> None:
     """A blanket regular-season skip would empty the whole tag."""
     raw, out = tmp_path / "raw", tmp_path / "out"
-    _both(raw, 2016, "regular-season_totals")
+    _both(raw, 2017, "regular-season_totals")
 
-    hustle_cli.build([2016], out, raw=raw)
+    hustle_cli.build([2017], out, raw=raw)
 
-    assert (out / _TAG / "leaguehustlestatsplayer_regular-season_totals_2016.parquet").exists()
-    assert not hustle_cli._thin(2016, "regular-season_totals")
-    assert hustle_cli._thin(2015, "regular-season_pergame")
-    assert not hustle_cli._thin(2015, "playoffs_totals")
+    assert (out / _TAG / "leaguehustlestatsplayer_regular-season_totals_2017.parquet").exists()
+    assert not hustle_cli._thin(2017, "regular-season_totals")
+    assert hustle_cli._thin(2016, "regular-season_pergame")
+    assert not hustle_cli._thin(2016, "playoffs_totals")
 
 
 def test_matchups_and_hustle_stamp_through_the_same_helper() -> None:

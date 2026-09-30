@@ -15,7 +15,7 @@ from pathlib import Path
 
 import polars as pl
 import pytest
-from nba_data_build.reshape import build, cli, raw
+from nba_data_build.reshape import build, raw
 from nba_data_build.reshape.datasets import BY_KEY
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "raw" / "nba_stats" / "json"
@@ -105,7 +105,7 @@ def test_defending_team_is_the_other_side(payload: dict) -> None:
 
 
 def test_stats_are_flattened_and_snake_cased() -> None:
-    df = build.build_matchups(FIXTURES, 2023, game_ids=[GAME])
+    df = build.build_matchups(FIXTURES, 2024, game_ids=[GAME])
     assert df.height > 0
     for col in (
         "game_id",
@@ -125,11 +125,11 @@ def test_stats_are_flattened_and_snake_cased() -> None:
     assert df["game_id"].dtype == pl.String
     assert df["off_person_id"].dtype == pl.Int64
     assert df["def_person_id"].dtype == pl.Int64
-    assert df["season"].to_list() == [2023] * df.height
+    assert df["season"].to_list() == [2024] * df.height
 
 
 def test_empty_capture_yields_no_rows(tmp_path: Path) -> None:
-    """A pre-2017 payload is a well-formed envelope with empty player lists.
+    """A pre-2017-18 payload is a well-formed envelope with empty player lists.
 
     Those must produce ZERO rows, not a schema-only stripe -- 14,197 of the
     25,732 captured payloads are exactly this shape.
@@ -148,7 +148,7 @@ def test_empty_capture_yields_no_rows(tmp_path: Path) -> None:
     p = tmp_path / "boxscorematchupsv3" / "1997"
     p.mkdir(parents=True)
     (p / "0029600001.json").write_text(json.dumps(empty), encoding="utf-8")
-    assert build.build_matchups(tmp_path, 1996, game_ids=["0029600001"]).is_empty()
+    assert build.build_matchups(tmp_path, 1997, game_ids=["0029600001"]).is_empty()
 
 
 def test_malformed_payload_is_not_fatal() -> None:
@@ -181,47 +181,32 @@ def test_a_non_mapping_statistics_costs_its_pair_not_the_season(payload: dict) -
 # -- registry wiring -----------------------------------------------------------
 
 
-def test_registered_as_a_game_level_dataset_with_the_2017_floor() -> None:
+def test_registered_as_a_game_level_dataset_with_the_2018_floor() -> None:
     ds = BY_KEY["game_matchups"]
     assert ds.level == "game"
     assert ds.endpoint == "boxscorematchupsv3"
     assert ds.release_tag == "nba_stats_game_matchups"
     # 2016-17 has 21 of 1,414 games; shipping it would advertise a season we hold
-    # 1.5% of.
-    assert ds.season_floor == 2017
+    # 1.5% of. The floor is the END year of 2017-18.
+    assert ds.season_floor == 2018
 
 
 def test_endpoint_is_keyed_by_the_season_end_year() -> None:
-    """Per-game payloads live under the season's END year.
+    """Per-game payloads live under the season's END year, which is the season arg.
 
     The fixture proves it: 0022300001 is a 2023-24 game and sits in ``2024/``.
-    Leaving the endpoint out of ``GAME_ENDPOINTS`` would make ``store_dir`` point
-    a season listing at the start-year directory, which does not exist.
     """
-    assert "boxscorematchupsv3" in raw.GAME_ENDPOINTS
-    assert raw.store_dir("boxscorematchupsv3", 2023) == 2024
     assert raw.game_payload_path(FIXTURES, "boxscorematchupsv3", GAME).parent.name == "2024"
+    assert raw.available_games(FIXTURES, "boxscorematchupsv3", 2024) == [GAME]
 
 
-def test_the_builder_stamps_the_START_year_and_the_cli_converts_it() -> None:
-    """START year in the builder, END year at the write boundary -- not both.
+def test_the_builder_stamps_the_end_year_it_is_given() -> None:
+    """No shift anywhere: ``--seasons``, the store dir, the builder's ``season``
+    column and the published filename are all the same END year.
 
-    `reshape/cli.py` converts START -> END once, for the filename and the
-    `season` column together (`_published_season`), and its module docstring is
-    explicit that this happens "never inside `build`, which deliberately holds
-    no season/dir logic". Every sibling builder (`build_pbp`, `build_boxscores`,
-    `build_game_dataset`) stamps the START year for the same reason.
-
-    Adding `season + 1` inside `build_matchups` would therefore double-shift:
-    the 2023-24 season would ship as `game_matchups_2024.parquet` carrying
-    `season = 2025`. This test is the guard against that "fix".
+    Adding ``season + 1`` inside ``build_matchups`` (or the CLI) would therefore
+    double-shift: the 2023-24 season would ship as ``game_matchups_2024.parquet``
+    carrying ``season = 2025``. This test is the guard against that "fix".
     """
-    df = build.build_matchups(FIXTURES, 2023, game_ids=[GAME])
-    assert df["season"].unique().to_list() == [2023], "builder must stamp the START year"
-
-    published = cli._published_season(2023)
-    assert published == 2024, "the CLI is the one place the shift happens"
-    stamped = df.with_columns(pl.lit(published).cast(df.schema["season"]).alias("season"))
-    assert stamped["season"].unique().to_list() == [2024], (
-        "filename and column agree only when the shift is applied exactly once"
-    )
+    df = build.build_matchups(FIXTURES, 2024, game_ids=[GAME])
+    assert df["season"].unique().to_list() == [2024], "builder stamps the END year as given"

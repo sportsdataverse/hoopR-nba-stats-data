@@ -67,10 +67,10 @@ module invocation
 **`synergy_cli` compiles `nba_stats_synergy` from the raw store and makes no
 network calls** -- every payload is already committed in `hoopR-nba-stats-raw`
 (22 season dirs, 1,096 files, 88 variants). It writes one asset per
-`(variant, season)` and **never writes a zero-row asset**: seasons 1996-2005 and
+`(variant, season)` and **never writes a zero-row asset**: seasons 1996-97..2005-06 and
 the in-progress season return well-formed payloads with an empty `rowSet`, and
 publishing those is exactly how 84 schema-only `ncaa_baseball` assets reached a
-release and had to be deleted. Default seasons are 2015-2025, the measured range
+release and had to be deleted. Default seasons are 2016-2026 (END years), the measured range
 that actually carries rows. `R/nba_stats_synergyplaytypes.R` is the language
 twin (no `sportsdataverse_save()` -- publishing stays on the Python path).
 
@@ -80,7 +80,8 @@ so asset names are endpoint-prefixed -- the two use identical stems and would
 otherwise overwrite each other. `nba_stats_draft_combine` is the five
 `draftcombine*` endpoints, flat `{year}.json`, and is distinct from
 `nba_stats_draft`, which is draft HISTORY and carries no measurements. Measured
-floors: matchups 2017-2025, combine 2000-2026. All three share
+default ranges (END years = dir = asset year): matchups 2018-2026, combine 2001-2027
+(the 2000-2026 combines). All three share
 `raw_compile.py`, whose empty-frame skip is the real guard.
 
 **`hustle_cli` is the fourth, and the one where the empty-frame skip is not
@@ -89,7 +90,7 @@ enough.** `nba_stats_hustle` carries `leaguehustlestatsplayer` +
 layout as matchups, so it is that CLI with the endpoint names swapped -- both
 stamp through the shared `raw_compile.stamp_season_type_per_mode`, because a
 divergent second copy of that grammar would not fail, it would stamp a playoff
-frame as regular season. Measured floor 2015-2025 (2013-14 and 2014-15 answer a
+frame as regular season. Default 2016-2026 (END years; 2013-14 and 2014-15 answer a
 valid zero-row envelope), and:
 
 - **2015-16's REGULAR SEASON is 2 games and is dropped; its PLAYOFFS are
@@ -124,7 +125,7 @@ rest of the `boxscore*v2` family.
 (`{meta, boxScoreMatchups}`), not the `resultSets` shape the season compiles
 use, and it publishes to its own tag `nba_stats_game_matchups` on the reshaper's
 conventions (END-year asset names, parquet + rds + csv) rather than the season
-compiles' START-year parquet. Two things about it are load-bearing:
+compiles' parquet-only assets. Two things about it are load-bearing:
 
 - **The outer player is the OFFENSIVE one; the nested `matchups[]` are the
   defenders.** nba_api's parser cannot be cited here -- it names the outer loop
@@ -135,7 +136,7 @@ compiles' START-year parquet. Two things about it are load-bearing:
   Inverting it would silently mislabel every defensive metric built on the tag,
   so `tests/test_reshape_matchups.py::test_outer_player_is_the_offensive_player`
   keeps the measurement runnable.
-- **`season_floor=2017`.** 14,197 of the 25,732 payloads are well-formed EMPTY
+- **`season_floor=2018`** (2017-18, END year). 14,197 of the 25,732 payloads are well-formed EMPTY
   envelopes, not capture gaps: nothing before 2016-17, and 2016-17 itself has
   only 21 of its 1,414 games. Publishing a 1.5%-covered season would advertise
   coverage we do not hold, which is the `ncaa_baseball` failure in another
@@ -162,9 +163,10 @@ change both together.
 
 ## Conventions
 
-- **Seasons are END year** (`2026` = 2025-26), with one documented exception:
-  the season-level half of the raw store keys its dirs by start year. Several
-  stats.nba.com endpoints also need the span spelling `"2023-24"` and return a
+- **Seasons are END year** (`2026` = 2025-26) everywhere: every CLI `--seasons`,
+  every published asset, and BOTH halves of the raw store (season-level dirs were
+  re-keyed from START to END on 2026-09-30), so there is no START/END shift in
+  any reader. Several stats.nba.com endpoints also need the span spelling `"2023-24"` and return a
   silent zero-row frame for a bare year — the shared engine owns that spelling.
 - This repo makes no stats.nba.com requests. Capture bugs belong to
   `sportsdataverse.scrape.stats` (the shared engine behind both stats-raw
@@ -202,8 +204,8 @@ change both together.
   missing release and the cutover dry run cannot warn (`remote_assets()` returns
   `{}` for both "absent" and "empty"), so run the init script first whenever the
   pipeline gains a new release target.
-  Season-dir split: **league endpoints key by start-year, game endpoints by
-  end-year** (`season_of=start+1`). `lineups` floor 2007; history 1996–2025.
+  Every store dir is the season END year (`dir = season`, no split since the
+  2026-09-30 re-key); `--seasons` is END. `lineups` floor 2008; history 1997–2026.
   **These tags have no hoopR loader** — `load_nba_*` read ESPN tags; the
   `nba_stats_*` tags are a standalone product (see memory `nba_stats_tags_standalone`).
 - **Draft is NOT built yet:** `drafthistory` is uncaptured in `-raw` (0 files) and
@@ -260,7 +262,7 @@ is a valid cadence but must be stated explicitly.
 
   **Game universe = every season type.** `leaguegamelog` was only ever captured
   at `regular-season` + `playoffs`, so it stays the metadata source where it has
-  the game and `scheduleleaguev2/{START}.json` supplies the ids it never covered:
+  the game and `scheduleleaguev2/{season}.json` supplies the ids it never covered:
   preseason (`001`), All-Star (`003`), play-in (`005`) and the NBA Cup final
   (`006`). `season_type` is derived from the game-id type digit
   (`v3_backfill.SEASON_TYPE_OF_PREFIX`); digit `9` is an arena hold, not a game,

@@ -6,24 +6,19 @@ tree or a sibling checkout and the whole pipeline runs offline, which is what ma
 the builders testable; point it at :data:`RAW_BASE` and the same code reads each JSON
 file over HTTP instead (what the daily workflow does, having no checkout of the store).
 
-The store has two layouts, because the endpoints are keyed differently:
+The store has two layouts, both keyed by the season **END** year (the 1996-97
+season lives under ``1997``; season-level dirs were re-keyed from START to END on
+2026-09-30), so ``dir = season`` everywhere and no reader shifts anything:
 
-``{endpoint}/{dir}/{game_id}.json``
+``{endpoint}/{season}/{game_id}.json``
     Per-game payloads (``playbyplayv3``, ``boxscoretraditionalv3``,
-    ``boxscoresummaryv2`` and the per-period boxscore variant). Because an NBA season
-    spans two calendar years, the store keys these by the season **end** year
-    (``dir = start + 1``). :func:`game_season_of` decodes that end year straight from
-    the 10-digit game id (reused from ``scrape.raw_store`` so the reader and the
-    writer can never drift), and :func:`store_dir` maps a **start-year** season arg to
-    the same end-year directory when listing a season's games.
+    ``boxscoresummaryv2`` and the per-period boxscore variant). :func:`game_season_of`
+    decodes the end year straight from the 10-digit game id (reused from
+    ``scrape.raw_store`` so the reader and the writer can never drift).
 
 ``{endpoint}/{season}/{variant}.json`` or ``{endpoint}/{season}.json``
     Season-level payloads (standings, season stats, lineups, rosters, draft, and the
-    ``leaguegamelog`` game index). These are keyed by the season **start** year, so
-    ``dir = season`` — no shift.
-
-The split between the two keyings lives in exactly one place, :func:`store_dir`; every
-reader routes season→dir through it.
+    ``leaguegamelog`` game index).
 
 ``root`` may be a local checkout or the ``raw.githubusercontent.com`` base URL, so a
 job can run against a sibling clone on disk or read the tree straight from GitHub.
@@ -45,28 +40,6 @@ from ..scrape.raw_store import season_of as game_season_of
 RAW_BASE = (
     "https://raw.githubusercontent.com/sportsdataverse/hoopR-nba-stats-raw/main/nba_stats/json"
 )
-
-# Per-game endpoints are keyed by the season END year (start + 1); every other
-# endpoint is keyed by the season START year. This tuple is the whole basis of the
-# split -- store_dir() is the one function that consults it.
-GAME_ENDPOINTS = (
-    "playbyplayv3",
-    "boxscoretraditionalv3",
-    "boxscoretraditionalv3_period",
-    "boxscoresummaryv2",
-    "boxscorematchupsv3",
-)
-
-
-def store_dir(endpoint: str, season: int) -> int:
-    """Store directory (year) holding ``endpoint``'s payloads for a start-year season.
-
-    Game endpoints key by the season **end** year (``season + 1``); league/season-level
-    endpoints key by the **start** year (``season``). This is the single point where the
-    NBA start↔end split is applied — every reader passes season through here rather than
-    hardcoding the shift, so the two keyings can never disagree by accident.
-    """
-    return season + 1 if endpoint in GAME_ENDPOINTS else season
 
 
 def _is_url(root: str | Path) -> bool:
@@ -133,8 +106,7 @@ def _read_json(root: str | Path, rel: str) -> Any | None:
 def game_payload_path(root: str | Path, endpoint: str, game_id: str) -> Path:
     """On-disk path of a per-game payload (local roots only).
 
-    The directory is decoded from the game id itself (season end year), so this is
-    correct regardless of which start-year season the caller thinks the game belongs to.
+    The directory is decoded from the game id itself (season end year).
     """
     return Path(root) / endpoint / str(game_season_of(game_id)) / f"{str(game_id).zfill(10)}.json"
 
@@ -150,27 +122,25 @@ def read_season(
 ) -> Any | None:
     """One season-level payload, or ``None`` if absent.
 
-    ``season`` is the start-year label; the directory is resolved through
-    :func:`store_dir`. ``variant`` matches the raw repo's slug (``regular-season``,
-    ``playoffs``, ``base_totals``, a team id for ``commonteamroster``); omit it for
-    unparameterized endpoints written as a bare ``{season}.json``.
+    ``season`` is the END year, which is also the store directory. ``variant``
+    matches the raw repo's slug (``regular-season``, ``playoffs``, ``base_totals``,
+    a team id for ``commonteamroster``); omit it for unparameterized endpoints
+    written as a bare ``{season}.json``.
     """
-    sd = store_dir(endpoint, season)
-    rel = f"{endpoint}/{sd}/{variant}.json" if variant else f"{endpoint}/{sd}.json"
+    rel = f"{endpoint}/{season}/{variant}.json" if variant else f"{endpoint}/{season}.json"
     return _read_json(root, rel)
 
 
 def available_games(root: str | Path, endpoint: str, season: int) -> list[str]:
     """Game ids captured for ``endpoint`` in ``season`` (local roots only).
 
-    ``season`` is the start-year label; the directory read is
-    ``store_dir(endpoint, season)`` (end year for game endpoints). Enumerating a URL
+    ``season`` is the END year, which is also the directory read. Enumerating a URL
     root is not supported — GitHub serves files, not listings — so callers working
     against RAW_BASE should drive from :func:`season_game_ids`.
     """
     if _is_url(root):
         raise ValueError("available_games needs a local root; use season_game_ids for URLs")
-    d = Path(root) / endpoint / str(store_dir(endpoint, season))
+    d = Path(root) / endpoint / str(season)
     if not d.is_dir():
         return []
     return sorted(p.stem for p in d.glob("*.json"))
@@ -197,7 +167,7 @@ def season_game_ids(root: str | Path, season: int) -> list[str]:
 
     This is the authoritative index — it covers games whose per-game payloads have
     not been captured yet, which :func:`available_games` by definition cannot.
-    ``leaguegamelog`` is a season-level endpoint, so it reads from the start-year dir.
+    ``season`` is the END year (the ``leaguegamelog/{season}/`` dir).
     """
     out: set[str] = set()
     for stype in ("regular-season", "playoffs"):

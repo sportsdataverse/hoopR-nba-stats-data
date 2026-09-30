@@ -5,11 +5,12 @@ Verbatim raw-store layout (`nba_stats/json/{kind}/{game_id}.json`, matching
 exercise `nba_data_build.process.from_raw.process_game` with zero network
 access.
 
-## `leaguegamelog/2024/regular-season.json` -- neutral-site pivot regression
+## `leaguegamelog/2025/regular-season.json` -- neutral-site pivot regression
 
-Real `leaguegamelog` rows sliced verbatim out of
+Real `leaguegamelog` rows (2024-25, `SEASON_ID` 22024) sliced verbatim out of
 `hoopR-nba-stats-raw/nba_stats/json/leaguegamelog/2024/regular-season.json`
-(captured 2026-08; headers and `parameters` preserved) for three games:
+(captured 2026-08; headers and `parameters` preserved; moved to the END-year dir
+`2025/` with the store's 2026-09-30 re-key) for three games:
 
 - `0022400147` -- Mexico City Game 2024 (`WAS @ MIA` / `MIA @ WAS`).
 - `0022401230` -- NBA Cup final, Las Vegas (`OKC @ HOU` / `HOU @ OKC`).

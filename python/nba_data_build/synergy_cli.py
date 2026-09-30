@@ -12,7 +12,9 @@ Layout read::
 
     {raw}/synergyplaytypes/{season}/{season_type}_{play_type}_{grouping}_{per_mode}.json
 
-88 variants = season_type x play_type x {offensive,defensive} x {pergame,totals}.
+``{season}`` is the END year (2016 = 2015-16) -- the raw-store dir and the asset
+year are the same. 88 variants = season_type x play_type x {offensive,defensive} x
+{pergame,totals}.
 Each file is the standard stats.nba.com envelope with a single ``SynergyPlayType``
 result set (24 headers, one row per player).
 
@@ -43,14 +45,14 @@ _TAG = "nba_stats_synergy"
 _ENDPOINT = "synergyplaytypes"
 
 #: Seasons whose payloads actually carry rows. The raw store has directories back
-#: to 1996 and forward to the current season, but synergy tracking only exists
-#: from 2015 and the in-progress season is empty until games are played --
-#: measured 2026-09-02: 1996-2005 and 2026 hold files with ZERO rows.
+#: to 1996-97 and forward to the current season, but synergy tracking only exists
+#: from 2015-16 and the in-progress season is empty until games are played --
+#: measured 2026-09-02: 1996-97..2005-06 and 2026-27 hold files with ZERO rows.
 #: Publishing those would recreate exactly the schema-only-asset problem that put
 #: 84 empty ``ncaa_baseball`` assets on a release (ledger L54). The empty-frame
 #: skip in :func:`build` is the real guard; this is the default season list.
-FIRST_SEASON = 2015
-LAST_SEASON = 2025
+FIRST_SEASON = 2016  # 2015-16 (END year)
+LAST_SEASON = 2026
 
 #: ``{season_type}_{play_type}_{grouping}_{per_mode}`` -- play_type may itself
 #: contain no underscores, so anchor on the known head and tail instead.

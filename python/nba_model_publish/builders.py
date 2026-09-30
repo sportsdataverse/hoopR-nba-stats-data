@@ -488,14 +488,12 @@ def _store_backed(
 
 
 def _season_store_year(season: Any) -> Optional[int]:
-    """``"2023-24"`` -> ``2023``: the directory a SEASON-LEVEL capture lives in.
+    """``"2023-24"`` -> ``2024``: the directory a SEASON-LEVEL capture lives in.
 
-    The raw store's two halves are keyed differently and neither errors when
-    confused -- the per-game half by season END year (derived from the game id),
-    the season-level half by START year (the year the sweep passed to the API).
-    These fetchers are season-level, and the API label they receive is already
-    start-year, so the directory is just its leading year. An ``int`` is taken
-    as the directory verbatim.
+    Both halves of the raw store are keyed by the season END year (season-level
+    dirs re-keyed from START on 2026-09-30), so the API label's leading START
+    year is shifted by one. An ``int`` is taken as the (END-year) directory
+    verbatim.
 
     Returns ``None`` for anything unparseable, routing that call to live rather
     than guessing at a directory.
@@ -504,7 +502,7 @@ def _season_store_year(season: Any) -> Optional[int]:
         return season
     text = str(season or "")
     if len(text) >= 4 and text[:4].isdigit():
-        return int(text[:4])
+        return int(text[:4]) + 1
     return None
 
 

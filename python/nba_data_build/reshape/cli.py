@@ -22,7 +22,8 @@ Season floor
 ------------
 A dataset whose source endpoint has no data before some season (``season_floor``)
 produces no artifact for pre-floor seasons: the CLI skips it before building
-rather than shipping an empty release (only ``lineups`` has a floor above 1996).
+rather than shipping an empty release (``lineups`` and ``game_matchups`` have floors
+above the 1997 full history).
 
 Publish is controller-gated
 ---------------------------
@@ -30,18 +31,13 @@ The default (no flags) and ``--dry-run`` both stop after writing locally under
 ``--out``: nothing is uploaded. ``--dry-run`` wins if both it and ``--publish``
 are passed.
 
-Published assets are keyed by the season's END year
----------------------------------------------------
-``--seasons`` takes the START year, matching the raw store's season-level layout
-and every other CLI in this repo. The PUBLISHED artifact does not: since the
-2026-08-13 republish, ``nba_stats_*`` release assets are named by the season's
-ENDING year and their ``season`` column carries it, so the 1996-97 season ships
-as ``coaches_1997.parquet`` with ``season = 1997``.
-
-Both the filename and the column are converted together at the write boundary by
-:func:`_published_season` — never inside ``build``, which deliberately holds no
-season/dir logic. Consumers depend on the two agreeing: sdv-db's ingest asserts
-``frame.season == requested + 1`` and REFUSES the write when it does not, and
+Everything is keyed by the season's END year
+--------------------------------------------
+``--seasons`` takes the END year, which is also the raw-store directory (both
+halves of the store are END-keyed since the 2026-09-30 re-key) and the published
+year: the 1996-97 season is ``--seasons 1997`` and ships as
+``coaches_1997.parquet`` with ``season = 1997``. Filename and column carry the
+same year; sdv-db's ingest refuses a frame whose ``season`` disagrees, and
 sportsdataverse-py's ``load_nba_stats_*`` fetch these names directly.
 
 hoopR is NOT a consumer of these tags — its ``load_nba_*`` read the ESPN-sourced
@@ -68,24 +64,6 @@ from .raw import _is_url
 
 _REPO = "sportsdataverse/sportsdataverse-data"
 
-#: START year -> the year the PUBLISHED asset is named and stamped with.
-#:
-#: 1 since the 2026-08-13 republish moved every ``nba_stats_*`` release asset
-#: onto END-year names. Named rather than inlined because two call sites must
-#: agree: the writer here and ``master.stamp_from_built``, which reads the files
-#: back by the same name. A drift between them is silent -- the reader simply
-#: finds nothing and leaves stale flags in place.
-_PUBLISHED_SEASON_OFFSET = 1
-
-
-def _published_season(season: int) -> int:
-    """The season's ENDING year: what the release asset is named and stamped with.
-
-    ``--seasons`` takes the START year (the raw store's season-level convention),
-    so 1996 builds the 1996-97 season and publishes it as ``*_1997``.
-    """
-    return season + _PUBLISHED_SEASON_OFFSET
-
 
 def build_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(prog="nba_data_build.reshape")
@@ -94,7 +72,7 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         nargs="+",
         required=True,
-        help="season START years to build, e.g. 2013 (NBA season 2013 = 2013-14)",
+        help="season END years to build, e.g. 2014 (NBA season 2014 = 2013-14)",
     )
     ap.add_argument(
         "--datasets",
@@ -184,7 +162,7 @@ def main(argv: Optional[list[str]] = None) -> int:
             pbp = _build.build_pbp(root, season)
         for dataset in datasets:
             # Pre-floor seasons have no source data: skip rather than ship an
-            # empty release (only lineups has a floor above the 1996 full history).
+            # empty release (see Dataset.season_floor).
             if dataset.season_floor is not None and season < dataset.season_floor:
                 print(f"skip {dataset.key} {season}: below season_floor {dataset.season_floor}")
                 continue
@@ -192,14 +170,12 @@ def main(argv: Optional[list[str]] = None) -> int:
             if df.is_empty():
                 print(f"skip {dataset.key} {season}: no rows")
                 continue
-            # START year in, END year out -- filename and column together.
-            pub = _published_season(season)
-            if "season" in df.columns:
-                df = df.with_columns(pl.lit(pub).cast(df.schema["season"]).alias("season"))
+            # Every builder already stamps `season` with this END year, so the
+            # filename and the column agree without any conversion here.
             paths = write_release_formats(
                 df,
                 out / dataset.release_tag,
-                f"{dataset.stem}_{pub}",
+                f"{dataset.stem}_{season}",
                 nba_type=dataset.nba_type,
                 timestamp=stamp,
             )
@@ -217,12 +193,9 @@ def main(argv: Optional[list[str]] = None) -> int:
                 out / tag,
                 tag,
                 args.repo,
-                # PUBLISHED years, not the requested ones: plan_uploads scopes by
-                # matching `_{season}.{ext}` against the filenames on disk, and
-                # those now carry the END year. Passing the START years here
-                # matches nothing and the publish uploads zero files while still
-                # reporting success.
-                seasons=[_published_season(s) for s in seasons],
+                # plan_uploads scopes by matching `_{season}.{ext}` against the
+                # filenames on disk, which carry the same END year as --seasons.
+                seasons=seasons,
                 exts=("parquet", "rds", "csv"),
                 dry_run=args.dry_run,
             )

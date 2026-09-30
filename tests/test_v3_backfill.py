@@ -11,7 +11,7 @@ import pytest
 from nba_data_build import v3_backfill as vb
 
 
-def _write_gamelog(raw_root: Path, start_year: int, variant: str, rows: list[list]) -> None:
+def _write_gamelog(raw_root: Path, season_end: int, variant: str, rows: list[list]) -> None:
     headers = [
         "SEASON_ID",
         "TEAM_ID",
@@ -23,7 +23,7 @@ def _write_gamelog(raw_root: Path, start_year: int, variant: str, rows: list[lis
         "WL",
         "PTS",
     ]
-    d = raw_root / "nba_stats" / "json" / "leaguegamelog" / str(start_year)
+    d = raw_root / "nba_stats" / "json" / "leaguegamelog" / str(season_end)
     d.mkdir(parents=True, exist_ok=True)
     payload = {"resultSets": [{"name": "LeagueGameLog", "headers": headers, "rowSet": rows}]}
     (d / f"{variant}.json").write_text(json.dumps(payload), encoding="utf-8")
@@ -34,7 +34,7 @@ def raw_root(tmp_path: Path) -> Path:
     root = tmp_path / "raw"
     _write_gamelog(
         root,
-        2005,
+        2006,
         "regular-season",
         [
             ["22005", 1, "AAA", "Alphas", "0020500001", "2005-11-01", "AAA vs. BBB", "W", 101],
@@ -43,7 +43,7 @@ def raw_root(tmp_path: Path) -> Path:
     )
     _write_gamelog(
         root,
-        2005,
+        2006,
         "playoffs",
         [
             ["42005", 1, "AAA", "Alphas", "0040500001", "2006-04-20", "AAA vs. BBB", "L", 88],
@@ -91,8 +91,8 @@ def test_schedule_from_gamelog_neutral_site_keeps_both_sides() -> None:
 
 def test_schedule_from_gamelog_neutral_site_without_boxscore(tmp_path: Path) -> None:
     """No boxscore to disambiguate still beats dropping a team off the game."""
-    src = FIXTURE_RAW / "nba_stats" / "json" / "leaguegamelog" / "2024"
-    dst = tmp_path / "nba_stats" / "json" / "leaguegamelog" / "2024"
+    src = FIXTURE_RAW / "nba_stats" / "json" / "leaguegamelog" / "2025"
+    dst = tmp_path / "nba_stats" / "json" / "leaguegamelog" / "2025"
     dst.mkdir(parents=True)
     shutil.copy(src / "regular-season.json", dst / "regular-season.json")
     df = vb.schedule_from_gamelog(tmp_path, 2025)
@@ -104,10 +104,10 @@ def test_schedule_from_gamelog_neutral_site_without_boxscore(tmp_path: Path) -> 
     }
 
 
-def _write_league_schedule(raw_root: Path, start_year: int, games: list[dict]) -> None:
+def _write_league_schedule(raw_root: Path, season_end: int, games: list[dict]) -> None:
     d = raw_root / "nba_stats" / "json" / "scheduleleaguev2"
     d.mkdir(parents=True, exist_ok=True)
-    (d / f"{start_year}.json").write_text(
+    (d / f"{season_end}.json").write_text(
         json.dumps({"leagueSchedule": {"gameDates": [{"games": games}]}}), encoding="utf-8"
     )
 
@@ -146,7 +146,7 @@ def test_season_schedule_adds_non_gamelog_game_types(raw_root: Path) -> None:
     """Preseason / All-Star / play-in / NBA Cup reach the universe via scheduleleaguev2."""
     _write_league_schedule(
         raw_root,
-        2005,
+        2006,
         [
             _game("0010500001", 3, 90, 88),  # preseason
             _game("0020500001", 3, 1, 2),  # already in the gamelog -- must NOT override

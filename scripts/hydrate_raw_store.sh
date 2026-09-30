@@ -7,7 +7,7 @@
 # extracts them into one directory that is a valid raw store root. Cloning the
 # ~1GB raw repo is never necessary.
 #
-#   bash scripts/hydrate_raw_store.sh                     # 1996:2026 -> ./.raw_store
+#   bash scripts/hydrate_raw_store.sh                     # 1997:2027 -> ./.raw_store
 #   bash scripts/hydrate_raw_store.sh 2024:2026           # a sub-range
 #   RAW_STORE_DIR=/data/raw bash scripts/hydrate_raw_store.sh
 #
@@ -18,7 +18,9 @@
 # a killed run can be re-run. Requires `gh` (read access is enough).
 set -uo pipefail
 
-SEASONS="${1:-1996:2026}"
+# Every store dir is an END year (re-keyed 2026-09-30). Bundles published before
+# the re-key carry the old mixed START/END layout -- delete the store and re-hydrate.
+SEASONS="${1:-1997:2027}"
 REPO="${RAW_REPO:-sportsdataverse/hoopR-nba-stats-raw}"
 TAG="${BUNDLE_TAG:-nba-stats-raw-json}"
 DEST="${RAW_STORE_DIR:-$PWD/.raw_store}"

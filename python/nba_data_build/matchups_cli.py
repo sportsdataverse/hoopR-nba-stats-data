@@ -8,8 +8,9 @@ Two season-level endpoints, both captured and neither ever compiled:
 ``matchupsrollup``
     The same matchups rolled up by defensive position.
 
-Both use ``{season}/{season_type}_{per_mode}.json``, so one tag carries both with
-an endpoint prefix on the asset name.
+Both use ``{season}/{season_type}_{per_mode}.json`` (``season`` = END year, which
+is also the asset year), so one tag carries both with an endpoint prefix on the
+asset name.
 
 **Not included: ``boxscorematchupsv3``.** It is 25,732 PER-GAME payloads in the v3
 envelope (``{meta, boxScoreMatchups}``), not the ``resultSets`` shape these two
@@ -45,10 +46,11 @@ logger = logging.getLogger(__name__)
 _TAG = "nba_stats_matchups"
 _ENDPOINTS = ("leagueseasonmatchups", "matchupsrollup")
 
-#: Measured 2026-09-02: both endpoints return rows for 2017-2025 only.
-#: 1996-2005 and the in-progress season hold payloads with an empty rowSet.
-FIRST_SEASON = 2017
-LAST_SEASON = 2025
+#: Measured 2026-09-02: both endpoints return rows for 2017-18..2025-26 only
+#: (END years 2018-2026). 1996-97..2005-06 and the in-progress season hold
+#: payloads with an empty rowSet.
+FIRST_SEASON = 2018
+LAST_SEASON = 2026
 
 def build(seasons: list[int], out: Path, *, raw: Optional[Path] = None) -> dict[str, int]:
     """Compile both matchup endpoints into ``out/nba_stats_matchups/``.

@@ -19,7 +19,8 @@ and the stamp.
 ``resultSets`` envelope, so it needs no new builder code when it lands -- it
 belongs with the repo's per-game reshape, not this season compile.
 
-Makes no network calls -- every payload is already in the raw store.
+Makes no network calls -- every payload is already in the raw store. Seasons are
+END years (2016 = 2015-16): the raw-store dir and the asset year are the same.
 
 Example::
 
@@ -50,10 +51,10 @@ _ENDPOINTS = ("leaguehustlestatsplayer", "leaguehustlestatsteam")
 
 #: Probed live 2026-09-02, on the endpoints themselves rather than on what
 #: happened to be captured: 2013-14 and 2014-15 answer a valid envelope with an
-#: empty rowSet, 2015-16 is the first season with rows. 2015 is therefore the
-#: floor -- but see ``_thin`` below, which is where 2015-16 actually splits.
-FIRST_SEASON = 2015
-LAST_SEASON = 2025
+#: empty rowSet, 2015-16 is the first season with rows. 2016 (END year) is
+#: therefore the floor -- but see ``_thin`` below, which is where 2015-16 splits.
+FIRST_SEASON = 2016
+LAST_SEASON = 2026
 
 #: 2015-16 REGULAR SEASON is two games, not a season.
 #:
@@ -64,18 +65,18 @@ LAST_SEASON = 2025
 #: with the league having launched hustle tracking at the 2016 playoffs.
 #:
 #: The empty-payload guard cannot catch this: 147 rows is not an empty frame, so
-#: it would write ``leaguehustlestatsplayer_regular-season_totals_2015.parquet``
+#: it would write ``leaguehustlestatsplayer_regular-season_totals_2016.parquet``
 #: -- an asset a consumer reads as the 2015-16 regular season and gets 256
 #: league-wide deflections for, against 38,174 the following year. That is the
 #: 84 schema-only ``ncaa_baseball`` assets (ledger L54) wearing a different
-#: costume, and the same call the ``game_matchups`` 2016 floor made at 1.5%
+#: costume, and the same call the ``game_matchups`` 2016-17 floor made at 1.5%
 #: coverage.
 #:
 #: Scoped to the season TYPE rather than the season, because dropping the whole
-#: of 2015 would throw away a complete playoffs. The raw store still holds all
-#: four 2015 variants -- the capture records what upstream served, and this is
+#: of 2015-16 would throw away a complete playoffs. The raw store still holds all
+#: four 2015-16 variants -- the capture records what upstream served, and this is
 #: the publish decision layered on top.
-_THIN = {(2015, "regular-season")}
+_THIN = {(2016, "regular-season")}
 
 
 def _thin(season: int, stem: str) -> bool:

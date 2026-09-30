@@ -9,9 +9,9 @@ frame with the varying parameters carried as columns. Game-level datasets are on
 payload per game, bound per season.
 
 Ported from the WNBA reshaper (``wehoop-wnba-stats-data``): the v3 payload nesting
-is identical across leagues, so the extractors are unchanged. The only adaptation is
-that reads route through :mod:`nba_data_build.reshape.raw`, which encodes NBA's
-start↔end season split — no season/dir logic lives here.
+is identical across leagues, so the extractors are unchanged. Reads route through
+:mod:`nba_data_build.reshape.raw`; ``season`` is the END year, which is also the
+raw-store directory, so no season/dir logic lives here.
 """
 
 from __future__ import annotations
@@ -87,7 +87,7 @@ def build_season_dataset(root: str | Path, dataset: Dataset, season: int) -> pl.
         raise ValueError(f"{dataset.key} is derived; build it with its own builder")
 
     frames: list[pl.DataFrame] = []
-    base = Path(root) / dataset.endpoint / str(raw.store_dir(dataset.endpoint, season))
+    base = Path(root) / dataset.endpoint / str(season)
 
     # Unparameterized capture lives at {endpoint}/{season}.json
     single = raw.read_season(root, dataset.endpoint, season)
