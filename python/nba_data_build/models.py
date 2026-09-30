@@ -850,8 +850,10 @@ class PlayerBoxscores(NbaStatsDataset):
     """`player_boxscores` — declared from the latest published/committed parquet."""
 
     team_id: Optional[int] = None
+    team_city: Optional[str] = None
     team_name: Optional[str] = None
     team_tricode: Optional[str] = None
+    team_slug: Optional[str] = None
     side: Optional[str] = None
     person_id: Optional[int] = None
     first_name: Optional[str] = None
@@ -890,8 +892,10 @@ class TeamBoxscores(NbaStatsDataset):
     """`team_boxscores` — declared from the latest published/committed parquet."""
 
     team_id: Optional[int] = None
+    team_city: Optional[str] = None
     team_name: Optional[str] = None
     team_tricode: Optional[str] = None
+    team_slug: Optional[str] = None
     side: Optional[str] = None
     minutes: Optional[str] = None
     field_goals_made: Optional[int] = None

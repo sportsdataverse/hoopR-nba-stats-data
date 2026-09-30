@@ -34,7 +34,8 @@ FIXTURE = Path(__file__).parent / "fixtures" / "loader_schemas_nba_stats.json"
 ALLOWED_MODEL_EXTRAS = {f"in_{d.key}" for d in DATASETS if d.level == "game"}
 #: ``season_type_id`` (game_id's 3rd char) joined every per-game dataset 2026-09-30
 #: with the play-in + Cup final; drop it from here once the loader schemas re-capture.
-ALLOWED_MODEL_EXTRAS |= {"season_type_id"}
+#: ``team_city`` / ``team_slug`` (boxscores, #22) likewise post-date the capture.
+ALLOWED_MODEL_EXTRAS |= {"season_type_id", "team_city", "team_slug"}
 
 
 def _loaders() -> dict[str, list[dict]]:

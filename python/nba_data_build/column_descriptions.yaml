@@ -30,8 +30,9 @@ season_id: >-
 season_type: >-
   Season type the capture was made under ("Regular Season", "Playoffs", ...).
 season_type_id: >-
-  Leading digit of season_id encoding the season type (2 = regular season,
-  4 = playoffs, 5 = play-in).
+  Season-type digit: the 3rd character of game_id (and the leading digit of
+  season_id). 1 = preseason, 2 = regular season, 3 = All-Star, 4 = playoffs,
+  5 = play-in, 6 = NBA Cup final, 9 = international.
 league_id: >-
   stats.nba.com league id ("00" = NBA).
 team_id: >-

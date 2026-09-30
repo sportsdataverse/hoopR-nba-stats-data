@@ -67,7 +67,7 @@ Stage-99 schedule-master artifact (spec D34/D36): every game the schedule knows 
 | `postponed_status` | String | Postponement flag from the schedule feed ("A" = active/none). |
 | `season` | Int64 | Season the row belongs to, as the season's ENDING year Int (2024 = the 2023-24 season), matching the asset filename -- on the reshaped RELEASE assets (the 2026-08-13 republish moved every `nba_stats_*` asset onto END-year names) and on the stage-99 master artifacts committed to `nba_stats/` (`schedule_master`, `games_in_data_repo`; the span STRING "1996-97" they carried until 2026-09-30 is gone). `draft` and `draft_combine` are an Int in a second sense: the four-digit draft year (2003 = the June 2003 draft, which precedes the 2003-04 season). |
 | `season_type_description` | String | Human-readable season type ("Regular Season", "Playoffs", "PlayIn"). |
-| `season_type_id` | String | Leading digit of season_id encoding the season type (2 = regular season, 4 = playoffs, 5 = play-in). |
+| `season_type_id` | String | Season-type digit: the 3rd character of game_id (and the leading digit of season_id). 1 = preseason, 2 = regular season, 3 = All-Star, 4 = playoffs, 5 = play-in, 6 = NBA Cup final, 9 = international. |
 | `series_game_number` | String | Playoff series game number ("Game 5"; empty otherwise). |
 | `series_text` | String | Playoff series state text ("BOS leads 3-2"; empty otherwise). |
 | `week_name` | String | Schedule-feed week label ("Week 3"). |
@@ -75,7 +75,7 @@ Stage-99 schedule-master artifact (spec D34/D36): every game the schedule knows 
 
 ## Coverage
 
-_35,361 games across 28 seasons (committed)._
+_39,359 games across 30 seasons (committed)._
 
 **Every NBA season type is in the master** — preseason (`001`), regular season
 (`002`), All-Star (`003`), playoffs (`004`), play-in (`005`) and NBA Cup final

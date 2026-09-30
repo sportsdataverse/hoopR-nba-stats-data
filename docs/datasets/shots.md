@@ -38,6 +38,7 @@ NBA Stats Shots from hoopR data repository — `derived` (derived-level).
 | `description` | String | Human-readable action narrative from the feed. |
 | `score_home` | String | Home score after the action (string; carried forward between scores). |
 | `score_away` | String | Away score after the action (string; carried forward between scores). |
+| `season_type_id` | String | Season-type digit: the 3rd character of game_id (and the leading digit of season_id). 1 = preseason, 2 = regular season, 3 = All-Star, 4 = playoffs, 5 = play-in, 6 = NBA Cup final, 9 = international. |
 
 ## Coverage
 
