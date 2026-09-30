@@ -1051,6 +1051,15 @@ def main(argv: Optional[list[str]] = None) -> int:
         action="store_true",
         help="re-derive the rds / csv.gz even when they look current",
     )
+    ap.add_argument(
+        "--no-readme",
+        action="store_true",
+        help=(
+            "skip the per-tag README upload. For the nightly current-season refresh: "
+            "the README states the published season range, so a one-season run "
+            "would shrink it to that season."
+        ),
+    )
     args = ap.parse_args(argv)
 
     if args.retire_v3_tags and args.retire_legacy_assets:
@@ -1112,6 +1121,13 @@ def main(argv: Optional[list[str]] = None) -> int:
     # DIFF is explainable, not only after it is resolved.
     _log(f"deriving release formats ({', '.join(formats)}) + hashing -- rds is verified on write")
     staged = stage_rows(staging, seasons, targets, formats=formats, force_derive=args.force_derive)
+    # A 0-row family is never a publishable season: it is a season with nothing
+    # captured yet (a nightly run before opening night) or a failed build, and the
+    # raw-store gate passes it trivially (0 staged == 0 captured).
+    empty = sorted({(r["season"], r["family"]) for r in staged if r["rows"] == 0})
+    if empty:
+        _log(f"skipping {len(empty)} empty staged family-season(s), never published: {empty}")
+        staged = [r for r in staged if r["rows"] > 0]
     if not staged:
         _log(f"no staged parquets under {staging} for those seasons -- nothing to do")
         return 1
@@ -1160,6 +1176,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         return 1
 
     if not args.execute:
+        if args.no_readme:
+            _log("DRY RUN -- nothing uploaded (--no-readme: no README would be sent).")
+            return 0
         _log(f"{README_ASSET} that --execute would upload to each tag (written locally, not sent):")
         upload_readmes(
             sorted({r["tag"] for r in manifest}),
@@ -1194,6 +1213,10 @@ def main(argv: Optional[list[str]] = None) -> int:
             _log("Stopped. Fix, then re-run -- verified assets are skipped via the receipt file.")
             return 1
     _log(f"done: {len(todo)} asset(s) uploaded + verified")
+
+    if args.no_readme:
+        _log(f"--no-readme: leaving each tag's {README_ASSET} as published")
+        return 0
 
     # Last, so a failed data upload never leaves a note promising assets that are
     # not there. Every touched tag gets one, not only the colliding ones: the
