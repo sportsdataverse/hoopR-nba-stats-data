@@ -48,6 +48,9 @@ seasons_vec <- purrr::map(years_vec, function(x) {
   unlist()
 
 nba_stats_pbp_season <- function(season) {
+  # END-year file labels (1996-97 -> 1997), the ecosystem convention since 2026-09-30.
+  # The tree carries parquet only; the release still gets all three formats.
+  season_end <- as.integer(substr(season, 1, 4)) + 1L
 
   schedules_df <- readRDS(paste0("nba_stats/schedules/rds/schedule_", season, ".rds"))
 
@@ -149,18 +152,12 @@ nba_stats_pbp_season <- function(season) {
       hoopR:::make_hoopR_data("NBA Stats Play-by-Play from hoopR data repository", Sys.time())
 
     ifelse(!dir.exists(file.path("nba_stats/pbp")), dir.create(file.path("nba_stats/pbp")), FALSE)
-    ifelse(!dir.exists(file.path("nba_stats/pbp/csv")), dir.create(file.path("nba_stats/pbp/csv")), FALSE)
-    data.table::fwrite(nba_stats_df, file = paste0("nba_stats/pbp/csv/play_by_play_", season, ".csv.gz"))
-
-    ifelse(!dir.exists(file.path("nba_stats/pbp/rds")), dir.create(file.path("nba_stats/pbp/rds")), FALSE)
-    saveRDS(nba_stats_df, glue::glue("nba_stats/pbp/rds/play_by_play_{season}.rds"))
-
     ifelse(!dir.exists(file.path("nba_stats/pbp/parquet")), dir.create(file.path("nba_stats/pbp/parquet")), FALSE)
-    arrow::write_parquet(nba_stats_df, paste0("nba_stats/pbp/parquet/play_by_play_", season, ".parquet"))
+    arrow::write_parquet(nba_stats_df, paste0("nba_stats/pbp/parquet/play_by_play_v2_", season_end, ".parquet"))
 
     sportsdataversedata::sportsdataverse_save(
       data_frame = nba_stats_df,
-      file_name =  glue::glue("play_by_play_{season}"),
+      file_name =  glue::glue("play_by_play_v2_{season_end}"),
       sportsdataverse_type = "play-by-play data",
       release_tag = "nba_stats_pbp",
       pkg_function = "hoopR::load_nba_pbp()",
@@ -186,15 +183,9 @@ nba_stats_pbp_season <- function(season) {
   if (nrow(nba_stats_df) > 0) {
     ifelse(!dir.exists(file.path("nba_stats/schedules")), dir.create(file.path("nba_stats/schedules")), FALSE)
 
-    ifelse(!dir.exists(file.path("nba_stats/schedules/csv")), dir.create(file.path("nba_stats/schedules/csv")), FALSE)
-    data.table::fwrite(schedules_df, paste0("nba_stats/schedules/csv/schedule_", season, ".csv"))
-
-    ifelse(!dir.exists(file.path("nba_stats/schedules/rds")), dir.create(file.path("nba_stats/schedules/rds")), FALSE)
-    saveRDS(schedules_df, paste0("nba_stats/schedules/rds/schedule_", season, ".rds"))
-
     ifelse(!dir.exists(file.path("nba_stats/schedules/parquet")),
            dir.create(file.path("nba_stats/schedules/parquet")), FALSE)
-    arrow::write_parquet(schedules_df, paste0("nba_stats/schedules/parquet/schedule_", season, ".parquet"))
+    arrow::write_parquet(schedules_df, paste0("nba_stats/schedules/parquet/schedule_", season_end, ".parquet"))
   }
 }
 
@@ -211,9 +202,9 @@ all_games <- purrr::map(seasons_vec, function(y) {
 cli::cli_progress_step(msg = "Compiling NBA Stats master schedule",
                        msg_done = "NBA Stats master schedule compiled and written to disk")
 
-sched_list <- list.files(path = glue::glue("nba_stats/schedules/rds"))
+sched_list <- list.files(path = "nba_stats/schedules/parquet", pattern = "^schedule_[0-9]{4}\\.parquet$")
 master_schedules_df <- purrr::map_dfr(sched_list, function(x) {
-  sched <- readRDS(paste0("nba_stats/schedules/rds/", x))
+  sched <- arrow::read_parquet(paste0("nba_stats/schedules/parquet/", x))
   return(sched)
 })
 
@@ -221,8 +212,6 @@ master_schedules_df <- master_schedules_df %>%
   dplyr::arrange(dplyr::desc(.data$game_date_est)) %>%
   hoopR:::make_hoopR_data("NBA Stats Schedule from hoopR data repository", Sys.time())
 
-data.table::fwrite(master_schedules_df, "nba_stats/nba_stats_schedule_master.csv")
-saveRDS(master_schedules_df, "nba_stats/nba_stats_schedule_master.rds")
 arrow::write_parquet(master_schedules_df, "nba_stats/nba_stats_schedule_master.parquet")
 
 cli::cli_progress_message("")

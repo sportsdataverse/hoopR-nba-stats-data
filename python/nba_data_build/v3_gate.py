@@ -13,7 +13,7 @@ families:
 
 ``schedule``
     Staged ``nba_schedule_{E}.parquet`` vs legacy
-    ``nba_stats/schedules/parquet/schedule_{E-1}-{yy}.parquet``: game counts,
+    ``nba_stats/schedules/parquet/schedule_{E}.parquet``: game counts,
     game-id set symmetric difference, and per-game home/away score
     reconciliation. Both the set diff and the score reconciliation are
     **core-to-core** (game-id type digit in {2, 4}): legacy non-core games are
@@ -62,28 +62,18 @@ def core_ids(ids: "set[str]") -> "set[str]":
     return {g for g in ids if len(g) >= 3 and g[2] in CORE_TYPE_DIGITS}
 
 
-def legacy_span(season_end: int) -> str:
-    return f"{season_end - 1}-{str(season_end)[-2:]}"
-
-
 def legacy_schedule_path(repo_root: Union[str, Path], season_end: int) -> Path:
-    return (
-        Path(repo_root)
-        / "nba_stats"
-        / "schedules"
-        / "parquet"
-        / f"schedule_{legacy_span(season_end)}.parquet"
-    )
+    """The committed (R-produced) season schedule, END-year named since 2026-09-30."""
+    return Path(repo_root) / "nba_stats" / "schedules" / "parquet" / f"schedule_{season_end}.parquet"
 
 
 def legacy_pbp_path(repo_root: Union[str, Path], season_end: int) -> Path:
-    return (
-        Path(repo_root)
-        / "nba_stats"
-        / "pbp"
-        / "parquet"
-        / f"play_by_play_{legacy_span(season_end)}.parquet"
-    )
+    """The committed R-era v2 play-by-play (``play_by_play_v2_{END}``; was ``play_by_play_{span}``).
+
+    Distinct from the Python-built ``play_by_play_{END}`` release twin, which is a
+    different build of the same season (different game counts), so it keeps its own stem.
+    """
+    return Path(repo_root) / "nba_stats" / "pbp" / "parquet" / f"play_by_play_v2_{season_end}.parquet"
 
 
 def legacy_schedule_scores(df: pl.DataFrame) -> pl.DataFrame:

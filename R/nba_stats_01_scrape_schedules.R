@@ -59,19 +59,16 @@ schedules_df <- purrr::map_dfr(seq_along(seasons_vec), function(x) {
     hoopR:::make_hoopR_data("NBA Stats Schedule from hoopR data repository", Sys.time())
 
   ifelse(!dir.exists(file.path("nba_stats/schedules")), dir.create(file.path("nba_stats/schedules")), FALSE)
-  ifelse(!dir.exists(file.path("nba_stats/schedules/csv")), dir.create(file.path("nba_stats/schedules/csv")), FALSE)
-  data.table::fwrite(completed_sched, paste0("nba_stats/schedules/csv/schedule_", seasons_vec[[x]], ".csv"))
-
-  ifelse(!dir.exists(file.path("nba_stats/schedules/rds")), dir.create(file.path("nba_stats/schedules/rds")), FALSE)
-  saveRDS(completed_sched, paste0("nba_stats/schedules/rds/schedule_", seasons_vec[[x]], ".rds"))
+  # END-year label (1996-97 -> 1997) since 2026-09-30; parquet only in the tree.
+  season_end <- as.integer(substr(seasons_vec[[x]], 1, 4)) + 1L
 
   ifelse(!dir.exists(file.path("nba_stats/schedules/parquet")),
          dir.create(file.path("nba_stats/schedules/parquet")), FALSE)
-  arrow::write_parquet(completed_sched, paste0("nba_stats/schedules/parquet/schedule_", seasons_vec[[x]], ".parquet"))
+  arrow::write_parquet(completed_sched, paste0("nba_stats/schedules/parquet/schedule_", season_end, ".parquet"))
 
   sportsdataversedata::sportsdataverse_save(
     data_frame = completed_sched,
-    file_name = glue::glue("schedule_{seasons_vec[[x]]}"),
+    file_name = glue::glue("schedule_{season_end}"),
     sportsdataverse_type = "schedule data",
     release_tag = "nba_stats_schedules",
     pkg_function = "hoopR::load_nba_schedule()",

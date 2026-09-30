@@ -224,7 +224,11 @@ parquet. Writers: the daily processor (reshaped datasets, per season),
 `nightly_nba_impact.sh` (`nba_player_impact` parquet + `*_card.json`). A new
 dataset lands its committed parquet in the same change;
 `/mnt/sdv_repos/bin/stats_release_audit.py` flags any released parquet with no
-committed copy (NO-COMMIT). The twin follows the same rule in
+committed copy (NO-COMMIT). Legacy tree files are END-named too (renamed per season 2026-09-30):
+`schedules/parquet/schedule_{E}` (the D34 schedule family stage 99 reads; was `schedule_{YYYY-YY}`),
+`pbp/parquet/play_by_play_v2_{E}` (the R-era v2 build the v3 gate compares against; kept apart from
+the Python `play_by_play_{E}` twin, a different build), and the pre-cutover `*_v3_{E}` files; the
+schedule csv copies were removed. The R twin writes the same END names, parquet only. The twin follows the same rule in
 `wehoop-wnba-stats-data/wnba_stats/`.
 
 ## Model registry

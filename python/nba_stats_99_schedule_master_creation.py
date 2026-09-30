@@ -54,11 +54,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 LEAGUE = "nba_stats"
 
 
-def _span(end_year: int) -> str:
-    """End-year (repo convention: 2026 = 2025-26) -> the yearly-file span label."""
-    return f"{end_year - 1}-{str(end_year)[-2:]}"
-
-
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--base", default=str(REPO_ROOT / LEAGUE), help="dataset tree root")
@@ -85,7 +80,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.season is None:
             print("::error ::--built-dir requires --season <end_year>")
             return 1
-        target = season_dir / f"schedule_{_span(args.season)}.parquet"
+        target = season_dir / f"schedule_{args.season}.parquet"  # END-year named
         if not target.is_file():
             print(f"::warning ::no season schedule at {target}; nothing to restamp")
         else:

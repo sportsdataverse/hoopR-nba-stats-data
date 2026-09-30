@@ -63,8 +63,8 @@ def stamp_from_built(schedule: pl.DataFrame, built_dir: str | Path, season: int)
 
     ``built_dir`` follows the reshape CLI's output contract:
     ``{out}/{release_tag}/{stem}_{season}.parquet``. ``season`` is the END year
-    on both sides (``--season`` here, ``--seasons`` there; ``_span(2026) ==
-    "2025-26"``), so no offset is applied.
+    on both sides (``--season`` here, ``--seasons`` there), and so is the season
+    file's name (``schedule_2026.parquet`` = 2025-26), so no offset is applied.
 
     A dataset without a built file this run keeps whatever flag the season file
     already carries — a lookup miss is silent, so a convention drift here shows
