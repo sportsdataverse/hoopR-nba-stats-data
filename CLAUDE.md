@@ -248,10 +248,20 @@ playoff/play-in games, span-string `season`, the R-only `PBP` column) was **reti
 2026-09-30**, and the R twin no longer writes it or an R master.
 
 The pre-cutover `*_v3` strays (`pbpv3/`, `schedule_v3/`, a v3 lineups file misfiled
-under `lineups/`) and the schedule csv copies were removed; `pipeline_cli.py` still targets those
-retired paths/tags and must not be run. The R twin writes the same END names, parquet only
+under `lineups/`) and the schedule csv copies were removed; `pipeline_cli.py`, which still
+targeted them, was deleted 2026-09-30. The R twin writes the same END names, parquet only
 (plus the archive-only `play_by_play_v2_{E}`, never uploaded). The twin follows the same rule in
 `wehoop-wnba-stats-data/wnba_stats/`.
+
+**Per-game coverage (2026-09-30).** The reshape per-game datasets (player/team boxscores,
+game_rosters, officials, game_matchups, shots) compile `raw.season_game_ids`: leaguegamelog
+regular season + playoffs PLUS the play-in (type 5) and NBA Cup final (type 6) from
+`scheduleleaguev2` (owner rule; preseason, All-Star and international stay pbp-only), and every
+row carries `season_type_id` (game_id's 3rd char). game_rosters (InactivePlayers) and officials
+read `boxscoresummaryv3` when -raw captured it (floor 2025), else v2: v2 has returned blank
+Officials/InactivePlayers shells for most games since mid-2024-25. Upstream floors, NOT capture
+gaps (v2 and v3 both empty, probed): officials before 2003-04 (END 2004), inactives before
+2005-06 (END 2006). Do not chase them.
 
 ## Model registry
 

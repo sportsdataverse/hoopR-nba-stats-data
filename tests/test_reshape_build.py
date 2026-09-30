@@ -152,3 +152,56 @@ def test_draft_builds_from_the_real_store() -> None:
     assert df.height == 60, f"2013 draft built {df.height} rows, expected 60"
     assert set(df["season"].unique().to_list()) == {2014}
     assert sorted(df["round_number"].unique().to_list()) == [1, 2]
+
+
+def test_summary_datasets_prefer_v3_and_keep_the_v2_columns(tmp_path: Path) -> None:
+    """boxscoresummaryv2 went blank from mid-2024-25: a game with a v3 capture reads
+    v3 (re-shaped to the v2 columns); a game with only v2 keeps reading v2."""
+    v2_off = {
+        "resultSets": [
+            {
+                "name": "Officials",
+                "headers": ["OFFICIAL_ID", "FIRST_NAME", "LAST_NAME", "JERSEY_NUM"],
+                "rowSet": [[101283, "Brian", "Forte", "45  "]],
+            }
+        ]
+    }
+    v3 = {
+        "boxScoreSummary": {
+            "officials": [
+                {"personId": 2882, "firstName": "Sean", "familyName": "Wright", "jerseyNum": "4   "}
+            ],
+            "awayTeam": {
+                "teamId": 1,
+                "teamCity": "San Antonio",
+                "teamName": "Spurs",
+                "teamTricode": "SAS",
+                "inactives": [
+                    {"personId": 7, "firstName": "A", "familyName": "B", "jerseyNum": "9   "}
+                ],
+            },
+            "homeTeam": {
+                "teamId": 2,
+                "teamCity": "Oklahoma City",
+                "teamName": "Thunder",
+                "teamTricode": "OKC",
+                "inactives": [],
+            },
+        }
+    }
+    _write(tmp_path, "boxscoresummaryv2/2026/0022500001.json", v2_off)
+    _write(tmp_path, "boxscoresummaryv2/2026/0052500101.json", {"resultSets": []})  # blank v2 shell
+    _write(tmp_path, "boxscoresummaryv3/2026/0052500101.json", v3)
+    ids = ["0022500001", "0052500101"]
+
+    off = build.build_game_dataset(tmp_path, BY_KEY["officials"], 2026, ids)
+    assert off.select(
+        "official_id", "last_name", "jersey_num", "game_id", "season_type_id"
+    ).rows() == [
+        (101283, "Forte", "45  ", "0022500001", "2"),
+        (2882, "Wright", "4   ", "0052500101", "5"),
+    ]
+    rost = build.build_game_dataset(tmp_path, BY_KEY["game_rosters"], 2026, ids)
+    assert rost.select("player_id", "team_abbreviation", "game_id").rows() == [
+        (7, "SAS", "0052500101")
+    ]

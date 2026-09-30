@@ -162,14 +162,28 @@ def _result_sets(payload: Any) -> list:
     return [rs for rs in sets if isinstance(rs, dict)]
 
 
+#: Official games that ``leaguegamelog`` omits: the play-in (type 5) and the NBA Cup
+#: final (type 6). Owner 2026-09-30: every per-game dataset includes them (with a
+#: ``season_type_id`` column); preseason (1), All-Star (3), international (9) stay out.
+SCHEDULE_ONLY_GAME_TYPES = ("5", "6")
+
+
 def season_game_ids(root: str | Path, season: int) -> list[str]:
-    """Every game id for ``season`` from the captured ``leaguegamelog`` payloads.
+    """Every game id for ``season``: ``leaguegamelog`` plus the play-in and Cup final.
 
     This is the authoritative index — it covers games whose per-game payloads have
     not been captured yet, which :func:`available_games` by definition cannot.
-    ``season`` is the END year (the ``leaguegamelog/{season}/`` dir).
+    Regular-season and playoff ids come from ``leaguegamelog``; the
+    :data:`SCHEDULE_ONLY_GAME_TYPES` games from ``scheduleleaguev2``. ``season`` is
+    the END year (the ``{endpoint}/{season}`` dir).
     """
     out: set[str] = set()
+    schedule = read_season(root, "scheduleleaguev2", season) or {}
+    for day in (schedule.get("leagueSchedule") or {}).get("gameDates") or []:
+        for game in day.get("games") or []:
+            gid = str(game.get("gameId") or "").zfill(10)
+            if gid[2:3] in SCHEDULE_ONLY_GAME_TYPES:
+                out.add(gid)
     for stype in ("regular-season", "playoffs"):
         payload = read_season(root, "leaguegamelog", season, stype)
         for rs in _result_sets(payload):

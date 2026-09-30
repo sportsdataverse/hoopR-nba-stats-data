@@ -24,8 +24,8 @@ covered -- preseason (``001``), All-Star (``003``), play-in (``005``) and the
 NBA Cup final (``006``). Older eras legitimately lack the later types (no
 play-in before 2020-21, no NBA Cup before 2023-24).
 
-Resumability is two-level: the per-game frame cache is shared with
-``pipeline_cli`` (``{repo}/.nba_pipeline_cache``), and a season whose four
+Resumability is two-level: the per-game frame cache lives in
+``{repo}/.nba_pipeline_cache`` (named for the retired ``pipeline_cli``), and a season whose four
 staged parquets already exist is skipped entirely unless ``--rebuild``.
 """
 

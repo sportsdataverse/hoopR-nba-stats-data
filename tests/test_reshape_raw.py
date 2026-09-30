@@ -99,9 +99,7 @@ def test_corrupt_payload_returns_none(tmp_path: Path) -> None:
 def test_read_season_variant_paths(tmp_path: Path) -> None:
     _write(tmp_path, "leaguedashlineups/2014/base_playoffs.json", {"ok": 1})
     _write(tmp_path, "leaguestandingsv3/2014.json", {"ok": 2})
-    assert raw.read_season(tmp_path, "leaguedashlineups", 2014, "base_playoffs") == {
-        "ok": 1
-    }
+    assert raw.read_season(tmp_path, "leaguedashlineups", 2014, "base_playoffs") == {"ok": 1}
     assert raw.read_season(tmp_path, "leaguestandingsv3", 2014) == {"ok": 2}
     assert raw.season_payload(tmp_path, "leaguestandingsv3", 2014) == {"ok": 2}
 
@@ -115,11 +113,7 @@ def test_available_games_reads_the_season_dir_unshifted(tmp_path: Path) -> None:
 
 def test_season_game_ids_unions_both_season_types(tmp_path: Path) -> None:
     def log(ids):
-        return {
-            "resultSets": [
-                {"headers": ["GAME_ID", "X"], "rowSet": [[i, 1] for i in ids]}
-            ]
-        }
+        return {"resultSets": [{"headers": ["GAME_ID", "X"], "rowSet": [[i, 1] for i in ids]}]}
 
     _write(
         tmp_path,
@@ -146,9 +140,7 @@ def test_season_game_ids_zero_pads(tmp_path: Path) -> None:
 
 def test_iter_game_payloads_skips_misses(tmp_path: Path) -> None:
     _write(tmp_path, "playbyplayv3/2014/0021300001.json", {"a": 1})
-    got = list(
-        raw.iter_game_payloads(tmp_path, "playbyplayv3", ["0021300001", "0021300002"])
-    )
+    got = list(raw.iter_game_payloads(tmp_path, "playbyplayv3", ["0021300001", "0021300002"]))
     assert got == [("0021300001", {"a": 1})]
 
 
@@ -178,9 +170,7 @@ def test_available_games_rejects_url_roots() -> None:
 
 
 def _http_error(code: int) -> raw.urllib.error.HTTPError:
-    return raw.urllib.error.HTTPError(
-        "https://raw.githubusercontent.com/x", code, "boom", {}, None
-    )
+    return raw.urllib.error.HTTPError("https://raw.githubusercontent.com/x", code, "boom", {}, None)
 
 
 def test_a_404_is_absence_but_a_transient_is_not(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -232,3 +222,20 @@ def test_a_transient_recovers_within_the_retry_budget(monkeypatch: pytest.Monkey
     monkeypatch.setattr(raw.urllib.request, "urlopen", _flaky_then_ok)
     assert raw._read_json(raw.RAW_BASE, "leaguestandingsv3/2025.json") == {"ok": 1}
     assert len(calls) == 3
+
+
+def test_season_game_ids_adds_play_in_and_cup_final_from_the_schedule(tmp_path: Path) -> None:
+    """leaguegamelog omits the play-in (5) and Cup final (6); the schedule adds them,
+    while preseason (1), All-Star (3) and international (9) stay out."""
+    _write(
+        tmp_path,
+        "leaguegamelog/2026/regular-season.json",
+        {"resultSets": [{"headers": ["GAME_ID"], "rowSet": [["0022500001"]]}]},
+    )
+    ids = ["0012500001", "0022500001", "0032500001", "0052500101", "0062500001", "0092500001"]
+    _write(
+        tmp_path,
+        "scheduleleaguev2/2026.json",
+        {"leagueSchedule": {"gameDates": [{"games": [{"gameId": i} for i in ids]}]}},
+    )
+    assert raw.season_game_ids(tmp_path, 2026) == ["0022500001", "0052500101", "0062500001"]

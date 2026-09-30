@@ -1,23 +1,18 @@
-"""``python -m nba_data_build`` entry point: routes to a verb sub-CLI.
+"""``python -m nba_data_build`` entry point: the modeling ``build`` CLI.
 
-``pipeline`` -> :func:`nba_data_build.pipeline_cli.main` (Tasks 4-10: scrape -> process
--> rollup -> flags, controller-gated publish). Anything else (including the historical
-no-verb invocation, e.g. ``python -m nba_data_build --seasons 2023 --out build_out``)
-falls through to the existing modeling ``build`` path,
-:func:`nba_data_build.cli.main`, unchanged -- this keeps every pre-existing script and
-doc example working verbatim.
+Both ``python -m nba_data_build build ...`` and the historical no-verb invocation
+(e.g. ``python -m nba_data_build --seasons 2023 --out build_out``) route to
+:func:`nba_data_build.cli.main`. The retired ``pipeline`` verb (``pipeline_cli``,
+which wrote retired paths/tags) was deleted 2026-09-30.
 """
 
 import sys
 
 from .cli import main as _build_main
-from .pipeline_cli import main as _pipeline_main
 
 
 def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
-    if argv and argv[0] == "pipeline":
-        return _pipeline_main(argv[1:])
     if argv and argv[0] == "build":
         return _build_main(argv[1:])
     return _build_main(argv)

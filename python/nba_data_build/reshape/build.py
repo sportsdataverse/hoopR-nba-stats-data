@@ -142,15 +142,82 @@ def build_game_dataset(
         )
 
     frames: list[pl.DataFrame] = []
-    for gid, payload in raw.iter_game_payloads(root, dataset.endpoint, game_ids):
-        headers, rows = raw.result_set(payload, dataset.result_set)
+    for gid in game_ids:
+        headers, rows = _game_result_set(root, dataset, gid)
         if not headers:
             continue
-        frames.append(frame_from_result_set(headers, rows, {"season": season, "game_id": gid}))
+        extra = {"season": season, "game_id": gid, "season_type_id": gid[2:3]}
+        frames.append(frame_from_result_set(headers, rows, extra))
 
     if not frames:
         return pl.DataFrame()
     return pl.concat(frames, how="diagonal_relaxed")
+
+
+#: The v2 result-set columns each summary set is re-shaped to, so v3-sourced rows
+#: land in the published v2 schema unchanged.
+_SUMMARY_V3_HEADERS = {
+    "Officials": ["OFFICIAL_ID", "FIRST_NAME", "LAST_NAME", "JERSEY_NUM"],
+    "InactivePlayers": [
+        "PLAYER_ID",
+        "FIRST_NAME",
+        "LAST_NAME",
+        "JERSEY_NUM",
+        "TEAM_ID",
+        "TEAM_CITY",
+        "TEAM_NAME",
+        "TEAM_ABBREVIATION",
+    ],
+}
+
+
+def summary_v3_result_set(payload: Any, name: str | None) -> tuple[list[str], list[list[Any]]]:
+    """``boxscoresummaryv3`` officials / inactives as the v2 ``(headers, rows)``."""
+    box = (payload or {}).get("boxScoreSummary") or {}
+    if name == "Officials":
+        rows = [
+            [o.get("personId"), o.get("firstName"), o.get("familyName"), o.get("jerseyNum")]
+            for o in box.get("officials") or []
+        ]
+    elif name == "InactivePlayers":
+        rows = []
+        for side in ("awayTeam", "homeTeam"):
+            team = box.get(side) or {}
+            for p in team.get("inactives") or []:
+                rows.append(
+                    [
+                        p.get("personId"),
+                        p.get("firstName"),
+                        p.get("familyName"),
+                        p.get("jerseyNum"),
+                        team.get("teamId"),
+                        team.get("teamCity"),
+                        team.get("teamName"),
+                        team.get("teamTricode"),
+                    ]
+                )
+    else:
+        raise ValueError(f"no v3 mapping for summary result set {name!r}")
+    return _SUMMARY_V3_HEADERS[name], rows
+
+
+def _game_result_set(
+    root: str | Path, dataset: Dataset, gid: str
+) -> tuple[list[str], list[list[Any]]]:
+    """One game's rows for ``dataset``; empty when the game was never captured.
+
+    ``boxscoresummaryv2`` returns blank Officials/InactivePlayers for most games
+    since mid-2024-25, so a game with a captured ``boxscoresummaryv3`` payload
+    reads that instead (-raw captures v3 from 2025); older games keep v2.
+    """
+    if dataset.endpoint == "boxscoresummaryv2":
+        v3 = raw.read_game(root, "boxscoresummaryv3", gid)
+        if v3 is not None:
+            return summary_v3_result_set(v3, dataset.result_set)
+    payload = raw.read_game(root, dataset.endpoint, gid)
+    if payload is None:
+        return [], []
+    return raw.result_set(payload, dataset.result_set)
 
 
 def build(root: str | Path, dataset: Dataset, season: int) -> pl.DataFrame:
@@ -191,7 +258,11 @@ def build_pbp(root: str | Path, season: int, game_ids: list[str] | None = None) 
             continue
         df = pl.DataFrame(rows, infer_schema_length=None, strict=False)
         df = df.rename({c: snake(c) for c in df.columns})
-        frames.append(df.with_columns(game_id=pl.lit(gid), season=pl.lit(season)))
+        frames.append(
+            df.with_columns(
+                game_id=pl.lit(gid), season=pl.lit(season), season_type_id=pl.lit(gid[2:3])
+            )
+        )
     if not frames:
         return pl.DataFrame()
     return pl.concat(frames, how="diagonal_relaxed")
@@ -204,6 +275,7 @@ def build_pbp(root: str | Path, season: int, game_ids: list[str] | None = None) 
 _SHOT_COLUMNS = (
     "game_id",
     "season",
+    "season_type_id",
     "period",
     "clock",
     "team_id",
@@ -307,7 +379,11 @@ def build_boxscores(
             continue
         df = pl.DataFrame(rows, infer_schema_length=None, strict=False)
         df = df.rename({c: snake(c) for c in df.columns})
-        frames.append(df.with_columns(game_id=pl.lit(gid), season=pl.lit(season)))
+        frames.append(
+            df.with_columns(
+                game_id=pl.lit(gid), season=pl.lit(season), season_type_id=pl.lit(gid[2:3])
+            )
+        )
     if not frames:
         return pl.DataFrame()
     return pl.concat(frames, how="diagonal_relaxed")
@@ -414,7 +490,11 @@ def build_matchups(
             continue
         df = pl.DataFrame(rows, infer_schema_length=None, strict=False)
         df = df.rename({c: snake(c) for c in df.columns})
-        frames.append(df.with_columns(game_id=pl.lit(gid), season=pl.lit(season)))
+        frames.append(
+            df.with_columns(
+                game_id=pl.lit(gid), season=pl.lit(season), season_type_id=pl.lit(gid[2:3])
+            )
+        )
     if not frames:
         return pl.DataFrame()
     return pl.concat(frames, how="diagonal_relaxed")

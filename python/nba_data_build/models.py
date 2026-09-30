@@ -831,6 +831,7 @@ class GameRosters(NbaStatsDataset):
     team_abbreviation: Optional[str] = None
     season: Optional[int] = None
     game_id: Optional[str] = None
+    season_type_id: Optional[str] = None
 
 
 class Officials(NbaStatsDataset):
@@ -842,6 +843,7 @@ class Officials(NbaStatsDataset):
     jersey_num: Optional[str] = None
     season: Optional[int] = None
     game_id: Optional[str] = None
+    season_type_id: Optional[str] = None
 
 
 class PlayerBoxscores(NbaStatsDataset):
@@ -881,6 +883,7 @@ class PlayerBoxscores(NbaStatsDataset):
     plus_minus_points: Optional[float] = None
     game_id: Optional[str] = None
     season: Optional[int] = None
+    season_type_id: Optional[str] = None
 
 
 class TeamBoxscores(NbaStatsDataset):
@@ -912,6 +915,7 @@ class TeamBoxscores(NbaStatsDataset):
     plus_minus_points: Optional[float] = None
     game_id: Optional[str] = None
     season: Optional[int] = None
+    season_type_id: Optional[str] = None
 
 
 class Shots(NbaStatsDataset):
@@ -935,6 +939,7 @@ class Shots(NbaStatsDataset):
     description: Optional[str] = None
     score_home: Optional[str] = None
     score_away: Optional[str] = None
+    season_type_id: Optional[str] = None
 
 
 class ScheduleMaster(NbaStatsDataset):
@@ -1120,6 +1125,7 @@ class GameMatchups(NbaStatsDataset):
     shooting_fouls: Optional[int] = None
     game_id: Optional[str] = None
     season: Optional[int] = None
+    season_type_id: Optional[str] = None
 
 
 MODELS: dict[str, type[NbaStatsDataset]] = {

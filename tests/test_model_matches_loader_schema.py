@@ -32,6 +32,9 @@ FIXTURE = Path(__file__).parent / "fixtures" / "loader_schemas_nba_stats.json"
 #: Model columns the loader snapshot may legitimately lack: the D34 ``in_*``
 #: availability flags are stamped after the vintage the schemas captured.
 ALLOWED_MODEL_EXTRAS = {f"in_{d.key}" for d in DATASETS if d.level == "game"}
+#: ``season_type_id`` (game_id's 3rd char) joined every per-game dataset 2026-09-30
+#: with the play-in + Cup final; drop it from here once the loader schemas re-capture.
+ALLOWED_MODEL_EXTRAS |= {"season_type_id"}
 
 
 def _loaders() -> dict[str, list[dict]]:

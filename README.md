@@ -42,10 +42,9 @@ flowchart TB;
 
     subgraph B[hoopR-nba-stats-data];
         direction TB;
-        B0[scripts/daily_nba_stats_python_processor.sh]-->B1[python/nba_data_build/pipeline_cli.py];
-        B1[python/nba_data_build/pipeline_cli.py]-->B2[python/nba_data_build/build.py];
-        B2[python/nba_data_build/build.py]-->B3[python/nba_data_build/master.py];
-        B3[python/nba_data_build/master.py]-->B4[python/nba_data_build/docs.py];
+        B0[scripts/daily_nba_stats_python_processor.sh]-->B1[python/nba_data_build/reshape];
+        B1[python/nba_data_build/reshape]-->B2[python/nba_stats_99_schedule_master_creation.py];
+        B2[python/nba_stats_99_schedule_master_creation.py]-->B3[python/nba_data_build/master.py];
     end;
 
     subgraph C[sportsdataverse-data Releases];
