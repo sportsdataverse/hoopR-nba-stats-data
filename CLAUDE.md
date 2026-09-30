@@ -227,8 +227,11 @@ dataset lands its committed parquet in the same change;
 committed copy (NO-COMMIT). Legacy tree files are END-named too (renamed per season 2026-09-30):
 `schedules/parquet/schedule_{E}` (the D34 schedule family stage 99 reads; was `schedule_{YYYY-YY}`),
 `pbp/parquet/play_by_play_v2_{E}` (the R-era v2 build the v3 gate compares against; kept apart from
-the Python `play_by_play_{E}` twin, a different build), and the pre-cutover `*_v3_{E}` files; the
-schedule csv copies were removed. The R twin writes the same END names, parquet only. The twin follows the same rule in
+the Python `play_by_play_{E}` twin, a different build). Those two are the ONLY tree files not on
+their tag (committed-only by design); everything else in `nba_stats/{key}/parquet/` is an asset of
+`nba_stats_{key}`. The pre-cutover `*_v3` strays (`pbpv3/`, `schedule_v3/`, a v3 lineups file misfiled
+under `lineups/`) and the schedule csv copies were removed; `pipeline_cli.py` still targets those
+retired paths/tags and must not be run. The R twin writes the same END names, parquet only. The twin follows the same rule in
 `wehoop-wnba-stats-data/wnba_stats/`.
 
 ## Model registry
