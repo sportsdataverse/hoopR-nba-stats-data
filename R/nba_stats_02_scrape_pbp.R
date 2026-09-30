@@ -146,24 +146,13 @@ nba_stats_pbp_season <- function(season) {
     dplyr::arrange(dplyr::desc(.data$game_date_est))
 
 
-  ## --- Writing PBP to disk and pushing to nba_stats_pbp release -----
+  ## --- Writing v2 PBP to the tree archive (no release: no tag carries v2) -----
   if (nrow(nba_stats_df) > 1) {
     nba_stats_df <- nba_stats_df %>%
       hoopR:::make_hoopR_data("NBA Stats Play-by-Play from hoopR data repository", Sys.time())
 
-    ifelse(!dir.exists(file.path("nba_stats/pbp")), dir.create(file.path("nba_stats/pbp")), FALSE)
-    ifelse(!dir.exists(file.path("nba_stats/pbp/parquet")), dir.create(file.path("nba_stats/pbp/parquet")), FALSE)
-    arrow::write_parquet(nba_stats_df, paste0("nba_stats/pbp/parquet/play_by_play_v2_", season_end, ".parquet"))
-
-    sportsdataversedata::sportsdataverse_save(
-      data_frame = nba_stats_df,
-      file_name =  glue::glue("play_by_play_v2_{season_end}"),
-      sportsdataverse_type = "play-by-play data",
-      release_tag = "nba_stats_pbp",
-      pkg_function = "hoopR::load_nba_pbp()",
-      file_types = c("rds", "csv", "parquet"),
-      .token = Sys.getenv("GITHUB_PAT")
-    )
+    dir.create("archive/nba_stats_pbp_v2", recursive = TRUE, showWarnings = FALSE)
+    arrow::write_parquet(nba_stats_df, paste0("archive/nba_stats_pbp_v2/play_by_play_v2_", season_end, ".parquet"))
   }
   # The PBP-flagged per-season schedule_{E} tree files and the R master are
   # retired (2026-09-30): Python stage 99 builds the schedule master from raw

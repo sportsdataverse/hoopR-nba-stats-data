@@ -34,7 +34,10 @@ def test_core_ids_excludes_noncore_types() -> None:
 def test_legacy_paths_are_end_year_named(tmp_path) -> None:
     """Legacy files are END-year named since 2026-09-30 (was the YYYY-YY span)."""
     assert vg.legacy_schedule_path(tmp_path, 2006).name == "schedule_2006.parquet"
-    assert vg.legacy_pbp_path(tmp_path, 2000).name == "play_by_play_v2_2000.parquet"
+    assert (
+        vg.legacy_pbp_path(tmp_path, 2000)
+        == tmp_path / "archive" / "nba_stats_pbp_v2" / "play_by_play_v2_2000.parquet"
+    )
 
 
 def test_gate_schedule_ok_with_explained_preseason() -> None:

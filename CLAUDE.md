@@ -229,10 +229,10 @@ parquet. Writers: the daily processor (reshaped datasets, per season),
 `nightly_nba_impact.sh` (`nba_player_impact` parquet + `*_card.json`). A new
 dataset lands its committed parquet in the same change;
 `/mnt/sdv_repos/bin/stats_release_audit.py` flags any released parquet with no
-committed copy (NO-COMMIT). Legacy tree file, END-named too (renamed per season 2026-09-30):
-`pbp/parquet/play_by_play_v2_{E}` (the R-era v2 build the v3 gate compares against). It is the
-ONLY tree family not on its tag (committed-only by design); everything else in
-`nba_stats/{key}/parquet/` is an asset of `nba_stats_{key}`.
+committed copy (NO-COMMIT). Every file in `nba_stats/{key}/parquet/` is an asset of
+`nba_stats_{key}`. The one committed-only family, the R-era v2 play-by-play the v3 gate
+compares against, lives OUTSIDE that tree at `archive/nba_stats_pbp_v2/play_by_play_v2_{E}`
+(END-named; moved out of `pbp/parquet/` 2026-09-30) because no release tag carries it.
 
 **Schedule master (stage 99, spec D34).** `python/nba_stats_99_schedule_master_creation.py`
 builds `nba_stats_schedule_master` / `nba_stats_games_in_data_repo` /
@@ -250,7 +250,7 @@ playoff/play-in games, span-string `season`, the R-only `PBP` column) was **reti
 The pre-cutover `*_v3` strays (`pbpv3/`, `schedule_v3/`, a v3 lineups file misfiled
 under `lineups/`) and the schedule csv copies were removed; `pipeline_cli.py` still targets those
 retired paths/tags and must not be run. The R twin writes the same END names, parquet only
-(its remaining tree write is `play_by_play_v2_{E}`). The twin follows the same rule in
+(plus the archive-only `play_by_play_v2_{E}`, never uploaded). The twin follows the same rule in
 `wehoop-wnba-stats-data/wnba_stats/`.
 
 ## Model registry

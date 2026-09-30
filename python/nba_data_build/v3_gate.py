@@ -71,16 +71,21 @@ def legacy_schedule_path(repo_root: Union[str, Path], season_end: int) -> Path:
     :func:`gate_schedule` reports ``NO_LEGACY`` (staged games vs raw captures),
     which is not a failing verdict.
     """
-    return Path(repo_root) / "nba_stats" / "schedules" / "parquet" / f"schedule_{season_end}.parquet"
+    return (
+        Path(repo_root) / "nba_stats" / "schedules" / "parquet" / f"schedule_{season_end}.parquet"
+    )
 
 
 def legacy_pbp_path(repo_root: Union[str, Path], season_end: int) -> Path:
-    """The committed R-era v2 play-by-play (``play_by_play_v2_{END}``; was ``play_by_play_{span}``).
+    """The archived R-era v2 play-by-play (``play_by_play_v2_{END}``; was ``play_by_play_{span}``).
 
-    Distinct from the Python-built ``play_by_play_{END}`` release twin, which is a
-    different build of the same season (different game counts), so it keeps its own stem.
+    Built from the ``playbyplayv2`` endpoint (v2 columns), so it is distinct from the
+    v3 ``nba_play_by_play_{END}`` on ``nba_stats_pbp``. No release tag carries it, so it
+    lives in ``archive/`` outside the tag-keyed ``nba_stats/{key}/`` tree (2026-09-30).
     """
-    return Path(repo_root) / "nba_stats" / "pbp" / "parquet" / f"play_by_play_v2_{season_end}.parquet"
+    return (
+        Path(repo_root) / "archive" / "nba_stats_pbp_v2" / f"play_by_play_v2_{season_end}.parquet"
+    )
 
 
 def legacy_schedule_scores(df: pl.DataFrame) -> pl.DataFrame:
