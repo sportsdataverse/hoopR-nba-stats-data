@@ -7,7 +7,7 @@
 # sibling hoopR-nba-stats-raw checkout, builds parquet+rds+csv, and uploads them
 # to the nba_stats_* releases (creating any missing tag).
 #
-#   bash scripts/daily_nba_stats_python_processor.sh -s 2024 -e 2024
+#   bash scripts/daily_nba_stats_python_processor.sh -s 2026 -e 2026   # END years: 2026 = 2025-26
 #
 # DROPLET-SAFE: unlike the R scrape, this makes NO stats.nba.com calls -- it only
 # reads local JSON and talks to `gh`. That is why it can run on the droplet where
@@ -79,7 +79,7 @@ for i in $(seq "${START_YEAR}" "${END_YEAR}"); do
         echo "=== season ${i} started $(date -u +'%F %T')Z ==="
         "${PYBIN}" -m nba_data_build.reshape \
             --root "${RAW_ROOT}" \
-            --seasons "${i}" \
+            --seasons "$((i - 1))" \
             --out "${OUT_DIR}" \
             --publish
         py_rc=$?
@@ -95,16 +95,15 @@ for i in $(seq "${START_YEAR}" "${END_YEAR}"); do
         # scratch dir goes away. Non-fatal: a stamp failure must not fail the
         # publish that already happened.
         #
-        # $((i + 1)), not ${i}: the two stages disagree about what a season is.
-        # `nba_data_build.reshape --seasons` takes the START year (raw.store_dir
-        # is the documented single point of the start<->end split), while stage
-        # 99's `--season` is the END year -- its own _span reads 2026 as
-        # "2025-26". Passing ${i} to both stamped the PREVIOUS season's schedule
-        # file, and since the 2026-08-13 END-year republish it would also miss
-        # every built artifact (reshape now writes {stem}_{i+1}). Both failures
-        # are silent: a lookup miss just leaves the old flags in place.
+        # -s/-e and ${i} are END years (2026 = 2025-26), the ecosystem convention
+        # (owner, 2026-09-30) and what daily_nba_stats.yml passes. Stage 99's
+        # --season is END too. The one START-keyed seam is `reshape --seasons`
+        # above (the raw store's season-level layout, raw.store_dir), hence
+        # $((i - 1)) there. Before this, the workflow's END year went straight
+        # into reshape as a START year: the first in-season compile would have
+        # built NEXT season and published nothing.
         "${PYBIN}" python/nba_stats_99_schedule_master_creation.py \
-            --built-dir "${OUT_DIR}" --season "$((i + 1))" --stamp-only \
+            --built-dir "${OUT_DIR}" --season "${i}" --stamp-only \
             2>&1 | tee -a "${LOGFILE}" \
             || echo "schedule-master stamp failed for season ${i}" | tee -a "${LOGFILE}"
         # Owner rule (2026-09-30): every compiled dataset's PARQUET is committed
@@ -121,9 +120,9 @@ for i in $(seq "${START_YEAR}" "${END_YEAR}"); do
                 cp -f "${f}" "${REPO_DIR}/nba_stats/${key}/parquet/"
             done
         done
-        # END year in the subject, matching this repo's history; the
-        # (Start: YYYY End: YYYY) substring is parsed downstream -- do not reword.
-        sdv_commit_push "NBA Stats Update (Start: $((i + 1)) End: $((i + 1)))" nba_stats \
+        # END year in the subject; the (Start: YYYY End: YYYY) substring is
+        # parsed downstream -- do not reword.
+        sdv_commit_push "NBA Stats Update (Start: ${i} End: ${i})" nba_stats \
             | tee -a "${LOGFILE}" || ANY_FAILED=1
     fi
     rm -rf "${OUT_DIR}"
