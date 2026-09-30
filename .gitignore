@@ -43,3 +43,7 @@ out/
 **/.venv/
 v3_staging/
 .nba_pipeline_cache/
+
+# leaguedash_backfill.sh + the nightly season refresh write build_out/ at the repo
+# root (python/build_out/ above is a different dir); the glob covers per-run dirs.
+build_out*/

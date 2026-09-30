@@ -43,6 +43,8 @@ bash scripts/nightly_nba_impact.sh --dry-run         # current season, plan only
 bash scripts/nightly_nba_impact.sh 2026 --publish    # ...publish AND commit the artifacts
 bash scripts/run_v3_backfill.sh -s 1997 -e 2026   # Program V v3 backfill (resumable)
 bash scripts/run_v3_cutover.sh -s 1997 -e 2026    # D26d cutover -- DRY RUN by default
+bash scripts/nightly_nba_season_refresh.sh         # droplet cron: current-season v3 + leaguedash publish
+bash scripts/nightly_nba_season_refresh.sh 2027 -n # ...build + gate + plan, upload nothing
 python -m nba_data_build.warm_possession_cache 2000:2024   # warm the possession cache
 ```
 
@@ -317,6 +319,18 @@ is a valid cadence but must be stated explicitly.
   marks a reason-less one `UNATTRIBUTED`. It is never applied implicitly: pass
   `--allow-diff-file`. Never allowlist a *capture* gap (a game absent from the
   raw store) — that needs a re-capture.
+
+  **The CURRENT season is refreshed nightly** by
+  `scripts/nightly_nba_season_refresh.sh` (droplet cron `15 10` ET over the NBA
+  window): v3 backfill (fresh per-game cache) -> this cutover for one season with
+  `--no-readme --execute` (no allowlist file: an in-season DIFF must page, not
+  pass) -> `leaguedash_cli --publish`. The v3 half is a logged no-op until the
+  raw store holds a `playbyplayv3/{season}/` capture, so it is inert while the
+  `hoopR-nba-stats-raw` scrape cron stays disabled; leaguedash scrapes live
+  through the proxy pool regardless. `--no-readme` keeps a one-season run from
+  rewriting each tag's README season range; empty (0-row) staged families are
+  never published. WNBA twin: `wehoop-wnba-stats-data`, where the same
+  operator-only gap froze the 2026 assets for seven weeks.
 
   **Three formats, always.** Every artifact publishes as `parquet` + `rds` +
   `csv.gz` (`nba_data_build/v3_formats.py`). `hoopR::load_nba_*()` reads the
