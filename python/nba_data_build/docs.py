@@ -65,9 +65,7 @@ BUILDER = {
     "rosters": "python/nba_stats_05_rosters_creation.py",
     "coaches": "python/nba_stats_06_coaches_creation.py",
     "draft": "python/nba_stats_07_draft_creation.py",
-    "schedules": "python/nba_stats_08_schedules_creation.py",
     "player_game_logs": "python/nba_stats_09_player_game_logs_creation.py",
-    "pbp": "python/nba_stats_10_pbp_creation.py",
     "game_rosters": "python/nba_stats_11_game_rosters_creation.py",
     "officials": "python/nba_stats_12_officials_creation.py",
     "player_boxscores": "python/nba_stats_13_player_boxscores_creation.py",
@@ -80,13 +78,13 @@ BUILDER = {
 
 #: The stage-99 schedule-master artifacts (spec D34/D36): committed to this
 #: repo rather than released per-season. Both come out of one pass over the
-#: committed per-season schedule files, so they cannot drift from each other.
+#: raw store's scheduleleaguev2 seasons, so they cannot drift from each other.
 MASTERS = {
     "schedule_master": "nba_stats/nba_stats_schedule_master.parquet",
     "games_in_data_repo": "nba_stats/nba_stats_games_in_data_repo.parquet",
 }
 
-#: Every documented page: the 16 registry datasets + the 2 master artifacts.
+#: Every documented page: the registry datasets + the 2 master artifacts.
 PAGES: tuple[str, ...] = tuple(d.key for d in DATASETS) + tuple(MASTERS)
 
 AUTOMATION = (
@@ -170,11 +168,11 @@ def column_table(dataset: str) -> str:
 #: structure. Keep them short and link the detail -- the full accounting lives in
 #: `docs/nba-v3-coverage.md`, not copied into every page.
 COVERAGE_NOTES: dict[str, str] = {
-    "pbp": """
-**Every NBA season type is published** — preseason (`001`), regular season
+    "schedule_master": """
+**Every NBA season type is in the master** — preseason (`001`), regular season
 (`002`), All-Star (`003`), playoffs (`004`), play-in (`005`) and NBA Cup final
-(`006`) — so `games known` counts the full game universe, and a season's
-`games built` is below it wherever upstream published no play-by-play.
+(`006`) — so it counts the full game universe, and `in_pbp` is False wherever
+upstream published no play-by-play.
 
 **Preseason play-by-play begins with the 2010-11 season** (END-year 2011): 0 of
 119 preseason games in END-year 2010, 119 of 119 in 2011. That era boundary is
@@ -233,9 +231,8 @@ def _seasons_built(dataset: str) -> str:
     count = len(seasons)
     if count == 1:
         return f"{seasons[0]} (1 season)"
-    # Seasons are strings ("2023-24" span form here); contiguity is judged on
-    # the leading start year so a sparse range is labelled as such rather than
-    # implying completeness that isn't there.
+    # Seasons are END-year Ints; contiguity is judged on the year so a sparse
+    # range is labelled as such rather than implying completeness that isn't there.
     years = sorted(int(str(s)[:4]) for s in seasons)
     contiguous = count == years[-1] - years[0] + 1
     span = f"{seasons[0]}–{seasons[-1]} ({count} seasons"
@@ -278,7 +275,7 @@ def dataset_page(dataset: str, *, live: bool) -> str:
 def _master_page(dataset: str) -> str:
     return f"""# `{dataset}`
 
-Stage-99 schedule-master artifact (spec D34/D36): {"every game the schedule knows about — the denominator" if dataset == "schedule_master" else "only games present in at least one compilation — the numerator, what consumers join against"}. The ``in_*`` flag set is derived from the dataset registry, never hand-listed.
+Stage-99 schedule-master artifact (spec D34/D36): {"every game the schedule knows about — the denominator" if dataset == "schedule_master" else "only games present in at least one compilation — the numerator, what consumers join against"}. Rows are parsed from the raw store's ``scheduleleaguev2/{{season}}.json`` (every season type, ``season`` = END year); each ``in_*`` flag is membership in the committed ``nba_stats/{{key}}/parquet/{{stem}}_{{season}}.parquet`` (``master.FLAG_SOURCES``).
 
 | | |
 |---|---|

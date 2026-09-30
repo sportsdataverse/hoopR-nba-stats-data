@@ -1,6 +1,6 @@
 # `games_in_data_repo`
 
-Stage-99 schedule-master artifact (spec D34/D36): only games present in at least one compilation — the numerator, what consumers join against. The ``in_*`` flag set is derived from the dataset registry, never hand-listed.
+Stage-99 schedule-master artifact (spec D34/D36): only games present in at least one compilation — the numerator, what consumers join against. Rows are parsed from the raw store's ``scheduleleaguev2/{season}.json`` (every season type, ``season`` = END year); each ``in_*`` flag is membership in the committed ``nba_stats/{key}/parquet/{stem}_{season}.parquet`` (``master.FLAG_SOURCES``).
 
 | | |
 |---|---|
@@ -15,7 +15,6 @@ Stage-99 schedule-master artifact (spec D34/D36): only games present in at least
 
 | col_name | type | description |
 |---|---|---|
-| `PBP` | Boolean | Legacy availability flag carried over from the pre-registry hoopR schedule tree; superseded by in_pbp and kept only because the committed master still carries it. |
 | `arena_city` | String | Arena city. |
 | `arena_name` | String | Arena the game is played in. |
 | `arena_state` | String | Arena state/territory code. |
@@ -57,16 +56,16 @@ Stage-99 schedule-master artifact (spec D34/D36): only games present in at least
 | `home_team_tricode` | String | Home team three-letter code. |
 | `home_team_wins` | Int64 | Home team wins entering/at the game, per the schedule feed. |
 | `if_necessary` | String | "true"/"false": whether a scheduled playoff game is conditional. |
-| `in_game_rosters` | Boolean | True when the game is present in the compiled game_rosters release. |
-| `in_officials` | Boolean | True when the game is present in the compiled officials release. |
-| `in_pbp` | Boolean | True when the game's play-by-play made it into a compiled season release. |
-| `in_player_boxscores` | Boolean | True when the game is present in the compiled player_boxscores release. |
-| `in_team_boxscores` | Boolean | True when the game is present in the compiled team_boxscores release. |
+| `in_game_rosters` | Boolean | True when the game is in the committed game_rosters season parquet. |
+| `in_officials` | Boolean | True when the game is in the committed officials season parquet. |
+| `in_pbp` | Boolean | True when the game is in the committed v3 play-by-play (`nba_stats/pbp/parquet/nba_play_by_play_{season}.parquet`). |
+| `in_player_boxscores` | Boolean | True when the game is in the committed player_boxscores season parquet. |
+| `in_team_boxscores` | Boolean | True when the game is in the committed team_boxscores season parquet. |
 | `is_neutral` | Boolean | True for neutral-site games. |
 | `league_id` | String | stats.nba.com league id ("00" = NBA). |
 | `month_num` | Int64 | Schedule-feed month ordinal. |
 | `postponed_status` | String | Postponement flag from the schedule feed ("A" = active/none). |
-| `season` | String | Season the row belongs to, in one of two forms depending on the artifact. On the reshaped RELEASE assets it is the season's ENDING year as an Int (2024 = the 2023-24 season), matching the asset filename -- the 2026-08-13 republish moved every `nba_stats_*` asset onto END-year names and converted the column with them. On the stage-99 master artifacts committed to `nba_stats/` (`schedule_master`, `games_in_data_repo`) it is the span STRING "1996-97" ... "2025-26", which is what those parquets store and what the schedule builder writes. `draft` and `draft_combine` are an Int in a third sense: the four-digit draft year (2003 = the June 2003 draft, which precedes the 2003-04 season). |
+| `season` | Int64 | Season the row belongs to, as the season's ENDING year Int (2024 = the 2023-24 season), matching the asset filename -- on the reshaped RELEASE assets (the 2026-08-13 republish moved every `nba_stats_*` asset onto END-year names) and on the stage-99 master artifacts committed to `nba_stats/` (`schedule_master`, `games_in_data_repo`; the span STRING "1996-97" they carried until 2026-09-30 is gone). `draft` and `draft_combine` are an Int in a second sense: the four-digit draft year (2003 = the June 2003 draft, which precedes the 2003-04 season). |
 | `season_type_description` | String | Human-readable season type ("Regular Season", "Playoffs", "PlayIn"). |
 | `season_type_id` | String | Leading digit of season_id encoding the season type (2 = regular season, 4 = playoffs, 5 = play-in). |
 | `series_game_number` | String | Playoff series game number ("Game 5"; empty otherwise). |

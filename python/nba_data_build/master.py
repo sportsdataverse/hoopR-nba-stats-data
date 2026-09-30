@@ -11,11 +11,12 @@ drift:
     Only games present in at least one compilation — the numerator, and what
     consumers join against.
 
-The committed per-season schedule files (``nba_stats/schedules/parquet``) are
-the ORIGIN of every ``in_*`` flag; this module unions and normalizes but never
-invents a flag. The flag SET is derived from the ``DATASETS`` registry
-(``level == "game"``), never hand-listed, so a dataset added to the registry
-gets its flag with no wiring here.
+The per-season frames are parsed from the raw store's ``scheduleleaguev2/{E}.json``
+(every game, preseason through NBA Cup, END-year keyed) and every ``in_*`` flag
+is read off the COMMITTED tree: a game is in a dataset when its id is in
+``nba_stats/{key}/parquet/{stem}_{E}.parquet``. The R-era per-season
+``schedules/parquet/schedule_{E}`` family this used to union was retired
+2026-09-30 (incomplete, span-string seasons, only the R twin wrote it).
 
 Game ids are pinned ``Utf8``: NBA ids are zero-padded ("0022300001"), so an
 int-typed source is restored via ``zfill(10)`` rather than a lossy str cast.
@@ -23,24 +24,27 @@ int-typed source is restored via ``zfill(10)`` rather than a lossy str cast.
 
 from __future__ import annotations
 
-import os
-import re
 from pathlib import Path
+from typing import Any
 
 import polars as pl
+from sportsdataverse.nba.nba_stats_parsers import parse_nba_stats_result_sets
 
-from nba_data_build.reshape.datasets import DATASETS, Dataset
-
-#: Game-level datasets that roll up into a season release and so get a flag.
-GAME_LEVEL: tuple[Dataset, ...] = tuple(d for d in DATASETS if d.level == "game")
-
-#: Per-game raw files: "00" league prefix + 8 digits.
-_GAME_FILE_RE = re.compile(r"^(00\d{8})\.json$")
+#: ``in_*`` flag -> (tree dir under ``nba_stats/``, parquet stem). Explicit, not
+#: registry-derived: ``in_pbp`` reads the v3 ``nba_play_by_play`` family, which
+#: the nightly v3 refresh publishes and the reshape registry does not carry.
+FLAG_SOURCES: dict[str, tuple[str, str]] = {
+    "in_pbp": ("pbp", "nba_play_by_play"),
+    "in_game_rosters": ("game_rosters", "game_rosters"),
+    "in_officials": ("officials", "officials"),
+    "in_player_boxscores": ("player_boxscores", "player_boxscores"),
+    "in_team_boxscores": ("team_boxscores", "team_boxscores"),
+}
 
 
 def flag_columns() -> tuple[str, ...]:
-    """The ``in_*`` column set, derived from the registry."""
-    return tuple(f"in_{d.key}" for d in GAME_LEVEL)
+    """The ``in_*`` column set."""
+    return tuple(FLAG_SOURCES)
 
 
 def _utf8_game_id(expr: pl.Expr, dtype: pl.DataType) -> pl.Expr:
@@ -52,85 +56,51 @@ def _utf8_game_id(expr: pl.Expr, dtype: pl.DataType) -> pl.Expr:
 
 
 def _ensure_flags(schedule: pl.DataFrame) -> pl.DataFrame:
-    """Every registry flag exists (Boolean): absence must be representable."""
+    """Every flag exists (Boolean): absence must be representable."""
     missing = [pl.lit(False).alias(c) for c in flag_columns() if c not in schedule.columns]
     out = schedule.with_columns(missing) if missing else schedule
     return out.with_columns([pl.col(c).cast(pl.Boolean) for c in flag_columns()])
 
 
-def stamp_from_built(schedule: pl.DataFrame, built_dir: str | Path, season: int) -> pl.DataFrame:
-    """Restamp ``in_*`` from this run's built season artifacts (the exact truth).
+def season_schedule(payload: Any, season: int) -> pl.DataFrame:
+    """One season's schedule from a raw ``scheduleleaguev2`` payload, ``season`` = END year.
 
-    ``built_dir`` follows the reshape CLI's output contract:
-    ``{out}/{release_tag}/{stem}_{season}.parquet``. ``season`` is the END year
-    on both sides (``--season`` here, ``--seasons`` there), and so is the season
-    file's name (``schedule_2026.parquet`` = 2025-26), so no offset is applied.
+    The payload's own ``season`` is the feed's ``seasonYear`` string; it is
+    overwritten with the END-year Int so the master agrees with every asset name.
+    """
+    frame = parse_nba_stats_result_sets(payload)
+    if frame.is_empty():
+        return frame
+    return frame.with_columns(pl.lit(season, dtype=pl.Int64).alias("season"))
 
-    A dataset without a built file this run keeps whatever flag the season file
-    already carries — a lookup miss is silent, so a convention drift here shows
-    up as flags that never change, not as an error.
+
+def stamp_from_tree(schedule: pl.DataFrame, base: str | Path, season: int) -> pl.DataFrame:
+    """Set every ``in_*`` flag from the committed ``{base}/{key}/parquet/{stem}_{season}``.
+
+    A missing file means nothing of that dataset is committed for the season,
+    so the flag is False for every game — never left unset.
     """
     out = schedule
-    for dataset in GAME_LEVEL:
-        path = Path(built_dir) / dataset.release_tag / f"{dataset.stem}_{season}.parquet"
-        if not path.is_file():
-            continue
-        built = pl.read_parquet(path, columns=["game_id"])
-        gids = (
-            built.select(_utf8_game_id(pl.col("game_id"), built.schema["game_id"]))["game_id"]
-            .unique()
-            .to_list()
-        )
+    for flag, (key, stem) in FLAG_SOURCES.items():
+        path = Path(base) / key / "parquet" / f"{stem}_{season}.parquet"
+        gids: list[str] = []
+        if path.is_file():
+            built = pl.read_parquet(path, columns=["game_id"])
+            gids = (
+                built.select(_utf8_game_id(pl.col("game_id"), built.schema["game_id"]))["game_id"]
+                .unique()
+                .to_list()
+            )
         out = out.with_columns(
-            _utf8_game_id(pl.col("game_id"), out.schema["game_id"])
-            .is_in(gids)
-            .alias(f"in_{dataset.key}")
+            _utf8_game_id(pl.col("game_id"), out.schema["game_id"]).is_in(gids).alias(flag)
         )
-    return _ensure_flags(out)
-
-
-def raw_store_game_ids(raw_root: str | Path) -> dict[str, set[str]]:
-    """Game-id sets per source endpoint of the game-level datasets, one scandir sweep."""
-    sets: dict[str, set[str]] = {}
-    for endpoint in {d.endpoint for d in GAME_LEVEL if d.endpoint}:
-        gids: set[str] = set()
-        base = Path(raw_root) / endpoint
-        if base.is_dir():
-            with os.scandir(base) as seasons:
-                season_dirs = [e.path for e in seasons if e.is_dir()]
-            for season_dir in season_dirs:
-                with os.scandir(season_dir) as files:
-                    for file in files:
-                        match = _GAME_FILE_RE.match(file.name)
-                        if match is not None:
-                            gids.add(match.group(1))
-        sets[endpoint] = gids
-    return sets
-
-
-def stamp_from_raw(schedule: pl.DataFrame, endpoint_gids: dict[str, set[str]]) -> pl.DataFrame:
-    """Restamp ``in_*`` from raw-store presence of each dataset's source endpoint.
-
-    ponytail: the reshaper is a pure function of the raw store, so raw presence
-    is a faithful proxy for compilation membership — except that a captured
-    ``boxscoresummaryv2`` can carry an empty result set. ``stamp_from_built``
-    (exact, from the run's artifacts) wins whenever a build just happened.
-    """
-    out = schedule
-    for dataset in GAME_LEVEL:
-        gids = endpoint_gids.get(dataset.endpoint or "", set())
-        out = out.with_columns(
-            _utf8_game_id(pl.col("game_id"), out.schema["game_id"])
-            .is_in(sorted(gids))
-            .alias(f"in_{dataset.key}")
-        )
-    return _ensure_flags(out)
+    return out
 
 
 def build_master(season_frames: list[pl.DataFrame]) -> pl.DataFrame:
     """Union season schedules into one frame with a pinned column order.
 
-    Ragged seasons reconcile via ``diagonal_relaxed``; every registry flag is
+    Ragged seasons reconcile via ``diagonal_relaxed``; every flag is
     materialized (False, not absent) so the master schema is stable.
 
     Raises:
@@ -159,10 +129,14 @@ def build_coverage(master: pl.DataFrame) -> pl.DataFrame:
     if not keys:
         raise ValueError("master frame has neither season nor a season_type column")
     aggs: list[pl.Expr] = [pl.len().alias("n_games")]
-    if "game_date" in master.columns:
-        aggs += [
-            pl.col("game_date").min().alias("first_date"),
-            pl.col("game_date").max().alias("last_date"),
-        ]
+    # The feed's game_date is "MM/DD/YYYY ..." (min/max would sort January
+    # first), so prefer the ISO game_date_est's date part when present.
+    date = None
+    if "game_date_est" in master.columns:
+        date = pl.col("game_date_est").str.slice(0, 10)
+    elif "game_date" in master.columns:
+        date = pl.col("game_date")
+    if date is not None:
+        aggs += [date.min().alias("first_date"), date.max().alias("last_date")]
     aggs += [pl.col(f).mean().alias(f"pct_{f}") for f in flags]
     return master.group_by(keys, maintain_order=True).agg(aggs).sort(keys)

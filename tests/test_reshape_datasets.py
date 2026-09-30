@@ -1,4 +1,4 @@
-"""Registry tests — the 16 NBA datasets, their tags, and the NBA-specific fields."""
+"""Registry tests — the 14 NBA datasets, their tags, and the NBA-specific fields."""
 
 from __future__ import annotations
 
@@ -6,9 +6,11 @@ from nba_data_build.reshape import datasets
 from nba_data_build.reshape.datasets import BY_KEY, DATASETS, RELEASE_TAGS
 
 
-def test_exactly_sixteen_datasets() -> None:
-    # 15 through the v3 reshape spec + game_matchups, appended 2026-09-02.
-    assert len(DATASETS) == 16
+def test_exactly_fourteen_datasets() -> None:
+    # 15 through the v3 reshape spec + game_matchups (2026-09-02), minus the
+    # legacy pbp + schedules reshapes retired 2026-09-30.
+    assert len(DATASETS) == 14
+    assert "pbp" not in BY_KEY and "schedules" not in BY_KEY
 
 
 def test_release_tags_are_nba_stats_and_unique() -> None:

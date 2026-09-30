@@ -181,8 +181,8 @@ change both together.
 - **Input:** NBA Stats API via hoopR. **Output committed to git** (the intentional SDV pattern).
 - Raw per-game JSON: `nba_stats/json/pbp/{padded_game_id}.json` (flat, ~1300 files/season).
 - Aggregates: `nba_stats/pbp/{csv,rds,parquet}/play_by_play_{season}.*` (csv is `.csv.gz`),
-  `nba_stats/schedules/{csv,rds,parquet,qs}/schedule_{season}.*`,
-  `nba_stats/nba_stats_schedule_master.{csv,rds,parquet}`.
+  `nba_stats/schedules/{csv,rds,parquet,qs}/schedule_{season}.*` (both R-era; see the
+  schedule-master note below for what replaced the schedule family).
 - `run_and_commit()` commits each script's output independently (schedules first, pbp last)
   so a slow/empty-cache pbp pass can't block the schedule commit.
 
@@ -197,6 +197,11 @@ change both together.
   **Droplet-safe** (reads committed JSON, uploads via `gh`, no stats.nba.com calls)
   — it is the `data.build_py` stage in sdv-orch's `nba_stats` pipeline.
 - Ships **parquet + rds + csv** to 15 `nba_stats_*` tags (`hoopR_data` rds stamp).
+  **Retired 2026-09-30:** the legacy `pbp` (`play_by_play_{E}`) and `schedules`
+  (`nba_stats_schedule_{E}`) reshapes and their stage shims 08/10 -- they duplicated
+  v3 `nba_play_by_play` and `player_game_logs`. `shots` still derives from an
+  in-memory pbp frame. The `nba_stats_pbp` / `nba_stats_schedules` TAGS live on,
+  fed by the nightly v3 refresh (`nba_play_by_play_{E}` / `nba_schedule_{E}`).
   All 17 tags this repo owns (those 15 + the Program V cutover's
   `nba_stats_possessions` / `nba_stats_game_lineups`) are provisioned by
   `ops/init/0000_create_hoopr_nba_stats_releases_init.sh`. **Neither `gh release
@@ -224,14 +229,28 @@ parquet. Writers: the daily processor (reshaped datasets, per season),
 `nightly_nba_impact.sh` (`nba_player_impact` parquet + `*_card.json`). A new
 dataset lands its committed parquet in the same change;
 `/mnt/sdv_repos/bin/stats_release_audit.py` flags any released parquet with no
-committed copy (NO-COMMIT). Legacy tree files are END-named too (renamed per season 2026-09-30):
-`schedules/parquet/schedule_{E}` (the D34 schedule family stage 99 reads; was `schedule_{YYYY-YY}`),
-`pbp/parquet/play_by_play_v2_{E}` (the R-era v2 build the v3 gate compares against; kept apart from
-the Python `play_by_play_{E}` twin, a different build). Those two are the ONLY tree files not on
-their tag (committed-only by design); everything else in `nba_stats/{key}/parquet/` is an asset of
-`nba_stats_{key}`. The pre-cutover `*_v3` strays (`pbpv3/`, `schedule_v3/`, a v3 lineups file misfiled
+committed copy (NO-COMMIT). Legacy tree file, END-named too (renamed per season 2026-09-30):
+`pbp/parquet/play_by_play_v2_{E}` (the R-era v2 build the v3 gate compares against). It is the
+ONLY tree family not on its tag (committed-only by design); everything else in
+`nba_stats/{key}/parquet/` is an asset of `nba_stats_{key}`.
+
+**Schedule master (stage 99, spec D34).** `python/nba_stats_99_schedule_master_creation.py`
+builds `nba_stats_schedule_master` / `nba_stats_games_in_data_repo` /
+`nba_stats_schedule_coverage` (all committed) from the raw store's
+`scheduleleaguev2/{E}.json` for EVERY season present (1997..next season; every season type incl.
+preseason, play-in, NBA Cup), `season` = END-year Int. The `in_*` flags are read off the
+committed tree -- game id present in `nba_stats/{key}/parquet/{stem}_{E}.parquet`, with `in_pbp`
+on the v3 `nba_play_by_play_{E}` and the map explicit in `master.FLAG_SOURCES` (not the
+registry); a missing file is False. The daily processor runs it once at the end with
+`--raw-root "${RAW_ROOT}"` (the URL in CI). The R-era per-season
+`schedules/parquet/schedule_{E}` family (the old "D34 schedule family": missing seasons and
+playoff/play-in games, span-string `season`, the R-only `PBP` column) was **retired
+2026-09-30**, and the R twin no longer writes it or an R master.
+
+The pre-cutover `*_v3` strays (`pbpv3/`, `schedule_v3/`, a v3 lineups file misfiled
 under `lineups/`) and the schedule csv copies were removed; `pipeline_cli.py` still targets those
-retired paths/tags and must not be run. The R twin writes the same END names, parquet only. The twin follows the same rule in
+retired paths/tags and must not be run. The R twin writes the same END names, parquet only
+(its remaining tree write is `play_by_play_v2_{E}`). The twin follows the same rule in
 `wehoop-wnba-stats-data/wnba_stats/`.
 
 ## Model registry
@@ -406,9 +425,7 @@ is a valid cadence but must be stated explicitly.
 | [`python/nba_stats_05_rosters_creation.py`](python/nba_stats_05_rosters_creation.py) | [`rosters`](docs/datasets/rosters.md) | [`nba_stats_rosters`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_rosters) | 2026-08-13 |
 | [`python/nba_stats_06_coaches_creation.py`](python/nba_stats_06_coaches_creation.py) | [`coaches`](docs/datasets/coaches.md) | [`nba_stats_coaches`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_coaches) | 2026-08-13 |
 | [`python/nba_stats_07_draft_creation.py`](python/nba_stats_07_draft_creation.py) | [`draft`](docs/datasets/draft.md) | [`nba_stats_draft`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_draft) | 2026-08-13 |
-| [`python/nba_stats_08_schedules_creation.py`](python/nba_stats_08_schedules_creation.py) | [`schedules`](docs/datasets/schedules.md) | [`nba_stats_schedules`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_schedules) | 2026-08-13 |
 | [`python/nba_stats_09_player_game_logs_creation.py`](python/nba_stats_09_player_game_logs_creation.py) | [`player_game_logs`](docs/datasets/player_game_logs.md) | [`nba_stats_player_game_logs`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_player_game_logs) | 2026-08-13 |
-| [`python/nba_stats_10_pbp_creation.py`](python/nba_stats_10_pbp_creation.py) | [`pbp`](docs/datasets/pbp.md) | [`nba_stats_pbp`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_pbp) | 2026-08-13 |
 | [`python/nba_stats_11_game_rosters_creation.py`](python/nba_stats_11_game_rosters_creation.py) | [`game_rosters`](docs/datasets/game_rosters.md) | [`nba_stats_game_rosters`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_game_rosters) | 2026-08-13 |
 | [`python/nba_stats_12_officials_creation.py`](python/nba_stats_12_officials_creation.py) | [`officials`](docs/datasets/officials.md) | [`nba_stats_officials`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_officials) | 2026-08-13 |
 | [`python/nba_stats_13_player_boxscores_creation.py`](python/nba_stats_13_player_boxscores_creation.py) | [`player_boxscores`](docs/datasets/player_boxscores.md) | [`nba_stats_player_boxscores`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_player_boxscores) | 2026-08-13 |

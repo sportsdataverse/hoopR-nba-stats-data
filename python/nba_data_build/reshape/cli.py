@@ -11,12 +11,13 @@ Most datasets go through :func:`~nba_data_build.reshape.build.build` (the result
 path). The v3-nested datasets need their dedicated builders instead, and the
 CLI is where that routing lives:
 
-* ``pbp`` -> :func:`~nba_data_build.reshape.build.build_pbp` (rows under ``game.actions``)
 * ``player_boxscores`` / ``team_boxscores`` -> :func:`~nba_data_build.reshape.build.build_boxscores`
 * ``game_matchups`` -> :func:`~nba_data_build.reshape.build.build_matchups` (players
   nested inside players)
 * ``shots`` -> :func:`~nba_data_build.reshape.build.build_shots`, *derived* from that
-  season's pbp frame — so pbp is built once per season and reused, never twice.
+  season's play-by-play frame (:func:`~nba_data_build.reshape.build.build_pbp`, rows
+  under ``game.actions``), built in memory only. The ``pbp`` dataset itself was
+  retired 2026-09-30 (v3 ``nba_play_by_play`` replaces it), so nothing publishes it.
 
 Season floor
 ------------
@@ -123,11 +124,9 @@ def build_dataset(
 ) -> pl.DataFrame:
     """Build one dataset for one season, routing v3-nested datasets to their builders.
 
-    ``_pbp`` lets the caller pass an already-built play-by-play frame so ``shots``
-    (derived from pbp) and ``pbp`` itself share one bind per season.
+    ``_pbp`` lets the caller pass an already-built play-by-play frame for ``shots``
+    (derived from pbp) so the season's pbp is bound once.
     """
-    if dataset.key == "pbp":
-        return _pbp if _pbp is not None else _build.build_pbp(root, season)
     if dataset.key == "shots":
         pbp = _pbp if _pbp is not None else _build.build_pbp(root, season)
         return _build.build_shots(pbp)
@@ -152,13 +151,13 @@ def main(argv: Optional[list[str]] = None) -> int:
     datasets = _resolve_datasets(args.datasets)
     stamp = datetime.now(timezone.utc)
 
-    # pbp and shots share one bind per season; build it lazily, once, when needed.
+    # shots derives from the season's pbp frame; build it once, only when needed.
     want_keys = {d.key for d in datasets}
     built_tags: set[str] = set()
 
     for season in seasons:
         pbp: Optional[pl.DataFrame] = None
-        if {"pbp", "shots"} & want_keys:
+        if "shots" in want_keys:
             pbp = _build.build_pbp(root, season)
         for dataset in datasets:
             # Pre-floor seasons have no source data: skip rather than ship an

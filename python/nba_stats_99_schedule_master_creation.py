@@ -1,8 +1,8 @@
 """Stage 99 — schedule master, games-in-data-repo manifest, and coverage index.
 
-Runs LAST in the daily processor, after every dataset is built. Thin shim over
-``nba_data_build.master``; emits both D34 artifacts from one in-memory frame so
-they cannot drift:
+Runs LAST in the daily processor, after every season's parquets are committed
+into the tree. Thin shim over ``nba_data_build.master``; emits all three D34
+artifacts from one in-memory frame so they cannot drift:
 
 * ``nba_stats/nba_stats_schedule_master.parquet`` — every game the schedule
   knows about (the denominator).
@@ -11,94 +11,72 @@ they cannot drift:
 * ``nba_stats/nba_stats_schedule_coverage.parquet`` — one row per
   (season, season_type_id) with per-dataset build coverage.
 
-The ``in_*`` flag set is derived from the ``DATASETS`` registry
-(``level == "game"``) and is stamped into the committed per-season schedule
-files — the origin of every flag — by one of two sources:
-
-* ``--built-dir <out> --season <end_year>``: this run's built artifacts
-  (exact; used in-loop by ``daily_nba_stats_python_processor.sh``).
-* ``--raw-root <json base>``: raw-store presence of each dataset's source
-  endpoint (faithful proxy — the reshaper is a pure function of the raw
-  store; used for full-history backfills on a machine with the -raw sibling).
+Rows come from the raw store's ``scheduleleaguev2/{E}.json`` for every END-year
+season present (``--raw-root``: a local json base or a raw.githubusercontent
+URL), ``season`` stamped as the END-year Int. Flags come from the committed tree
+under ``--base`` (``master.FLAG_SOURCES``). Nothing is read from the retired
+``schedules/parquet/schedule_{E}`` family.
 
 Stage 99 is not a dataset shim: it has no registry entry and no ``DATASET``
 constant. Number 99 is reserved for the schedule master (spec D16/D34).
 
 Example:
-    Union the committed season schedules into the master + manifest::
+    Rebuild from the sibling -raw checkout::
 
         uv run python python/nba_stats_99_schedule_master_creation.py
 
-    Restamp every season from the local -raw sibling, then rebuild::
+    Or straight from GitHub::
 
         uv run python python/nba_stats_99_schedule_master_creation.py \
-            --raw-root ../hoopR-nba-stats-raw/nba_stats/json
+            --raw-root https://raw.githubusercontent.com/sportsdataverse/hoopR-nba-stats-raw/main/nba_stats/json
 """
 
 from __future__ import annotations
 
 import argparse
+from datetime import date
 from pathlib import Path
 
-import polars as pl
 from nba_data_build.master import (
     build_coverage,
     build_master,
     games_in_data_repo,
-    raw_store_game_ids,
-    stamp_from_built,
-    stamp_from_raw,
+    season_schedule,
+    stamp_from_tree,
 )
+from nba_data_build.reshape.raw import read_season
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LEAGUE = "nba_stats"
+FIRST_SEASON = 1997  # 1996-97, the start of the stats.nba.com history
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--base", default=str(REPO_ROOT / LEAGUE), help="dataset tree root")
-    parser.add_argument("--built-dir", default=None, help="reshape --out dir to restamp from")
-    parser.add_argument("--season", type=int, default=None, help="end-year season for --built-dir")
     parser.add_argument(
-        "--raw-root", default=None, help="raw json base to restamp every season from"
-    )
-    parser.add_argument(
-        "--stamp-only",
-        action="store_true",
-        help="restamp season files without rebuilding the master (in-loop use)",
+        "--raw-root",
+        default=str(REPO_ROOT.parent / "hoopR-nba-stats-raw" / LEAGUE / "json"),
+        help="raw json base (local dir or http(s) URL) holding scheduleleaguev2/{E}.json",
     )
     args = parser.parse_args(argv)
 
     base = Path(args.base)
-    season_dir = base / "schedules" / "parquet"
-    paths = sorted(season_dir.glob("schedule_*.parquet"))
-    if not paths:
-        print(f"::error ::no season schedules under {season_dir}")
+    # Probe rather than list: a URL root cannot be enumerated, and an absent
+    # season is a clean None (404 / missing file). Next year's schedule is
+    # published before the season starts, hence the +1.
+    frames = []
+    for season in range(FIRST_SEASON, date.today().year + 2):
+        payload = read_season(args.raw_root, "scheduleleaguev2", season)
+        frame = season_schedule(payload, season) if payload is not None else None
+        if frame is None or frame.is_empty():
+            continue
+        frames.append(stamp_from_tree(frame, base, season))
+    if not frames:
+        print(f"::error ::no scheduleleaguev2 seasons under {args.raw_root}")
         return 1
 
-    if args.built_dir is not None:
-        if args.season is None:
-            print("::error ::--built-dir requires --season <end_year>")
-            return 1
-        target = season_dir / f"schedule_{args.season}.parquet"  # END-year named
-        if not target.is_file():
-            print(f"::warning ::no season schedule at {target}; nothing to restamp")
-        else:
-            stamped = stamp_from_built(pl.read_parquet(target), args.built_dir, args.season)
-            stamped.write_parquet(target)
-            print(f"restamped {target.name} from {args.built_dir}")
-    elif args.raw_root is not None:
-        endpoint_gids = raw_store_game_ids(args.raw_root)
-        for path in paths:
-            stamp_from_raw(pl.read_parquet(path), endpoint_gids).write_parquet(path)
-        print(f"restamped {len(paths)} season file(s) from raw store {args.raw_root}")
-
-    if args.stamp_only:
-        return 0
-
-    master = build_master(
-        [pl.read_parquet(p) for p in sorted(season_dir.glob("schedule_*.parquet"))]
-    )
+    master = build_master(frames)
     manifest = games_in_data_repo(master)
     coverage = build_coverage(master)
 
@@ -109,7 +87,7 @@ def main(argv: list[str] | None = None) -> int:
     ):
         frame.write_parquet(path)
 
-    print(f"master:   {master.height} games across {len(paths)} seasons")
+    print(f"master:   {master.height} games across {len(frames)} seasons")
     print(f"manifest: {manifest.height} games in >=1 compilation")
     print(f"coverage: {coverage.height} rows")
     for flag in sorted(c for c in master.columns if c.startswith("in_")):

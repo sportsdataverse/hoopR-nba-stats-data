@@ -90,19 +90,10 @@ for i in $(seq "${START_YEAR}" "${END_YEAR}"); do
     # tee hides the subshell's exit status behind its own; recover it from PIPESTATUS[0].
     rc=${PIPESTATUS[0]}
     if [ "${rc}" -eq 0 ]; then
-        # Stage 99 (spec D34), in-loop half: restamp this season's committed
-        # schedule file's in_* flags from the artifacts just built, BEFORE the
-        # scratch dir goes away. Non-fatal: a stamp failure must not fail the
-        # publish that already happened.
-        #
         # -s/-e and ${i} are END years (2026 = 2025-26), the ecosystem convention
-        # (owner, 2026-09-30) and what daily_nba_stats.yml passes. `reshape
-        # --seasons`, the raw store (re-keyed 2026-09-30) and Stage 99's --season
-        # are all END too -- no START/END seam anywhere.
-        "${PYBIN}" python/nba_stats_99_schedule_master_creation.py \
-            --built-dir "${OUT_DIR}" --season "${i}" --stamp-only \
-            2>&1 | tee -a "${LOGFILE}" \
-            || echo "schedule-master stamp failed for season ${i}" | tee -a "${LOGFILE}"
+        # (owner, 2026-09-30) and what daily_nba_stats.yml passes; `reshape
+        # --seasons` and the raw store (re-keyed 2026-09-30) are END too.
+        #
         # Owner rule (2026-09-30): every compiled dataset's PARQUET is committed
         # under nba_stats/{key}/parquet/ for every season -- releases carry all
         # three formats, the tree carries parquet only. Tag dirs map onto the short
@@ -126,10 +117,11 @@ for i in $(seq "${START_YEAR}" "${END_YEAR}"); do
     [ "${rc}" -ne 0 ] && { echo "season ${i} FAILED (rc=${rc})"; ANY_FAILED=1; }
 done
 
-# Stage 99, union half: rebuild the master + games_in_data_repo manifest +
-# coverage index from ALL committed season schedules (the whole archive, not
-# just this run's window). Non-fatal for the same reason as above.
-"${PYBIN}" python/nba_stats_99_schedule_master_creation.py \
-    || echo "schedule-master union failed"
+# Stage 99 (spec D34): rebuild the master + games_in_data_repo manifest +
+# coverage index for EVERY season -- rows from the raw store's
+# scheduleleaguev2/{E}.json, in_* flags from the parquets committed above.
+# Non-fatal: a master failure must not fail the publishes that already happened.
+"${PYBIN}" python/nba_stats_99_schedule_master_creation.py --raw-root "${RAW_ROOT}" \
+    || echo "schedule-master rebuild failed"
 
 exit "${ANY_FAILED}"

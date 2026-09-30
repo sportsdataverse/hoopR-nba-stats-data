@@ -113,6 +113,15 @@ def test_gate_pbp_no_legacy_validates_against_raw_store() -> None:
     assert "uncompiled=1" in short["detail"]
 
 
+def test_gate_schedule_without_legacy_is_not_fatal(tmp_path) -> None:
+    """The legacy schedule family was retired 2026-09-30: an absent legacy file
+    reports NO_LEGACY against the raw store and never fails the gate."""
+    assert not vg.legacy_schedule_path(tmp_path, 2024).exists()
+    f = vg.gate_schedule(2024, _sched([("0022300001", 110, 105)]), None, raw_game_count=1)
+    assert f["verdict"] == "NO_LEGACY"
+    assert "raw_pbp_files=1" in f["detail"]
+
+
 def test_gate_missing_staged_is_fatal() -> None:
     assert vg.gate_schedule(2006, None, None, None)["verdict"] == "MISSING_STAGED"
     assert vg.gate_pbp(2006, None, None, None, None)["verdict"] == "MISSING_STAGED"

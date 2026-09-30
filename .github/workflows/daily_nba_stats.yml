@@ -6,7 +6,7 @@ name: Update NBA Stats Data
 # and uploads to the nba_stats_* release tags. No stats.nba.com calls. The
 # processor commits each season's built PARQUET under nba_stats/{key}/parquet/
 # (owner rule 2026-09-30: parquet in the tree, all three formats on the
-# release); the step below commits the schedule family (spec D34). The retired R chain scraped v2 pbp and
+# release); the step below commits the stage-99 schedule master (spec D34). The retired R chain scraped v2 pbp and
 # committed raw JSON into this repo, both of which are now the raw repo's job
 # (and the committed JSON was purged in 02341942).
 # Serialize every workflow in this repo that commits to it. Two runs in flight put
@@ -81,16 +81,15 @@ jobs:
           HOOPR_NBA_STATS_PYBIN="$(pwd)/.venv/bin/python" \
             bash scripts/daily_nba_stats_python_processor.sh -s "$START_YEAR" -e "$END_YEAR"
 
-      # The one exception to "no commits": the schedule family (spec D34/D36).
-      # The processor's stage-99 steps restamp the built window's season
-      # schedule flags and rebuild the master + games_in_data_repo manifest +
-      # coverage index; those live in the tree, not on a release tag.
+      # The stage-99 schedule master (spec D34/D36): the processor rebuilds the
+      # master + games_in_data_repo manifest + coverage index from the raw
+      # store's scheduleleaguev2 and the committed tree; those live in the tree,
+      # not on a release tag.
       - name: Commit schedule master
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- nba_stats/schedules/parquet \
-                     nba_stats/nba_stats_schedule_master.parquet \
+          git add -- nba_stats/nba_stats_schedule_master.parquet \
                      nba_stats/nba_stats_games_in_data_repo.parquet \
                      nba_stats/nba_stats_schedule_coverage.parquet
           git diff --cached --quiet || {

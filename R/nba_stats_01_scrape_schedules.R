@@ -58,13 +58,11 @@ schedules_df <- purrr::map_dfr(seq_along(seasons_vec), function(x) {
   completed_sched <- completed_sched %>%
     hoopR:::make_hoopR_data("NBA Stats Schedule from hoopR data repository", Sys.time())
 
-  ifelse(!dir.exists(file.path("nba_stats/schedules")), dir.create(file.path("nba_stats/schedules")), FALSE)
-  # END-year label (1996-97 -> 1997) since 2026-09-30; parquet only in the tree.
+  # END-year label (1996-97 -> 1997) since 2026-09-30. Release upload only: the
+  # per-season nba_stats/schedules/parquet/schedule_{E} tree family was retired
+  # 2026-09-30 -- Python stage 99 builds the schedule master from raw
+  # scheduleleaguev2 (python/nba_stats_99_schedule_master_creation.py).
   season_end <- as.integer(substr(seasons_vec[[x]], 1, 4)) + 1L
-
-  ifelse(!dir.exists(file.path("nba_stats/schedules/parquet")),
-         dir.create(file.path("nba_stats/schedules/parquet")), FALSE)
-  arrow::write_parquet(completed_sched, paste0("nba_stats/schedules/parquet/schedule_", season_end, ".parquet"))
 
   sportsdataversedata::sportsdataverse_save(
     data_frame = completed_sched,

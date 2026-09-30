@@ -44,7 +44,7 @@ _FOREIGN_MARKERS = (
 
 #: The highest-value surfaces carry full authored coverage; the long-tail
 #: leaderboard datasets keep honest empty cells.
-_FULLY_DESCRIBED = ("pbp", "schedules", "schedule_master", "games_in_data_repo")
+_FULLY_DESCRIBED = ("shots", "schedule_master", "games_in_data_repo")
 
 
 def test_the_store_ships_with_the_package():
@@ -108,9 +108,9 @@ def test_masters_are_documented():
     assert "in_*" in page or "in_pbp" in page
 
 
-def test_pbp_page_explains_the_games_without_play_by_play():
-    """`games built` < `games known` is coverage, not a backlog -- say so on the page."""
-    page = dataset_page("pbp", live=False)
+def test_master_page_explains_the_games_without_play_by_play():
+    """`in_pbp` False is upstream coverage, not a backlog -- say so on the page."""
+    page = dataset_page("schedule_master", live=False)
     assert "Preseason play-by-play begins with the 2010-11 season" in page
     assert "do not re-scrape them" in page
     # The gate must still see it: a note dropped from the generator is drift.
@@ -118,10 +118,10 @@ def test_pbp_page_explains_the_games_without_play_by_play():
 
 
 def test_drift_gate_ignores_publish_status_and_coverage():
-    page = dataset_page("pbp", live=False)
+    page = dataset_page("shots", live=False)
     noisy = page.replace(
         "| **Last published** | — (newest release asset) |",
         "| **Last published** | 2026-01-01 (newest release asset) |",
     )
     assert _without_status(page) == _without_status(noisy)
-    assert _without_status(page) != _without_status(page.replace("`action_number`", "`gone`"))
+    assert _without_status(page) != _without_status(page.replace("`action_type`", "`gone`"))

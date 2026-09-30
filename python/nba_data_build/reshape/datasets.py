@@ -16,6 +16,12 @@ data begins 2007-08) and ``game_matchups`` (matchup tracking begins 2017-18).
 
 Datasets whose source is ``None`` are *derived* rather than reshaped from a single
 endpoint (shots comes out of play-by-play), and are built by dedicated code.
+
+Retired 2026-09-30: ``pbp`` (``play_by_play_{E}`` on ``nba_stats_pbp``) and
+``schedules`` (``nba_stats_schedule_{E}`` on ``nba_stats_schedules``). They
+duplicated the v3 ``nba_play_by_play`` and ``player_game_logs``; the v3 families
+still publish to those tags from the nightly v3 refresh, not from this registry.
+Their stage numbers (08, 10) stay retired rather than being reused.
 """
 
 from __future__ import annotations
@@ -103,14 +109,6 @@ DATASETS: tuple[Dataset, ...] = (
         f"NBA Stats Draft History {_R}",
     ),
     Dataset(
-        "schedules",
-        "leaguegamelog",
-        None,
-        "nba_stats_schedule",
-        "nba_stats_schedules",
-        f"NBA Stats Schedule {_R}",
-    ),
-    Dataset(
         "player_game_logs",
         "leaguegamelog",
         None,
@@ -119,15 +117,6 @@ DATASETS: tuple[Dataset, ...] = (
         f"NBA Stats Player Game Logs {_R}",
     ),
     # -- per-game, bound into one frame per season --------------------------------
-    Dataset(
-        "pbp",
-        "playbyplayv3",
-        None,
-        "play_by_play",
-        "nba_stats_pbp",
-        f"NBA Stats Play-by-Play {_R}",
-        level="game",
-    ),
     Dataset(
         "game_rosters",
         "boxscoresummaryv2",

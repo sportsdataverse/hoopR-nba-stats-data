@@ -782,42 +782,6 @@ class Draft(NbaStatsDataset):
     player_profile_flag: Optional[int] = None
 
 
-class Schedules(NbaStatsDataset):
-    """`schedules` — declared from the latest published/committed parquet."""
-
-    season_id: Optional[str] = None
-    team_id: Optional[int] = None
-    team_abbreviation: Optional[str] = None
-    team_name: Optional[str] = None
-    game_id: Optional[str] = None
-    game_date: Optional[str] = None
-    matchup: Optional[str] = None
-    wl: Optional[str] = None
-    min: Optional[int] = None
-    fgm: Optional[int] = None
-    fga: Optional[int] = None
-    fg_pct: Optional[float] = None
-    fg3m: Optional[int] = None
-    fg3a: Optional[int] = None
-    fg3_pct: Optional[float] = None
-    ftm: Optional[int] = None
-    fta: Optional[int] = None
-    ft_pct: Optional[float] = None
-    oreb: Optional[int] = None
-    dreb: Optional[int] = None
-    reb: Optional[int] = None
-    ast: Optional[int] = None
-    stl: Optional[int] = None
-    blk: Optional[int] = None
-    tov: Optional[int] = None
-    pf: Optional[int] = None
-    pts: Optional[int] = None
-    plus_minus: Optional[int] = None
-    video_available: Optional[int] = None
-    season: Optional[int] = None
-    season_type: Optional[str] = None
-
-
 class PlayerGameLogs(NbaStatsDataset):
     """`player_game_logs` — declared from the latest published/committed parquet."""
 
@@ -852,36 +816,6 @@ class PlayerGameLogs(NbaStatsDataset):
     video_available: Optional[int] = None
     season: Optional[int] = None
     season_type: Optional[str] = None
-
-
-class Pbp(NbaStatsDataset):
-    """`pbp` — declared from the latest published/committed parquet."""
-
-    action_number: Optional[int] = None
-    clock: Optional[str] = None
-    period: Optional[int] = None
-    team_id: Optional[int] = None
-    team_tricode: Optional[str] = None
-    person_id: Optional[int] = None
-    player_name: Optional[str] = None
-    player_name_i: Optional[str] = None
-    x_legacy: Optional[int] = None
-    y_legacy: Optional[int] = None
-    shot_distance: Optional[int] = None
-    shot_result: Optional[str] = None
-    is_field_goal: Optional[int] = None
-    score_home: Optional[str] = None
-    score_away: Optional[str] = None
-    points_total: Optional[int] = None
-    location: Optional[str] = None
-    description: Optional[str] = None
-    action_type: Optional[str] = None
-    sub_type: Optional[str] = None
-    video_available: Optional[int] = None
-    shot_value: Optional[int] = None
-    action_id: Optional[int] = None
-    game_id: Optional[str] = None
-    season: Optional[int] = None
 
 
 class GameRosters(NbaStatsDataset):
@@ -1006,7 +940,6 @@ class Shots(NbaStatsDataset):
 class ScheduleMaster(NbaStatsDataset):
     """`schedule_master` — declared from the latest published/committed parquet."""
 
-    PBP: Optional[bool] = None
     arena_city: Optional[str] = None
     arena_name: Optional[str] = None
     arena_state: Optional[str] = None
@@ -1057,7 +990,7 @@ class ScheduleMaster(NbaStatsDataset):
     league_id: Optional[str] = None
     month_num: Optional[int] = None
     postponed_status: Optional[str] = None
-    season: Optional[str] = None
+    season: Optional[int] = None
     season_type_description: Optional[str] = None
     season_type_id: Optional[str] = None
     series_game_number: Optional[str] = None
@@ -1069,7 +1002,6 @@ class ScheduleMaster(NbaStatsDataset):
 class GamesInDataRepo(NbaStatsDataset):
     """`games_in_data_repo` — declared from the latest published/committed parquet."""
 
-    PBP: Optional[bool] = None
     arena_city: Optional[str] = None
     arena_name: Optional[str] = None
     arena_state: Optional[str] = None
@@ -1120,7 +1052,7 @@ class GamesInDataRepo(NbaStatsDataset):
     league_id: Optional[str] = None
     month_num: Optional[int] = None
     postponed_status: Optional[str] = None
-    season: Optional[str] = None
+    season: Optional[int] = None
     season_type_description: Optional[str] = None
     season_type_id: Optional[str] = None
     series_game_number: Optional[str] = None
@@ -1198,9 +1130,7 @@ MODELS: dict[str, type[NbaStatsDataset]] = {
     "rosters": Rosters,
     "coaches": Coaches,
     "draft": Draft,
-    "schedules": Schedules,
     "player_game_logs": PlayerGameLogs,
-    "pbp": Pbp,
     "game_rosters": GameRosters,
     "officials": Officials,
     "player_boxscores": PlayerBoxscores,

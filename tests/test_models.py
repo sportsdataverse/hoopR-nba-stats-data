@@ -57,7 +57,7 @@ def test_model_rejects_type_coercion():
     from pydantic import ValidationError
 
     with pytest.raises(ValidationError):
-        MODELS["pbp"](game_id=22300001)  # int where the padded Utf8 id is declared
+        MODELS["shots"](game_id=22300001)  # int where the padded Utf8 id is declared
 
 
 def test_check_frame_accepts_a_matching_frame():
@@ -102,7 +102,7 @@ def test_check_stem_resolves_the_seasoned_write_stem():
 #: nba_stats/<key>/ trees that predate the reshape registry (the old hoopR
 #: v2/v3 compile surface); their parquets are NOT this pipeline's output, so
 #: checking the D39 model against them would compare two different contracts.
-LEGACY_TREES = {"pbp", "schedules", "lineups"}
+LEGACY_TREES = {"lineups"}
 
 
 @pytest.mark.archive

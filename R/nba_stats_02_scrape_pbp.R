@@ -165,28 +165,9 @@ nba_stats_pbp_season <- function(season) {
       .token = Sys.getenv("GITHUB_PAT")
     )
   }
-
-  ## --- Adding PBP Flag to Schedules -----
-  if (nrow(nba_stats_df) > 0) {
-    schedules_df <- schedules_df %>%
-      dplyr::mutate(
-        PBP = ifelse(.data$game_id %in% unique(nba_stats_df$game_id), TRUE, FALSE)
-      )
-  } else {
-    schedules_df$PBP <- FALSE
-  }
-  schedules_df <- schedules_df %>%
-    dplyr::arrange(dplyr::desc(.data$game_date_est)) %>%
-    hoopR:::make_hoopR_data("NBA Stats Schedule from hoopR data repository", Sys.time())
-
-  ## --- Writing Schedules to disk -----
-  if (nrow(nba_stats_df) > 0) {
-    ifelse(!dir.exists(file.path("nba_stats/schedules")), dir.create(file.path("nba_stats/schedules")), FALSE)
-
-    ifelse(!dir.exists(file.path("nba_stats/schedules/parquet")),
-           dir.create(file.path("nba_stats/schedules/parquet")), FALSE)
-    arrow::write_parquet(schedules_df, paste0("nba_stats/schedules/parquet/schedule_", season_end, ".parquet"))
-  }
+  # The PBP-flagged per-season schedule_{E} tree files and the R master are
+  # retired (2026-09-30): Python stage 99 builds the schedule master from raw
+  # scheduleleaguev2 with in_* flags from the committed tree.
 }
 
 cli::cli_progress_step(msg = "Downloading {opt$s - 1}-{substr(opt$s,3,4)} to {opt$e -1}-{substr(opt$e,3,4)} seasons of NBA Stats play-by-play data",
@@ -197,24 +178,6 @@ all_games <- purrr::map(seasons_vec, function(y) {
 })
 
 
-
-## --- Compiling Schedules and writing master to disk -----
-cli::cli_progress_step(msg = "Compiling NBA Stats master schedule",
-                       msg_done = "NBA Stats master schedule compiled and written to disk")
-
-sched_list <- list.files(path = "nba_stats/schedules/parquet", pattern = "^schedule_[0-9]{4}\\.parquet$")
-master_schedules_df <- purrr::map_dfr(sched_list, function(x) {
-  sched <- arrow::read_parquet(paste0("nba_stats/schedules/parquet/", x))
-  return(sched)
-})
-
-master_schedules_df <- master_schedules_df %>%
-  dplyr::arrange(dplyr::desc(.data$game_date_est)) %>%
-  hoopR:::make_hoopR_data("NBA Stats Schedule from hoopR data repository", Sys.time())
-
-arrow::write_parquet(master_schedules_df, "nba_stats/nba_stats_schedule_master.parquet")
-
 cli::cli_progress_message("")
 
 rm(all_games)
-rm(master_schedules_df)

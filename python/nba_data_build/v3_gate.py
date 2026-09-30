@@ -13,7 +13,8 @@ families:
 
 ``schedule``
     Staged ``nba_schedule_{E}.parquet`` vs legacy
-    ``nba_stats/schedules/parquet/schedule_{E}.parquet``: game counts,
+    ``nba_stats/schedules/parquet/schedule_{E}.parquet`` (a family RETIRED
+    2026-09-30, so today every season takes the no-legacy path): game counts,
     game-id set symmetric difference, and per-game home/away score
     reconciliation. Both the set diff and the score reconciliation are
     **core-to-core** (game-id type digit in {2, 4}): legacy non-core games are
@@ -63,7 +64,13 @@ def core_ids(ids: "set[str]") -> "set[str]":
 
 
 def legacy_schedule_path(repo_root: Union[str, Path], season_end: int) -> Path:
-    """The committed (R-produced) season schedule, END-year named since 2026-09-30."""
+    """The retired (R-produced) legacy season schedule, END-year named.
+
+    The whole ``schedules/parquet/schedule_{E}`` family was retired 2026-09-30,
+    so this path no longer exists: :func:`run_gate` reads it as ``None`` and
+    :func:`gate_schedule` reports ``NO_LEGACY`` (staged games vs raw captures),
+    which is not a failing verdict.
+    """
     return Path(repo_root) / "nba_stats" / "schedules" / "parquet" / f"schedule_{season_end}.parquet"
 
 
