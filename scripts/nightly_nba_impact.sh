@@ -50,7 +50,7 @@ fi
 RAW_STORE="${NBA_RAW_STORE:-/mnt/sdv_repos/hoopR-nba-stats-raw/nba_stats/json}"
 
 # A scratch dir, never a repo path: the builder's output is an intermediate, and
-# only the parquet/rds/card are meant to survive into the tracked tree below.
+# only the parquet + card are meant to survive into the tracked tree below.
 OUT_DIR="$(mktemp -d "/tmp/nba_impact_${SEASON}.XXXXXX")"
 trap 'rm -rf "${OUT_DIR}"' EXIT
 
@@ -76,13 +76,10 @@ case " ${*:2} " in
   *" --dry-run "*) echo "dry run: not committing"; echo "EXIT=0"; exit 0 ;;
 esac
 
-mkdir -p "${REPO_DIR}/nba_stats/player_impact/parquet" \
-         "${REPO_DIR}/nba_stats/player_impact/rds"
+# Parquet only in the tree (owner rule 2026-09-30); the release carries rds + csv too.
+mkdir -p "${REPO_DIR}/nba_stats/player_impact/parquet"
 for f in "${OUT_DIR}"/*.parquet; do
   [ -e "$f" ] && cp -f "$f" "${REPO_DIR}/nba_stats/player_impact/parquet/"
-done
-for f in "${OUT_DIR}"/*.rds; do
-  [ -e "$f" ] && cp -f "$f" "${REPO_DIR}/nba_stats/player_impact/rds/"
 done
 # The model card is the artifact that says HOW these numbers were produced;
 # committing the table without it leaves the repo copy unexplained.

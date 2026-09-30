@@ -61,6 +61,12 @@ fi
 cd "${REPO_DIR}" || exit 1
 mkdir -p "${REPO_DIR}/logs"
 
+# Commit + push helper, shared with scripts/nightly_nba_impact.sh.
+# shellcheck source=scripts/_commit.sh
+source "$(dirname "${BASH_SOURCE[0]}")/_commit.sh"
+git config --local user.email "action@github.com" >/dev/null 2>&1 || true
+git config --local user.name "Github Action" >/dev/null 2>&1 || true
+
 ANY_FAILED=0
 for i in $(seq "${START_YEAR}" "${END_YEAR}"); do
     LOGFILE="${REPO_DIR}/logs/hoopr_nba_stats_python_logfile_${i}.log"
@@ -101,6 +107,24 @@ for i in $(seq "${START_YEAR}" "${END_YEAR}"); do
             --built-dir "${OUT_DIR}" --season "$((i + 1))" --stamp-only \
             2>&1 | tee -a "${LOGFILE}" \
             || echo "schedule-master stamp failed for season ${i}" | tee -a "${LOGFILE}"
+        # Owner rule (2026-09-30): every compiled dataset's PARQUET is committed
+        # under nba_stats/{key}/parquet/ for every season -- releases carry all
+        # three formats, the tree carries parquet only. Tag dirs map onto the short
+        # tree keys (nba_stats_pbp -> pbp). Until now this compile committed only
+        # the schedule family, so 145 of 147 dataset stems were release-only.
+        for d in "${OUT_DIR}"/nba_stats_*/; do
+            [ -d "${d}" ] || continue
+            key="$(basename "${d}")"; key="${key#nba_stats_}"
+            for f in "${d}"*.parquet; do
+                [ -e "${f}" ] || continue
+                mkdir -p "${REPO_DIR}/nba_stats/${key}/parquet"
+                cp -f "${f}" "${REPO_DIR}/nba_stats/${key}/parquet/"
+            done
+        done
+        # END year in the subject, matching this repo's history; the
+        # (Start: YYYY End: YYYY) substring is parsed downstream -- do not reword.
+        sdv_commit_push "NBA Stats Update (Start: $((i + 1)) End: $((i + 1)))" nba_stats \
+            | tee -a "${LOGFILE}" || ANY_FAILED=1
     fi
     rm -rf "${OUT_DIR}"
     [ "${rc}" -ne 0 ] && { echo "season ${i} FAILED (rc=${rc})"; ANY_FAILED=1; }

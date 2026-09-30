@@ -211,21 +211,19 @@ change both together.
 - The R scrapers above remain the **capture** path; the reshaper is the **build+publish**
   path from that captured raw.
 
-### Model artifacts ARE committed (decision 2026-09-02)
+### What the tree commits: parquet, every season (2026-09-30; model rule 2026-09-02)
 
-`reshape/io.py` says released datasets are not committed to this repo, and D36
-retired the in-tree csv/rds copies on 2026-08-07. That governs the **reshaped
-`nba_stats_*` datasets**. It does not govern **model** output: the
-`nba_player_impact` parquet + rds + `*_card.json` are committed under
-`nba_stats/player_impact/` by `scripts/nightly_nba_impact.sh`.
-
-The reason the two differ: a release asset is overwritten in place and keeps no
-history, so for a reshaped dataset (deterministic from the raw store, rebuildable
-any time) that costs nothing, while for a model it destroys the only record of
-what a given run produced. csv stays release-only either way. Do not "restore
-consistency" by deleting `nba_stats/player_impact/` — that is this decision, not
-a D36 leak. The twin does the same thing at
-`wehoop-wnba-stats-data/wnba_stats/player_impact/`.
+**Tree rule (owner, 2026-09-30): every compiled dataset's PARQUET is committed
+for every season** under `nba_stats/{key}/parquet/` (key = release tag minus
+`nba_stats_`); releases carry all three formats, the tree carries parquet only —
+no rds, no csv. This supersedes D36's release-only stance (2026-08-07) for
+parquet. Writers: the daily processor (reshaped datasets, per season),
+`nightly_nba_season_refresh.sh` (v3 families + leaguedash, current season),
+`nightly_nba_impact.sh` (`nba_player_impact` parquet + `*_card.json`). A new
+dataset lands its committed parquet in the same change;
+`/mnt/sdv_repos/bin/stats_release_audit.py` flags any released parquet with no
+committed copy (NO-COMMIT). The twin follows the same rule in
+`wehoop-wnba-stats-data/wnba_stats/`.
 
 ## Model registry
 

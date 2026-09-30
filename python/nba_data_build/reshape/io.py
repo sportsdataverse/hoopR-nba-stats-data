@@ -7,15 +7,11 @@ Every released dataset ships **parquet + rds + csv**:
   :func:`sportsdataverse._rds.write_rds`; no R round-trip.
 * ``csv``     — plain text (never ``.csv.gz``).
 
-All three are **release artifacts**: they ship to the ``nba_stats_*`` tags on
-``sportsdataverse-data`` and are not committed to this repo (D36 retired the
-in-tree csv/rds copies on 2026-08-07).
-
-That rule covers the RESHAPED datasets this module writes. It is not a
-repo-wide ban: the ``nba_player_impact`` MODEL artifacts are committed under
-``nba_stats/player_impact/`` by ``scripts/nightly_nba_impact.sh`` — a release
-asset is overwritten in place and keeps no history, so a model's published
-output would otherwise have no record of what it produced on a given night.
+All three ship to the ``nba_stats_*`` tags on ``sportsdataverse-data``. The
+repo tree carries the **parquet only**, for every season, under
+``nba_stats/{key}/parquet/`` (owner rule 2026-09-30, superseding D36's
+release-only stance for parquet; rds and csv stay release-only). The daily
+processor syncs each built season's parquet into the tree and commits it.
 See CLAUDE.md and ``models/REGISTRY.md`` (decision 2026-09-02).
 """
 
