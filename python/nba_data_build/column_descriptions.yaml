@@ -71,11 +71,11 @@ player_name_i: >-
   Abbreviated player name ("L. James").
 x_legacy: >-
   Shot x-coordinate in the legacy stats.nba.com coordinate frame (tenths of
-  feet from the basket centerline; null for non-shots).
+  feet from the basket centerline; 0 for non-shot actions).
 y_legacy: >-
   Shot y-coordinate in the legacy coordinate frame (tenths of feet from the
   basket toward half court, so 0 at the basket and negative for a shot from
-  behind it; null for non-shots).
+  behind it; 0 for non-shot actions).
 shot_distance: >-
   Shot distance in feet (0 for non-shots).
 shot_result: >-
