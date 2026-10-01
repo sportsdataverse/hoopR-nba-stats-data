@@ -21,6 +21,12 @@ from pathlib import Path
 from typing import Any
 
 import polars as pl
+from sportsdataverse.metric_curves import (
+    OUTPUT_SCHEMA,
+    SHOT_ATTEMPT_COLUMNS,
+    metric_curves,
+    shot_attempts,
+)
 
 from . import raw
 from .datasets import Dataset
@@ -308,6 +314,34 @@ def build_shots(pbp: pl.DataFrame) -> pl.DataFrame:
     shots = pbp.filter(pl.col("is_field_goal") == 1)
     keep = [c for c in _SHOT_COLUMNS if c in shots.columns]
     return shots.select(keep) if keep else shots
+
+
+def committed_shots(base: str | Path, season: int) -> pl.DataFrame:
+    """One season of the committed ``shots`` tree, projected to the curve adapter's columns.
+
+    Reads ``{base}/shots/parquet/shots_{season}.parquet`` -- the file the daily
+    processor commits (END year in the name = ``season``). An absent season is an
+    empty frame, which :func:`build_metric_curves` turns into the empty contract.
+    """
+    path = Path(base) / "shots" / "parquet" / f"shots_{season}.parquet"
+    if not path.is_file():
+        return pl.DataFrame()
+    return pl.read_parquet(path, columns=list(SHOT_ATTEMPT_COLUMNS))
+
+
+def build_metric_curves(shots: pl.DataFrame) -> pl.DataFrame:
+    """``metric_curves``: FG% by shot distance for the league, every team and every shooter.
+
+    ``sportsdataverse.metric_curves`` over one season's ``shots`` (this run's
+    :func:`build_shots` frame or :func:`committed_shots`). The adapter keeps
+    regular-season and playoff attempts only (``season_type_id`` ``"2"`` / ``"4"``;
+    play-in and Cup-final games are not counted), bins by ``shot_distance`` (1-ft
+    bins to 35 ft, then 35-50 and 50-95), and stamps ``id_source = "nba_stats"``
+    with every id as text. Empty shots return the empty ``OUTPUT_SCHEMA`` frame.
+    """
+    if shots.is_empty():
+        return pl.DataFrame(schema=OUTPUT_SCHEMA)
+    return metric_curves(shot_attempts(shots.select(SHOT_ATTEMPT_COLUMNS), league="nba"), "nba")
 
 
 # -- traditional boxscores -----------------------------------------------------

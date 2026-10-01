@@ -23,7 +23,7 @@ NBA Stats Player Season Stats from hoopR data repository — `leaguedashplayerst
 | `player_id` | Int64 | stats.nba.com person id of the player (Int64); joins rosters, boxscores, game logs and pbp (`person_id`). |
 | `player_name` | String | Player display name as the stats API ships it ("LeBron James"). |
 | `nickname` | String |  |
-| `team_id` | Int64 | stats.nba.com team id (Int64, e.g. 1610612737 = Atlanta Hawks). |
+| `team_id` | Int64 | stats.nba.com team id (e.g. 1610612737 = Atlanta Hawks). |
 | `team_abbreviation` | String | Three-letter team code ("ATL"). |
 | `age` | Float64 |  |
 | `gp` | Int64 |  |

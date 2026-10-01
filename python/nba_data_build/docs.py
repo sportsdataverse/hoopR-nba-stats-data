@@ -46,7 +46,7 @@ from pathlib import Path
 import polars as pl
 
 from nba_data_build.models import MODELS, polars_schema
-from nba_data_build.reshape.datasets import BY_KEY, DATASETS
+from nba_data_build.reshape.datasets import BY_KEY, DATASETS, RELEASE_NOTES
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DOCS_DIR = REPO_ROOT / "docs" / "datasets"
@@ -72,6 +72,7 @@ BUILDER = {
     "team_boxscores": "python/nba_stats_14_team_boxscores_creation.py",
     "shots": "python/nba_stats_15_shots_creation.py",
     "game_matchups": "python/nba_stats_16_game_matchups_creation.py",
+    "metric_curves": "python/nba_stats_18_metric_curves_creation.py",
     "schedule_master": "python/nba_stats_99_schedule_master_creation.py",
     "games_in_data_repo": "python/nba_stats_99_schedule_master_creation.py",
 }
@@ -245,11 +246,15 @@ def dataset_page(dataset: str, *, live: bool) -> str:
     spec = BY_KEY[dataset]
     status = release_status(spec.release_tag, live=live)
     seasons = _seasons_built(dataset)
+    # The tag's reader-facing description, where there is one (same text the
+    # release body carries).
+    notes = RELEASE_NOTES.get(spec.release_tag)
+    blurb = f"\n{notes}\n" if notes else ""
 
     return f"""# `{dataset}`
 
 {spec.nba_type} — `{spec.endpoint or "derived"}` ({spec.level}-level).
-
+{blurb}
 | | |
 |---|---|
 | **Builder** | [`{BUILDER[dataset]}`]({"../../" + BUILDER[dataset]}) |

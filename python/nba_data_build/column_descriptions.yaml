@@ -36,7 +36,7 @@ season_type_id: >-
 league_id: >-
   stats.nba.com league id ("00" = NBA).
 team_id: >-
-  stats.nba.com team id (Int64, e.g. 1610612737 = Atlanta Hawks).
+  stats.nba.com team id (e.g. 1610612737 = Atlanta Hawks).
 person_id: >-
   stats.nba.com person id of the player (or official) the row describes; the
   same id space as player_id.
@@ -346,3 +346,42 @@ def_player_slug: >-
   URL slug of the defender ("jarrett-allen").
 def_jersey_num: >-
   Jersey number of the defender, as a string (it can carry a leading zero).
+
+# --- derived curves (`metric_curves`) -----------------------------------------
+#
+# sdv-py's `sportsdataverse.metric_curves` contract (F4): one row per (season,
+# entity, bucket) of FG% by shot distance. Ids are TEXT on this dataset -- the
+# four leagues' curves share one table shape, and `id_source` names the namespace.
+entity_type: >-
+  Which aggregate the row is: "league" (every counted attempt that season),
+  "team" or "player".
+entity_id: >-
+  stats.nba.com id of the entity as TEXT -- the team_id on a team row, the
+  person_id on a player row, null on the league row.
+entity_name: >-
+  Label for the entity: the team tricode ("GSW") on a team row, the shooter's
+  name as the pbp ships it on a player row; null on the league row.
+id_source: >-
+  Namespace of `entity_id` / `team_id` on this row -- "nba_stats" here; the
+  cross-league contract carries "espn", "gsis" and "wnba_stats" elsewhere.
+metric: >-
+  Curve name: "fg_pct_by_shot_distance" (field-goal percentage by shot
+  distance in feet).
+down: >-
+  Null on every row: the second axis of the football-only
+  success_by_down_distance curve, carried for the cross-league contract.
+x_lo: >-
+  Bucket lower edge in feet, inclusive: 1-ft bins from 0 to 35, then 35 and 50.
+x_hi: >-
+  Bucket upper edge in feet, exclusive: x_lo + 1 below 35 ft, then 50 and 95.
+attempts: >-
+  Field-goal attempts in the bucket -- regular-season and playoff shots only
+  (season_type_id 2 and 4; play-in and NBA Cup final games are not counted).
+  An empty bucket is absent, never a zero row.
+successes: >-
+  Made field goals in the bucket.
+rate: >-
+  successes / attempts, one exact division (no smoothing or prior).
+epa_per_att: >-
+  Null on every row: shots carry no EPA. Populated on the football twins of
+  this contract.

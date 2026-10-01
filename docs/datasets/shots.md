@@ -24,7 +24,7 @@ NBA Stats Shots from hoopR data repository — `derived` (derived-level).
 | `season` | Int64 | Season the row belongs to, as the season's ENDING year Int (2024 = the 2023-24 season), matching the asset filename -- on the reshaped RELEASE assets (the 2026-08-13 republish moved every `nba_stats_*` asset onto END-year names) and on the stage-99 master artifacts committed to `nba_stats/` (`schedule_master`, `games_in_data_repo`; the span STRING "1996-97" they carried until 2026-09-30 is gone). `draft` and `draft_combine` are an Int in a second sense: the four-digit draft year (2003 = the June 2003 draft, which precedes the 2003-04 season). |
 | `period` | Int64 | Period number (1-4; 5+ = overtime). |
 | `clock` | String | Game clock at the action in ISO-8601 duration form ("PT11M32.00S"). |
-| `team_id` | Int64 | stats.nba.com team id (Int64, e.g. 1610612737 = Atlanta Hawks). |
+| `team_id` | Int64 | stats.nba.com team id (e.g. 1610612737 = Atlanta Hawks). |
 | `team_tricode` | String | Three-letter team code as the v3 endpoints name it ("ATL"). |
 | `person_id` | Int64 | stats.nba.com person id of the player (or official) the row describes; the same id space as player_id. |
 | `player_name` | String | Player display name as the stats API ships it ("LeBron James"). |

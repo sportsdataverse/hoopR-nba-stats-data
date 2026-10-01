@@ -18,6 +18,10 @@ CLI is where that routing lives:
   season's play-by-play frame (:func:`~nba_data_build.reshape.build.build_pbp`, rows
   under ``game.actions``), built in memory only. The ``pbp`` dataset itself was
   retired 2026-09-30 (v3 ``nba_play_by_play`` replaces it), so nothing publishes it.
+* ``metric_curves`` -> :func:`~nba_data_build.reshape.build.build_metric_curves`,
+  *derived* from that season's ``shots`` -- the frame this run just built when
+  ``shots`` is in the run (the daily processor), else the committed
+  ``{--base}/shots/parquet/shots_{season}.parquet`` (a standalone backfill).
 
 Season floor
 ------------
@@ -59,7 +63,7 @@ import polars as pl
 from nba_data_build.publish import upload_artifacts
 
 from . import build as _build
-from .datasets import BY_KEY, DATASETS, Dataset
+from .datasets import BY_KEY, DATASETS, RELEASE_NOTES, Dataset
 from .io import write_release_formats
 from .raw import _is_url
 
@@ -90,6 +94,13 @@ def build_parser() -> argparse.ArgumentParser:
         "matches the sibling -raw checkout's nba_stats/json base",
     )
     ap.add_argument("--out", default="build_out", help="artifact output directory")
+    ap.add_argument(
+        "--base",
+        default="nba_stats",
+        help="committed tree (the dir holding shots/parquet/) that metric_curves reads the "
+        "season's shots from when shots is not built in the same run; default = this "
+        "repo's tree relative to the cwd the drivers cd into",
+    )
     ap.add_argument("--repo", default=_REPO, help="release repo for --publish")
     ap.add_argument(
         "--publish",
@@ -121,15 +132,22 @@ def build_dataset(
     season: int,
     *,
     _pbp: Optional[pl.DataFrame] = None,
+    _shots: Optional[pl.DataFrame] = None,
+    base: str | Path = "nba_stats",
 ) -> pl.DataFrame:
     """Build one dataset for one season, routing v3-nested datasets to their builders.
 
     ``_pbp`` lets the caller pass an already-built play-by-play frame for ``shots``
-    (derived from pbp) so the season's pbp is bound once.
+    (derived from pbp) so the season's pbp is bound once; ``_shots`` does the same
+    for ``metric_curves`` (derived from shots), which otherwise reads the committed
+    tree under ``base``.
     """
     if dataset.key == "shots":
         pbp = _pbp if _pbp is not None else _build.build_pbp(root, season)
         return _build.build_shots(pbp)
+    if dataset.key == "metric_curves":
+        shots = _shots if _shots is not None else _build.committed_shots(base, season)
+        return _build.build_metric_curves(shots)
     if dataset.key == "player_boxscores":
         return _build.build_boxscores(root, season, team_level=False)
     if dataset.key == "team_boxscores":
@@ -159,13 +177,18 @@ def main(argv: Optional[list[str]] = None) -> int:
         pbp: Optional[pl.DataFrame] = None
         if "shots" in want_keys:
             pbp = _build.build_pbp(root, season)
+        # metric_curves derives from THIS run's shots (registry order builds shots
+        # first), never from yesterday's committed file when both are in the run.
+        shots: Optional[pl.DataFrame] = None
         for dataset in datasets:
             # Pre-floor seasons have no source data: skip rather than ship an
             # empty release (see Dataset.season_floor).
             if dataset.season_floor is not None and season < dataset.season_floor:
                 print(f"skip {dataset.key} {season}: below season_floor {dataset.season_floor}")
                 continue
-            df = build_dataset(root, dataset, season, _pbp=pbp)
+            df = build_dataset(root, dataset, season, _pbp=pbp, _shots=shots, base=args.base)
+            if dataset.key == "shots":
+                shots = df
             if df.is_empty():
                 print(f"skip {dataset.key} {season}: no rows")
                 continue
@@ -196,6 +219,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 # filenames on disk, which carry the same END year as --seasons.
                 seasons=seasons,
                 exts=("parquet", "rds", "csv"),
+                notes=RELEASE_NOTES.get(tag),
                 dry_run=args.dry_run,
             )
             print(f"publish {tag}: {result}")
