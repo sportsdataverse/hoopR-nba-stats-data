@@ -36,7 +36,7 @@ season_type_id: >-
 league_id: >-
   stats.nba.com league id ("00" = NBA).
 team_id: >-
-  stats.nba.com team id (Int64, e.g. 1610612737 = Atlanta Hawks).
+  stats.nba.com team id (e.g. 1610612737 = Atlanta Hawks).
 person_id: >-
   stats.nba.com person id of the player (or official) the row describes; the
   same id space as player_id.

@@ -24,7 +24,7 @@ NBA Stats Game Rosters from hoopR data repository — `boxscoresummaryv2` (game-
 | `first_name` | String |  |
 | `last_name` | String |  |
 | `jersey_num` | String |  |
-| `team_id` | Int64 | stats.nba.com team id (Int64, e.g. 1610612737 = Atlanta Hawks). |
+| `team_id` | Int64 | stats.nba.com team id (e.g. 1610612737 = Atlanta Hawks). |
 | `team_city` | String | Team city name. |
 | `team_name` | String | Team nickname or full name as the source endpoint ships it. |
 | `team_abbreviation` | String | Three-letter team code ("ATL"). |

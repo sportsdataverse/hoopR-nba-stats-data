@@ -20,7 +20,7 @@ NBA Stats Player Boxscores from hoopR data repository — `boxscoretraditionalv3
 
 | col_name | type | description |
 |---|---|---|
-| `team_id` | Int64 | stats.nba.com team id (Int64, e.g. 1610612737 = Atlanta Hawks). |
+| `team_id` | Int64 | stats.nba.com team id (e.g. 1610612737 = Atlanta Hawks). |
 | `team_city` | String | Team city name. |
 | `team_name` | String | Team nickname or full name as the source endpoint ships it. |
 | `team_tricode` | String | Three-letter team code as the v3 endpoints name it ("ATL"). |

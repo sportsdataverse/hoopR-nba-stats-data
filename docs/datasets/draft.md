@@ -27,7 +27,7 @@ NBA Stats Draft History from hoopR data repository — `drafthistory` (season-le
 | `round_pick` | Int64 | Pick number WITHIN the round (the 5th pick of round 2 is round_pick 5, not 35). Use overall_pick for draft-wide order. |
 | `overall_pick` | Int64 | Pick number across the whole draft, 1 = first overall. |
 | `draft_type` | String | How the player entered the league. "Draft" for every pick in the published range; the value exists to distinguish historical dispersal, expansion and territorial drafts in older seasons. |
-| `team_id` | Int64 | stats.nba.com team id (Int64, e.g. 1610612737 = Atlanta Hawks). |
+| `team_id` | Int64 | stats.nba.com team id (e.g. 1610612737 = Atlanta Hawks). |
 | `team_city` | String | Team city name. |
 | `team_name` | String | Team nickname or full name as the source endpoint ships it. |
 | `team_abbreviation` | String | Three-letter team code ("ATL"). |

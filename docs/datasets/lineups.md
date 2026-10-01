@@ -23,7 +23,7 @@ NBA Stats Lineups from hoopR data repository — `leaguedashlineups` (season-lev
 | `group_set` | String |  |
 | `group_id` | String |  |
 | `group_name` | String |  |
-| `team_id` | Int64 | stats.nba.com team id (Int64, e.g. 1610612737 = Atlanta Hawks). |
+| `team_id` | Int64 | stats.nba.com team id (e.g. 1610612737 = Atlanta Hawks). |
 | `team_abbreviation` | String | Three-letter team code ("ATL"). |
 | `gp` | Int64 |  |
 | `w` | Int64 |  |

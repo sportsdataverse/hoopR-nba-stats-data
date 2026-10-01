@@ -21,7 +21,7 @@ NBA Stats Player Game Logs from hoopR data repository — `leaguegamelog` (seaso
 | col_name | type | description |
 |---|---|---|
 | `season_id` | String | stats.nba.com composite season id: season-type digit + start year ("22023" = 2023-24 regular season). |
-| `team_id` | Int64 | stats.nba.com team id (Int64, e.g. 1610612737 = Atlanta Hawks). |
+| `team_id` | Int64 | stats.nba.com team id (e.g. 1610612737 = Atlanta Hawks). |
 | `team_abbreviation` | String | Three-letter team code ("ATL"). |
 | `team_name` | String | Team nickname or full name as the source endpoint ships it. |
 | `game_id` | String | stats.nba.com game id, zero-padded 10-char string ("0022300001"; the "00" prefix is the NBA league id, so the id must never round-trip through int). |

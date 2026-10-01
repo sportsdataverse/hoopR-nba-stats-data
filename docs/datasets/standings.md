@@ -22,7 +22,7 @@ NBA Stats League Standings V3 from hoopR data repository — `leaguestandingsv3`
 |---|---|---|
 | `league_id` | String | stats.nba.com league id ("00" = NBA). |
 | `season_id` | String | stats.nba.com composite season id: season-type digit + start year ("22023" = 2023-24 regular season). |
-| `team_id` | Int64 | stats.nba.com team id (Int64, e.g. 1610612737 = Atlanta Hawks). |
+| `team_id` | Int64 | stats.nba.com team id (e.g. 1610612737 = Atlanta Hawks). |
 | `team_city` | String | Team city name. |
 | `team_name` | String | Team nickname or full name as the source endpoint ships it. |
 | `team_slug` | String |  |

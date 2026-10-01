@@ -20,7 +20,7 @@ NBA Stats Team Season Stats from hoopR data repository — `leaguedashteamstats`
 
 | col_name | type | description |
 |---|---|---|
-| `team_id` | Int64 | stats.nba.com team id (Int64, e.g. 1610612737 = Atlanta Hawks). |
+| `team_id` | Int64 | stats.nba.com team id (e.g. 1610612737 = Atlanta Hawks). |
 | `team_name` | String | Team nickname or full name as the source endpoint ships it. |
 | `gp` | Int64 |  |
 | `w` | Int64 |  |
