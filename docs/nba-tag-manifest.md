@@ -94,6 +94,7 @@ here so the manifest keeps matching what this repo publishes.
 | — | `nba_stats_matchups` | `leagueseasonmatchups`, `matchupsrollup` | `nba_data_build.matchups_cli` | 54 | 2,505,460 | 2017–2025 (start-year names) |
 | — | `nba_stats_draft_combine` | the five `draftcombine*` | `nba_data_build.combine_cli` | 135 | 9,365 | 2000–2026 (draft class) |
 | `game_matchups` (stage 16) | `nba_stats_game_matchups` | `boxscorematchupsv3` | `nba_data_build.reshape` | 27 | 2,160,589 | 2018–2026 |
+| `rolling_windows` (stage 17) | `nba_stats_rolling_windows` | derived from the committed `shots` + schedule master (sdv-py `shot_events` + `rolling_windows`) | `nba_data_build.reshape` | — | — | 1997–2026 once backfilled (F3b-T2) |
 | `metric_curves` (stage 18) | `nba_stats_metric_curves` | derived from the committed `shots` (sdv-py `metric_curves`) | `nba_data_build.reshape` | — | — | 1997–2026 once backfilled (F4-T4) |
 
 The first three are season-level compiles on `raw_compile.py`: parquet only,

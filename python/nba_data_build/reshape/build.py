@@ -27,6 +27,8 @@ from sportsdataverse.metric_curves import (
     metric_curves,
     shot_attempts,
 )
+from sportsdataverse.rolling_windows import OUTPUT_SCHEMA as ROLLING_SCHEMA
+from sportsdataverse.rolling_windows import SHOT_COLUMNS, rolling_windows, shot_events
 
 from . import raw
 from .datasets import Dataset
@@ -316,8 +318,10 @@ def build_shots(pbp: pl.DataFrame) -> pl.DataFrame:
     return shots.select(keep) if keep else shots
 
 
-def committed_shots(base: str | Path, season: int) -> pl.DataFrame:
-    """One season of the committed ``shots`` tree, projected to the curve adapter's columns.
+def committed_shots(
+    base: str | Path, season: int, columns: tuple[str, ...] = SHOT_ATTEMPT_COLUMNS
+) -> pl.DataFrame:
+    """One season of the committed ``shots`` tree, projected to ``columns`` (default: the curve adapter's).
 
     Reads ``{base}/shots/parquet/shots_{season}.parquet`` -- the file the daily
     processor commits (END year in the name = ``season``). An absent season is an
@@ -326,7 +330,7 @@ def committed_shots(base: str | Path, season: int) -> pl.DataFrame:
     path = Path(base) / "shots" / "parquet" / f"shots_{season}.parquet"
     if not path.is_file():
         return pl.DataFrame()
-    return pl.read_parquet(path, columns=list(SHOT_ATTEMPT_COLUMNS))
+    return pl.read_parquet(path, columns=list(columns))
 
 
 def build_metric_curves(shots: pl.DataFrame) -> pl.DataFrame:
@@ -342,6 +346,61 @@ def build_metric_curves(shots: pl.DataFrame) -> pl.DataFrame:
     if shots.is_empty():
         return pl.DataFrame(schema=OUTPUT_SCHEMA)
     return metric_curves(shot_attempts(shots.select(SHOT_ATTEMPT_COLUMNS), league="nba"), "nba")
+
+
+#: First END-year season of the shots tree (1996-97): a career baseline starts here.
+FIRST_SHOTS_SEASON = 1997
+#: ``sportsdataverse.rolling_windows.OUTPUT_SCHEMA`` plus the id namespace column.
+ROLLING_WINDOWS_SCHEMA: dict[str, pl.DataType] = {**ROLLING_SCHEMA, "id_source": pl.Utf8}
+
+
+def committed_game_dates(base: str | Path) -> pl.DataFrame:
+    """``game_id`` + ``game_date`` (the US-Eastern calendar day) for every game in the master.
+
+    The committed stage-99 schedule master is built from ``scheduleleaguev2`` for
+    every season through the next one, so it dates a game the night it is played,
+    before any per-season schedule asset is refreshed. Its ``game_date_est`` agrees
+    with ``nba_schedule_{E}``'s ``game_date`` on all 40,961 games of 1997-2026
+    (measured 2026-10-01).
+    """
+    master = pl.read_parquet(
+        Path(base) / "nba_stats_schedule_master.parquet", columns=["game_id", "game_date_est"]
+    )
+    return master.select(
+        "game_id", game_date=pl.col("game_date_est").str.slice(0, 10).str.to_date()
+    )
+
+
+def build_rolling_windows(
+    base: str | Path, season: int, shots: pl.DataFrame | None = None
+) -> pl.DataFrame:
+    """``rolling_windows``: each shooter's last-N ``fga`` / ``fg3a`` form through ``season``.
+
+    sdv-py's ``shot_events`` + ``rolling_windows`` over the season's shots (``shots``,
+    this run's :func:`build_shots` frame, else the committed file) plus every
+    committed season since 1997 before it, dated by :func:`committed_game_dates`.
+    History is read for the season's shooters only: ``rolling_windows`` keeps rows
+    for entities with an event in ``season`` and ranks among them, so the rest of
+    the league's history cannot change a row. Regular season + playoffs only; ids
+    are text with ``id_source = "nba_stats"``; ``season`` stays the END year.
+    """
+    current = shots if shots is not None else committed_shots(base, season, SHOT_COLUMNS)
+    if current.is_empty():
+        return pl.DataFrame(schema=ROLLING_WINDOWS_SCHEMA)
+    current = current.select(SHOT_COLUMNS)
+    paths = [
+        Path(base) / "shots" / "parquet" / f"shots_{y}.parquet"
+        for y in range(FIRST_SHOTS_SEASON, season)
+    ]
+    paths = [p for p in paths if p.is_file()]
+    frames = [current]
+    if paths:
+        history = pl.scan_parquet(paths).select(SHOT_COLUMNS)
+        assert history.collect_schema()["person_id"] == current.schema["person_id"]
+        active = current["person_id"].unique().implode()
+        frames.insert(0, history.filter(pl.col("person_id").is_in(active)).collect())
+    events = shot_events(pl.concat(frames, how="vertical_relaxed"), committed_game_dates(base))
+    return rolling_windows(events, season).with_columns(id_source=pl.lit("nba_stats"))
 
 
 # -- traditional boxscores -----------------------------------------------------

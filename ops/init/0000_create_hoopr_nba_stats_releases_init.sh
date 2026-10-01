@@ -48,6 +48,8 @@ create_release "nba_stats_player_game_logs"    "NBA Player Game Logs Data (from 
 create_release "nba_stats_game_rosters"        "NBA Game Rosters Data (from stats.nba.com)"
 create_release "nba_stats_officials"           "NBA Officials Data (from stats.nba.com)"
 create_release "nba_stats_shots"               "NBA Shots Data (from stats.nba.com)"
+# Stage 17 (F3b-T2): derived from the committed shots by sdv-py's rolling_windows.
+create_release "nba_stats_rolling_windows"     "NBA Rolling Shooting Windows Data (derived from nba_stats_shots)"
 # Stage 18 (F4-T4): derived from the committed shots by sdv-py's metric_curves.
 # The reshape CLI's --publish also creates it (with datasets.RELEASE_NOTES as the
 # body) on first upload; listed here so the inventory stays complete.

@@ -120,8 +120,24 @@ level="game")` row drives the reshaper's generic `build_game_dataset`. Prefer it
 over `boxscorehustlev2`, which is the nested envelope and is ruled OUT with the
 rest of the `boxscore*v2` family.
 
+**`rolling_windows` is stage 17, derived from the committed `shots` tree** (F3b-T2,
+2026-10-01). sdv-py's `shot_events` + `rolling_windows`: every shooter's last 50 /
+200 field-goal (`fga`) and three-point (`fg3a`) attempts against the window before,
+the window entering the season and the career before it, regular season + playoffs
+only, ids as TEXT with `id_source = "nba_stats"` (exempt from the Int64-id test like
+`metric_curves`). Windows cross seasons, so a build reads the season's shots (this
+run's frame, else `{--base}/shots/parquet/shots_{E}.parquet`) PLUS every earlier
+committed shots season since 1997 -- for that season's shooters only, which cannot
+change a row (`tests/test_rolling_windows.py` pins it against the full league) --
+dated by the committed schedule master's `game_date_est` (it carries every game
+through next season, so a game is dated the night it is played; it agrees with
+`nba_schedule_{E}` on all 40,961 games). A backfill season therefore needs every
+earlier season's shots committed first. Publishes to `nba_stats_rolling_windows`
+(`rolling_windows_{E}` + rds + csv) and commits `nba_stats/rolling_windows/parquet/`
+through the generic sync loop. Seasons are END years in and out (no START offset).
+
 **`metric_curves` is stage 18, derived from the committed `shots` tree** (F4-T4,
-2026-10-01; stage 17 is reserved for `rolling_windows`). sdv-py's
+2026-10-01). sdv-py's
 `sportsdataverse.metric_curves` over one season's shots: FG% by shot distance for
 the league, every team and every shooter, 1-ft bins to 35 ft then 35-50 and 50-95,
 regular season + playoffs only (`season_type_id` 2/4 -- play-in and Cup final are
@@ -217,7 +233,7 @@ change both together.
   v3 `nba_play_by_play` and `player_game_logs`. `shots` still derives from an
   in-memory pbp frame. The `nba_stats_pbp` / `nba_stats_schedules` TAGS live on,
   fed by the nightly v3 refresh (`nba_play_by_play_{E}` / `nba_schedule_{E}`).
-  All 18 tags this repo owns (those 15 + `nba_stats_metric_curves` + the Program V cutover's
+  All 19 tags this repo owns (those 15 + `nba_stats_rolling_windows` + `nba_stats_metric_curves` + the Program V cutover's
   `nba_stats_possessions` / `nba_stats_game_lineups`) are provisioned by
   `ops/init/0000_create_hoopr_nba_stats_releases_init.sh`. **Neither `gh release
   upload` nor `run_v3_cutover.sh -x` can CREATE a tag** — upload fails on a
@@ -457,7 +473,8 @@ is a valid cadence but must be stated explicitly.
 | [`python/nba_stats_14_team_boxscores_creation.py`](python/nba_stats_14_team_boxscores_creation.py) | [`team_boxscores`](docs/datasets/team_boxscores.md) | [`nba_stats_team_boxscores`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_team_boxscores) | 2026-10-01 |
 | [`python/nba_stats_15_shots_creation.py`](python/nba_stats_15_shots_creation.py) | [`shots`](docs/datasets/shots.md) | [`nba_stats_shots`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_shots) | 2026-10-01 |
 | [`python/nba_stats_16_game_matchups_creation.py`](python/nba_stats_16_game_matchups_creation.py) | [`game_matchups`](docs/datasets/game_matchups.md) | [`nba_stats_game_matchups`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_game_matchups) | 2026-10-01 |
-| [`python/nba_stats_18_metric_curves_creation.py`](python/nba_stats_18_metric_curves_creation.py) | [`metric_curves`](docs/datasets/metric_curves.md) | [`nba_stats_metric_curves`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_metric_curves) | — |
+| [`python/nba_stats_17_rolling_windows_creation.py`](python/nba_stats_17_rolling_windows_creation.py) | [`rolling_windows`](docs/datasets/rolling_windows.md) | [`nba_stats_rolling_windows`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_rolling_windows) | — |
+| [`python/nba_stats_18_metric_curves_creation.py`](python/nba_stats_18_metric_curves_creation.py) | [`metric_curves`](docs/datasets/metric_curves.md) | [`nba_stats_metric_curves`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_metric_curves) | 2026-10-01 |
 | [`python/nba_stats_99_schedule_master_creation.py`](python/nba_stats_99_schedule_master_creation.py) | [`schedule_master`](docs/datasets/schedule_master.md) | `nba_stats/nba_stats_schedule_master.parquet` (committed) | — |
 | [`python/nba_stats_99_schedule_master_creation.py`](python/nba_stats_99_schedule_master_creation.py) | [`games_in_data_repo`](docs/datasets/games_in_data_repo.md) | `nba_stats/nba_stats_games_in_data_repo.parquet` (committed) | — |
 <!-- END GENERATED: datasets -->

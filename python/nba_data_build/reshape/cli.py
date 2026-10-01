@@ -18,6 +18,9 @@ CLI is where that routing lives:
   season's play-by-play frame (:func:`~nba_data_build.reshape.build.build_pbp`, rows
   under ``game.actions``), built in memory only. The ``pbp`` dataset itself was
   retired 2026-09-30 (v3 ``nba_play_by_play`` replaces it), so nothing publishes it.
+* ``rolling_windows`` -> :func:`~nba_data_build.reshape.build.build_rolling_windows`,
+  *derived* the same way, plus every earlier committed ``shots`` season under
+  ``--base`` and the committed schedule master (game dates).
 * ``metric_curves`` -> :func:`~nba_data_build.reshape.build.build_metric_curves`,
   *derived* from that season's ``shots`` -- the frame this run just built when
   ``shots`` is in the run (the daily processor), else the committed
@@ -139,12 +142,14 @@ def build_dataset(
 
     ``_pbp`` lets the caller pass an already-built play-by-play frame for ``shots``
     (derived from pbp) so the season's pbp is bound once; ``_shots`` does the same
-    for ``metric_curves`` (derived from shots), which otherwise reads the committed
-    tree under ``base``.
+    for ``rolling_windows`` and ``metric_curves`` (derived from shots), which
+    otherwise read the committed tree under ``base``.
     """
     if dataset.key == "shots":
         pbp = _pbp if _pbp is not None else _build.build_pbp(root, season)
         return _build.build_shots(pbp)
+    if dataset.key == "rolling_windows":
+        return _build.build_rolling_windows(base, season, _shots)
     if dataset.key == "metric_curves":
         shots = _shots if _shots is not None else _build.committed_shots(base, season)
         return _build.build_metric_curves(shots)
@@ -177,8 +182,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         pbp: Optional[pl.DataFrame] = None
         if "shots" in want_keys:
             pbp = _build.build_pbp(root, season)
-        # metric_curves derives from THIS run's shots (registry order builds shots
-        # first), never from yesterday's committed file when both are in the run.
+        # rolling_windows / metric_curves derive from THIS run's shots (registry order
+        # builds shots first), never from yesterday's committed file when both are in
+        # the run.
         shots: Optional[pl.DataFrame] = None
         for dataset in datasets:
             # Pre-floor seasons have no source data: skip rather than ship an
