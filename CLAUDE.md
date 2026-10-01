@@ -120,6 +120,21 @@ level="game")` row drives the reshaper's generic `build_game_dataset`. Prefer it
 over `boxscorehustlev2`, which is the nested envelope and is ruled OUT with the
 rest of the `boxscore*v2` family.
 
+**`metric_curves` is stage 18, derived from the committed `shots` tree** (F4-T4,
+2026-10-01; stage 17 is reserved for `rolling_windows`). sdv-py's
+`sportsdataverse.metric_curves` over one season's shots: FG% by shot distance for
+the league, every team and every shooter, 1-ft bins to 35 ft then 35-50 and 50-95,
+regular season + playoffs only (`season_type_id` 2/4 -- play-in and Cup final are
+not counted), ids as TEXT with `id_source = "nba_stats"` (the cross-league
+contract; `MetricCurves` is the one model exempt from the Int64-id test). In the
+daily run it derives from the shots frame the SAME invocation just built; a
+standalone run (`--datasets metric_curves`) reads `{--base}/shots/parquet/shots_{E}.parquet`
+(default `nba_stats`, relative to the repo root) and needs no raw store. Publishes
+to `nba_stats_metric_curves` (`metric_curves_{E}.parquet` + rds + csv; the tag body
+is `datasets.RELEASE_NOTES`) and commits `nba_stats/metric_curves/parquet/` through
+the processor's generic sync loop -- no driver change. Backfill 1997-2026 per
+season from the committed tree; no sdv-py loader yet (`PKG_FUNCTION` unlisted).
+
 **`boxscorematchupsv3` is stage 16, `game_matchups`, in the reshaper** -- not in
 `matchups_cli`. Its 25,732 PER-GAME payloads are the v3 envelope
 (`{meta, boxScoreMatchups}`), not the `resultSets` shape the season compiles
@@ -202,7 +217,7 @@ change both together.
   v3 `nba_play_by_play` and `player_game_logs`. `shots` still derives from an
   in-memory pbp frame. The `nba_stats_pbp` / `nba_stats_schedules` TAGS live on,
   fed by the nightly v3 refresh (`nba_play_by_play_{E}` / `nba_schedule_{E}`).
-  All 17 tags this repo owns (those 15 + the Program V cutover's
+  All 18 tags this repo owns (those 15 + `nba_stats_metric_curves` + the Program V cutover's
   `nba_stats_possessions` / `nba_stats_game_lineups`) are provisioned by
   `ops/init/0000_create_hoopr_nba_stats_releases_init.sh`. **Neither `gh release
   upload` nor `run_v3_cutover.sh -x` can CREATE a tag** — upload fails on a
@@ -442,6 +457,7 @@ is a valid cadence but must be stated explicitly.
 | [`python/nba_stats_14_team_boxscores_creation.py`](python/nba_stats_14_team_boxscores_creation.py) | [`team_boxscores`](docs/datasets/team_boxscores.md) | [`nba_stats_team_boxscores`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_team_boxscores) | 2026-10-01 |
 | [`python/nba_stats_15_shots_creation.py`](python/nba_stats_15_shots_creation.py) | [`shots`](docs/datasets/shots.md) | [`nba_stats_shots`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_shots) | 2026-10-01 |
 | [`python/nba_stats_16_game_matchups_creation.py`](python/nba_stats_16_game_matchups_creation.py) | [`game_matchups`](docs/datasets/game_matchups.md) | [`nba_stats_game_matchups`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_game_matchups) | 2026-10-01 |
+| [`python/nba_stats_18_metric_curves_creation.py`](python/nba_stats_18_metric_curves_creation.py) | [`metric_curves`](docs/datasets/metric_curves.md) | [`nba_stats_metric_curves`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_metric_curves) | — |
 | [`python/nba_stats_99_schedule_master_creation.py`](python/nba_stats_99_schedule_master_creation.py) | [`schedule_master`](docs/datasets/schedule_master.md) | `nba_stats/nba_stats_schedule_master.parquet` (committed) | — |
 | [`python/nba_stats_99_schedule_master_creation.py`](python/nba_stats_99_schedule_master_creation.py) | [`games_in_data_repo`](docs/datasets/games_in_data_repo.md) | `nba_stats/nba_stats_games_in_data_repo.parquet` (committed) | — |
 <!-- END GENERATED: datasets -->

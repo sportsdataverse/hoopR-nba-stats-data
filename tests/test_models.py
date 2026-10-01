@@ -44,9 +44,14 @@ def test_game_id_is_declared_utf8(dataset):
         assert schema["game_id"] == pl.Utf8, f"{dataset}: game_id is {schema['game_id']}"
 
 
+#: Datasets on sdv-py's cross-league contracts, which key every entity as TEXT
+#: plus an `id_source` column (the four leagues share one table shape).
+TEXT_ID_CONTRACTS = {"metric_curves"}
+
+
 def test_entity_ids_are_declared_int64():
     """team_id / person_id are numeric stats.nba.com ids (join keys)."""
-    for dataset in sorted(MODELS):
+    for dataset in sorted(set(MODELS) - TEXT_ID_CONTRACTS):
         schema = polars_schema(dataset)
         for col in ("team_id", "person_id"):
             if col in schema:

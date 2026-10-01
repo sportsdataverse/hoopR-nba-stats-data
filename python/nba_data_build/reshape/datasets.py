@@ -183,7 +183,42 @@ DATASETS: tuple[Dataset, ...] = (
         # misrepresent as the season. 2017-18 onward is complete (1,304-1,322).
         season_floor=2018,  # 2017-18
     ),
+    # -- derived from the committed tree (stage 18, F4-T4) --------------------------
+    #
+    # Built by sdv-py's `metric_curves` over the season's `shots` -- the frame this
+    # run just built, or the committed `nba_stats/shots/parquet/shots_{E}.parquet`
+    # when shots is not in the run (cli.build_dataset). Stage 17 is reserved for
+    # `rolling_windows` (F3b), which the roadmap orders before this one.
+    Dataset(
+        "metric_curves",
+        None,
+        None,
+        "metric_curves",
+        "nba_stats_metric_curves",
+        f"NBA Stats Metric Curves {_R}",
+        level="derived",
+    ),
 )
+
+#: Reader-facing description per release tag: the body a tag is created with
+#: (``upload_artifacts(notes=)``) and the paragraph its generated dataset page
+#: carries. A tag with no entry keeps publish.py's generic body.
+RELEASE_NOTES: dict[str, str] = {
+    "nba_stats_metric_curves": (
+        "FG% by shot distance -- league, team and player curves per season, computed by "
+        "`sportsdataverse.metric_curves` from the committed `nba_stats_shots`. One row per "
+        "(season, entity, bucket): 1-ft bins from 0 to 35 ft, then 35-50 and 50-95 ft "
+        "(`x_lo` inclusive, `x_hi` exclusive), each carrying `attempts`, `successes` (makes) "
+        "and `rate = successes / attempts`; an empty bucket is absent, never a zero row. "
+        "Attempts are regular-season and playoff shots only (`season_type_id` 2 and 4 -- "
+        "play-in and NBA Cup final games are not counted). Ids are stats.nba.com ids as text "
+        'with `id_source = "nba_stats"`: `entity_id` is the `team_id` / `person_id` (null on '
+        "the league row), `team_id` on a player row is the team of most of that player's "
+        "attempts. `down` and `epa_per_att` are null on every row (the cross-league "
+        "contract's football-only columns). Span 1997-present, the shots' own span "
+        "(END-year seasons: 1997 = 1996-97)."
+    ),
+}
 
 BY_KEY: dict[str, Dataset] = {d.key: d for d in DATASETS}
 

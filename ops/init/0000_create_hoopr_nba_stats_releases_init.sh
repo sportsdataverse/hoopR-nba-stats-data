@@ -48,6 +48,10 @@ create_release "nba_stats_player_game_logs"    "NBA Player Game Logs Data (from 
 create_release "nba_stats_game_rosters"        "NBA Game Rosters Data (from stats.nba.com)"
 create_release "nba_stats_officials"           "NBA Officials Data (from stats.nba.com)"
 create_release "nba_stats_shots"               "NBA Shots Data (from stats.nba.com)"
+# Stage 18 (F4-T4): derived from the committed shots by sdv-py's metric_curves.
+# The reshape CLI's --publish also creates it (with datasets.RELEASE_NOTES as the
+# body) on first upload; listed here so the inventory stays complete.
+create_release "nba_stats_metric_curves"       "NBA Metric Curves Data (FG% by shot distance, derived from nba_stats_shots)"
 
 # Program V (D26d) cutover targets -- the two `v3_cutover.TARGETS` tags that the
 # reshaper inventory above does not already provision. `nba_stats_game_lineups`

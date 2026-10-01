@@ -1132,6 +1132,30 @@ class GameMatchups(NbaStatsDataset):
     season_type_id: Optional[str] = None
 
 
+class MetricCurves(NbaStatsDataset):
+    """`metric_curves` -- `sportsdataverse.metric_curves.OUTPUT_SCHEMA` (F4-T4).
+
+    Ids are TEXT here, unlike the reshaped datasets: the sdv-py contract keys every
+    league's entities as strings so the four leagues' curves share one table, and
+    `id_source` ("nba_stats") names the namespace.
+    """
+
+    season: Optional[int] = None
+    entity_type: Optional[str] = None
+    entity_id: Optional[str] = None
+    entity_name: Optional[str] = None
+    team_id: Optional[str] = None
+    id_source: Optional[str] = None
+    metric: Optional[str] = None
+    down: Optional[int] = None
+    x_lo: Optional[float] = None
+    x_hi: Optional[float] = None
+    attempts: Optional[int] = None
+    successes: Optional[int] = None
+    rate: Optional[float] = None
+    epa_per_att: Optional[float] = None
+
+
 MODELS: dict[str, type[NbaStatsDataset]] = {
     "standings": Standings,
     "player_season_stats": PlayerSeasonStats,
@@ -1147,6 +1171,7 @@ MODELS: dict[str, type[NbaStatsDataset]] = {
     "team_boxscores": TeamBoxscores,
     "shots": Shots,
     "game_matchups": GameMatchups,
+    "metric_curves": MetricCurves,
     "schedule_master": ScheduleMaster,
     "games_in_data_repo": GamesInDataRepo,
 }
