@@ -23,12 +23,12 @@ FG% by shot distance -- league, team and player curves per season, computed by `
 | col_name | type | description |
 |---|---|---|
 | `season` | Int64 | Season the row belongs to, as the season's ENDING year Int (2024 = the 2023-24 season), matching the asset filename -- on the reshaped RELEASE assets (the 2026-08-13 republish moved every `nba_stats_*` asset onto END-year names) and on the stage-99 master artifacts committed to `nba_stats/` (`schedule_master`, `games_in_data_repo`; the span STRING "1996-97" they carried until 2026-09-30 is gone). `draft` and `draft_combine` are an Int in a second sense: the four-digit draft year (2003 = the June 2003 draft, which precedes the 2003-04 season). |
-| `entity_type` | String | Which aggregate the row is: "league" (every counted attempt that season), "team" or "player". |
+| `entity_type` | String | Which aggregate the row is: "league" (every counted attempt that season), "team" or "player" on metric_curves; always "player" on rolling_windows. |
 | `entity_id` | String | stats.nba.com id of the entity as TEXT -- the team_id on a team row, the person_id on a player row, null on the league row. |
 | `entity_name` | String | Label for the entity: the team tricode ("GSW") on a team row, the shooter's name as the pbp ships it on a player row; null on the league row. |
 | `team_id` | String | stats.nba.com team id (e.g. 1610612737 = Atlanta Hawks). |
 | `id_source` | String | Namespace of `entity_id` / `team_id` on this row -- "nba_stats" here; the cross-league contract carries "espn", "gsis" and "wnba_stats" elsewhere. |
-| `metric` | String | Curve name: "fg_pct_by_shot_distance" (field-goal percentage by shot distance in feet). |
+| `metric` | String | What the row measures: "fg_pct_by_shot_distance" on metric_curves (field-goal percentage by shot distance in feet); "fg_pct" (window_unit "fga") or "fg3_pct" (window_unit "fg3a") on rolling_windows. |
 | `down` | Int64 | Null on every row: the second axis of the football-only success_by_down_distance curve, carried for the cross-league contract. |
 | `x_lo` | Float64 | Bucket lower edge in feet, inclusive: 1-ft bins from 0 to 35, then 35 and 50. |
 | `x_hi` | Float64 | Bucket upper edge in feet, exclusive: x_lo + 1 below 35 ft, then 50 and 95. |

@@ -1,4 +1,4 @@
-"""Registry tests — the 15 NBA datasets, their tags, and the NBA-specific fields."""
+"""Registry tests — the 16 NBA datasets, their tags, and the NBA-specific fields."""
 
 from __future__ import annotations
 
@@ -6,11 +6,12 @@ from nba_data_build.reshape import datasets
 from nba_data_build.reshape.datasets import BY_KEY, DATASETS, RELEASE_TAGS
 
 
-def test_exactly_fifteen_datasets() -> None:
+def test_exactly_sixteen_datasets() -> None:
     # 15 through the v3 reshape spec + game_matchups (2026-09-02), minus the
     # legacy pbp + schedules reshapes retired 2026-09-30, plus metric_curves
-    # (stage 18, 2026-10-01), derived from the committed shots.
-    assert len(DATASETS) == 15
+    # (stage 18, 2026-10-01) and rolling_windows (stage 17, F3b-T2), both derived
+    # from the committed shots.
+    assert len(DATASETS) == 16
     assert "pbp" not in BY_KEY and "schedules" not in BY_KEY
     assert DATASETS[-1].key == "metric_curves" and BY_KEY["metric_curves"].level == "derived"
 

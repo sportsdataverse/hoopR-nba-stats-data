@@ -72,6 +72,7 @@ BUILDER = {
     "team_boxscores": "python/nba_stats_14_team_boxscores_creation.py",
     "shots": "python/nba_stats_15_shots_creation.py",
     "game_matchups": "python/nba_stats_16_game_matchups_creation.py",
+    "rolling_windows": "python/nba_stats_17_rolling_windows_creation.py",
     "metric_curves": "python/nba_stats_18_metric_curves_creation.py",
     "schedule_master": "python/nba_stats_99_schedule_master_creation.py",
     "games_in_data_repo": "python/nba_stats_99_schedule_master_creation.py",

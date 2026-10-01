@@ -46,7 +46,7 @@ def test_game_id_is_declared_utf8(dataset):
 
 #: Datasets on sdv-py's cross-league contracts, which key every entity as TEXT
 #: plus an `id_source` column (the four leagues share one table shape).
-TEXT_ID_CONTRACTS = {"metric_curves"}
+TEXT_ID_CONTRACTS = {"metric_curves", "rolling_windows"}
 
 
 def test_entity_ids_are_declared_int64():

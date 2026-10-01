@@ -183,12 +183,22 @@ DATASETS: tuple[Dataset, ...] = (
         # misrepresent as the season. 2017-18 onward is complete (1,304-1,322).
         season_floor=2018,  # 2017-18
     ),
-    # -- derived from the committed tree (stage 18, F4-T4) --------------------------
+    # -- derived from the committed tree (stages 17-18, F3b-T2 / F4-T4) -------------
     #
-    # Built by sdv-py's `metric_curves` over the season's `shots` -- the frame this
-    # run just built, or the committed `nba_stats/shots/parquet/shots_{E}.parquet`
-    # when shots is not in the run (cli.build_dataset). Stage 17 is reserved for
-    # `rolling_windows` (F3b), which the roadmap orders before this one.
+    # Built by sdv-py over the season's `shots` -- the frame this run just built,
+    # or the committed `nba_stats/shots/parquet/shots_{E}.parquet` when shots is not
+    # in the run (cli.build_dataset). `rolling_windows` also reads every earlier
+    # committed shots season (career history) and the committed schedule master
+    # (game dates).
+    Dataset(
+        "rolling_windows",
+        None,
+        None,
+        "rolling_windows",
+        "nba_stats_rolling_windows",
+        f"NBA Stats Rolling Shooting Windows {_R}",
+        level="derived",
+    ),
     Dataset(
         "metric_curves",
         None,
@@ -204,6 +214,23 @@ DATASETS: tuple[Dataset, ...] = (
 #: (``upload_artifacts(notes=)``) and the paragraph its generated dataset page
 #: carries. A tag with no entry keeps publish.py's generic body.
 RELEASE_NOTES: dict[str, str] = {
+    "nba_stats_rolling_windows": (
+        "Rolling shooting form -- every shooter's last N field-goal attempts (`fga`, metric "
+        "`fg_pct`) and last N three-point attempts (`fg3a`, metric `fg3_pct`), N = 50 and 200, "
+        "computed by `sportsdataverse.rolling_windows` from the committed `nba_stats_shots`. One "
+        "row per (season, player, window_unit, window_n) for every player with an attempt that "
+        "season. Windows count ATTEMPTS, not games, and cross season boundaries: `cur` is the "
+        "make rate over the last `n` attempts through the season (`n < window_n` only for a "
+        "short career, `qualified = false`); `prev` is the window before it, `season_start` the "
+        "window entering the season and `career_baseline` every attempt before `cur`'s window -- "
+        "each null rather than partial when there is not a full window of history. "
+        "`delta_prev_rank` is 1 for the biggest riser among qualified rows with a `prev`. "
+        "Attempts are regular-season and playoff shots only (`season_type_id` 2 and 4 -- play-in "
+        "and NBA Cup final games are not counted), ordered by game date, period and clock. Ids "
+        'are stats.nba.com ids as text with `id_source = "nba_stats"`; `entity_name` is the '
+        "family name the shots carry. Span 1997-present, the shots' own span (END-year seasons: "
+        "1997 = 1996-97)."
+    ),
     "nba_stats_metric_curves": (
         "FG% by shot distance -- league, team and player curves per season, computed by "
         "`sportsdataverse.metric_curves` from the committed `nba_stats_shots`. One row per "
