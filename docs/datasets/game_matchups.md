@@ -8,9 +8,9 @@ NBA Stats Game Matchups from hoopR data repository — `boxscorematchupsv3` (gam
 | **Release tag** | [`nba_stats_game_matchups`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_game_matchups) |
 | **File stem** | `game_matchups_{season}.{parquet,csv,rds}` |
 | **Seasons built** | — |
-| **Last published** | — (newest release asset) |
-| **Tag created** | — |
-| **Release assets** | — |
+| **Last published** | 2026-10-01 (newest release asset) |
+| **Tag created** | 2026-10-01 |
+| **Release assets** | 31 |
 
 ## Automation
 
