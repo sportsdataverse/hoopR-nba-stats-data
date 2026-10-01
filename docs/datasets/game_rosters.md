@@ -8,9 +8,9 @@ NBA Stats Game Rosters from hoopR data repository — `boxscoresummaryv2` (game-
 | **Release tag** | [`nba_stats_game_rosters`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_game_rosters) |
 | **File stem** | `game_rosters_{season}.{parquet,csv,rds}` |
 | **Seasons built** | 1997–2026 (30 seasons) |
-| **Last published** | 2026-08-13 (newest release asset) |
+| **Last published** | 2026-10-01 (newest release asset) |
 | **Tag created** | 2026-07-24 |
-| **Release assets** | 90 |
+| **Release assets** | 94 |
 
 ## Automation
 
@@ -46,7 +46,7 @@ NBA Stats Game Rosters from hoopR data repository — `boxscoresummaryv2` (game-
 | 2004 | 40 | 1,272 |
 | 2005 | 67 | 1,315 |
 | 2006 | 1,304 | 1,322 |
-| 2007 | 1,293 | 1,310 |
+| 2007 | 1,305 | 1,310 |
 | 2008 | 1,316 | 1,317 |
 | 2009 | 1,315 | 1,317 |
 | 2010 | 1,312 | 1,315 |
@@ -58,11 +58,11 @@ NBA Stats Game Rosters from hoopR data repository — `boxscoresummaryv2` (game-
 | 2016 | 1,316 | 1,427 |
 | 2017 | 1,309 | 1,412 |
 | 2018 | 1,312 | 1,392 |
-| 2019 | 1,311 | 1,394 |
-| 2020 | 1,141 | 1,146 |
-| 2021 | 1,165 | 1,221 |
-| 2022 | 1,316 | 1,393 |
-| 2023 | 1,307 | 1,394 |
-| 2024 | 1,306 | 1,396 |
-| 2025 | 1,195 | 1,400 |
-| 2026 | 64 | 1,400 |
+| 2019 | 1,312 | 1,394 |
+| 2020 | 1,143 | 1,146 |
+| 2021 | 1,171 | 1,221 |
+| 2022 | 1,322 | 1,393 |
+| 2023 | 1,313 | 1,394 |
+| 2024 | 1,313 | 1,396 |
+| 2025 | 1,301 | 1,400 |
+| 2026 | 1,305 | 1,400 |

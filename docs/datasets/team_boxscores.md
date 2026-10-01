@@ -8,9 +8,9 @@ NBA Stats Team Boxscores from hoopR data repository — `boxscoretraditionalv3` 
 | **Release tag** | [`nba_stats_team_boxscores`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_team_boxscores) |
 | **File stem** | `team_boxscores_{season}.{parquet,csv,rds}` |
 | **Seasons built** | 1997–2026 (30 seasons) |
-| **Last published** | 2026-08-13 (newest release asset) |
+| **Last published** | 2026-10-01 (newest release asset) |
 | **Tag created** | 2023-03-30 |
-| **Release assets** | 90 |
+| **Release assets** | 94 |
 
 ## Automation
 
@@ -77,10 +77,10 @@ NBA Stats Team Boxscores from hoopR data repository — `boxscoretraditionalv3` 
 | 2017 | 1,309 | 1,412 |
 | 2018 | 1,312 | 1,392 |
 | 2019 | 1,312 | 1,394 |
-| 2020 | 1,142 | 1,146 |
-| 2021 | 1,165 | 1,221 |
-| 2022 | 1,317 | 1,393 |
-| 2023 | 1,314 | 1,394 |
-| 2024 | 1,312 | 1,396 |
-| 2025 | 1,314 | 1,400 |
-| 2026 | 1,315 | 1,400 |
+| 2020 | 1,143 | 1,146 |
+| 2021 | 1,171 | 1,221 |
+| 2022 | 1,323 | 1,393 |
+| 2023 | 1,320 | 1,394 |
+| 2024 | 1,319 | 1,396 |
+| 2025 | 1,321 | 1,400 |
+| 2026 | 1,322 | 1,400 |

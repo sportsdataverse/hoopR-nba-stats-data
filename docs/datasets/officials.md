@@ -8,9 +8,9 @@ NBA Stats Officials from hoopR data repository — `boxscoresummaryv2` (game-lev
 | **Release tag** | [`nba_stats_officials`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_officials) |
 | **File stem** | `officials_{season}.{parquet,csv,rds}` |
 | **Seasons built** | 1997–2026 (30 seasons) |
-| **Last published** | 2026-08-13 (newest release asset) |
+| **Last published** | 2026-10-01 (newest release asset) |
 | **Tag created** | 2026-07-24 |
-| **Release assets** | 90 |
+| **Release assets** | 94 |
 
 ## Automation
 
@@ -42,7 +42,7 @@ NBA Stats Officials from hoopR data repository — `boxscoresummaryv2` (game-lev
 | 2004 | 1,271 | 1,272 |
 | 2005 | 1,314 | 1,315 |
 | 2006 | 1,319 | 1,322 |
-| 2007 | 1,297 | 1,310 |
+| 2007 | 1,309 | 1,310 |
 | 2008 | 1,314 | 1,317 |
 | 2009 | 1,315 | 1,317 |
 | 2010 | 1,312 | 1,315 |
@@ -54,11 +54,11 @@ NBA Stats Officials from hoopR data repository — `boxscoresummaryv2` (game-lev
 | 2016 | 1,316 | 1,427 |
 | 2017 | 1,309 | 1,412 |
 | 2018 | 1,312 | 1,392 |
-| 2019 | 1,311 | 1,394 |
-| 2020 | 1,141 | 1,146 |
-| 2021 | 1,165 | 1,221 |
-| 2022 | 1,317 | 1,393 |
-| 2023 | 1,314 | 1,394 |
-| 2024 | 1,312 | 1,396 |
-| 2025 | 1,195 | 1,400 |
-| 2026 | 69 | 1,400 |
+| 2019 | 1,312 | 1,394 |
+| 2020 | 1,143 | 1,146 |
+| 2021 | 1,171 | 1,221 |
+| 2022 | 1,323 | 1,393 |
+| 2023 | 1,320 | 1,394 |
+| 2024 | 1,319 | 1,396 |
+| 2025 | 1,321 | 1,400 |
+| 2026 | 1,319 | 1,400 |
