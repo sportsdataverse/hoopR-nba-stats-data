@@ -48,7 +48,14 @@ jobs:
       GITHUB_PAT: ${{ secrets.SDV_GH_TOKEN }}
       HOOPR_NBA_STATS_RAW_ROOT: https://raw.githubusercontent.com/sportsdataverse/hoopR-nba-stats-raw/main/nba_stats/json
     steps:
+      # A run queued behind another one (the concurrency group above) would check
+      # out the SHA from when it was TRIGGERED, before the earlier run's commits.
+      # Take the branch tip at job start instead, so a queued run builds on what
+      # the run before it pushed. A literal, like the helper's `origin main`: an
+      # expression that came back empty would silently restore the event SHA.
       - uses: actions/checkout@v5
+        with:
+          ref: main
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v8.1.0
@@ -89,10 +96,19 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -- nba_stats/nba_stats_schedule_master.parquet \
-                     nba_stats/nba_stats_games_in_data_repo.parquet \
-                     nba_stats/nba_stats_schedule_coverage.parquet
-          git diff --cached --quiet || {
-            git commit -m "chore(schedule): refresh schedule master + coverage (${START_YEAR}-${END_YEAR})"
-            git push
-          }
+          paths=(
+            nba_stats/nba_stats_schedule_master.parquet
+            nba_stats/nba_stats_games_in_data_repo.parquet
+            nba_stats/nba_stats_schedule_coverage.parquet
+          )
+          # Through the shared helper, not a bare `git push`: it commits first, then
+          # fetches and rebases if the push is rejected. A bare push loses to any
+          # commit that lands during the build: the WNBA twin's run 37207505807
+          # (2026-10-04) built and published, then failed this same step on
+          # "! [rejected] main -> main (non-fast-forward)".
+          # The helper stages with `git add ... || true`, and one missing path makes
+          # git stage NOTHING, which then reads as "nothing to commit". Fail instead,
+          # as the bare `git add` did.
+          ls -d "${paths[@]}" >/dev/null
+          source scripts/_commit.sh
+          sdv_commit_push "chore(schedule): refresh schedule master + coverage (${START_YEAR}-${END_YEAR})" "${paths[@]}"
