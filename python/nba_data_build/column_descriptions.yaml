@@ -76,7 +76,11 @@ y_legacy: >-
   basket toward half court, so 0 at the basket and negative for a shot from
   behind it; 0 for non-shot actions).
 shot_distance: >-
-  Shot distance in feet (0 for non-shots).
+  Shot distance in whole feet as the stats.nba.com play-by-play feed reports it
+  (0 for non-shots). The feed reports every three under 23.5 ft (the corner) as
+  0; those threes are restored as sqrt(x_legacy^2 + y_legacy^2) / 10 rounded half
+  up, the feed's own rounding, and are null when the three has no location
+  (legacy 0, 0).
 shot_result: >-
   "Made" / "Missed" for shot actions; empty otherwise.
 is_field_goal: >-
