@@ -205,3 +205,68 @@ def test_summary_datasets_prefer_v3_and_keep_the_v2_columns(tmp_path: Path) -> N
     assert rost.select("player_id", "team_abbreviation", "game_id").rows() == [
         (7, "SAS", "0052500101")
     ]
+
+
+# -- shots: the masked corner-three distance -------------------------------------
+
+SHOTS_FIX = Path(__file__).parent / "fixtures" / "shots"
+
+
+def _legacy_ft() -> build.pl.Expr:
+    """Exact distance in feet: legacy coordinates are tenths of a foot, hoop at the origin."""
+    pl = build.pl
+    return (
+        pl.col("x_legacy").cast(pl.Float64) ** 2 + pl.col("y_legacy").cast(pl.Float64) ** 2
+    ).sqrt() / 10
+
+
+def test_shots_restore_the_masked_three_distance_from_legacy_coordinates() -> None:
+    """playbyplayv3 ships ``shotDistance`` 0 for every three under 23.5 ft (the
+    corner); shotchartdetail ships the real distance for the same shots. Real
+    2025-26 opener (OKC-HOU) slice: 22 such threes, all corner, all 0 in the raw."""
+    pl = build.pl
+    raw = build.build_pbp(SHOTS_FIX, 2026, ["0022500001"])
+    raw3 = raw.filter(pl.col("is_field_goal") == 1, pl.col("shot_value") == 3)
+    assert raw3.filter(pl.col("shot_distance") == 0).height == 22, "fixture lost its masked threes"
+
+    shots = build.build_shots(raw).with_columns(loc=_legacy_ft())
+    threes = shots.filter(pl.col("shot_value") == 3)
+    assert threes.filter(pl.col("shot_distance") == 0).height == 0, "a three still reads 0 ft"
+    # The feed's own rule on every unmasked shot: whole feet, half up, from the legacy
+    # coordinates. Restored threes follow it, and unmasked shots are untouched.
+    assert (
+        shots["shot_distance"].to_list()
+        == shots.select((pl.col("loc") + 0.5).floor().cast(pl.Int64))["loc"].to_list()
+    )
+    assert shots.schema["shot_distance"] == raw.schema["shot_distance"]
+    assert sorted(set(threes.filter(pl.col("loc") < 23.5)["shot_distance"].to_list())) == [22, 23]
+
+    # Ground truth: shotchartdetail's SHOT_DISTANCE for the same events is the floor of
+    # the same coordinates (LOC_X/LOC_Y == xLegacy/yLegacy), so it is 0 or 1 ft under ours.
+    scd = json.loads((SHOTS_FIX / "shotchartdetail_0022500001.json").read_text(encoding="utf-8"))
+    rs = scd["resultSets"][0]
+    truth = pl.DataFrame([dict(zip(rs["headers"], r)) for r in rs["rowSet"]]).select(
+        pl.col("GAME_EVENT_ID").alias("action_number"), "SHOT_DISTANCE", "SHOT_ZONE_BASIC"
+    )
+    events = raw.filter(pl.col("is_field_goal") == 1)[
+        "action_number"
+    ]  # build_shots keeps row order
+    j = shots.with_columns(action_number=events).join(truth, on="action_number")
+    assert j.height == shots.height
+    assert set((j["shot_distance"] - j["SHOT_DISTANCE"]).to_list()) <= {0, 1}
+    corner = j.filter(pl.col("SHOT_ZONE_BASIC").str.contains("Corner 3"))
+    assert corner.height >= 22 and corner["shot_distance"].min() >= 22
+
+
+def test_shots_three_without_a_location_reads_null_not_zero() -> None:
+    """1996-97 captures carry some threes at legacy (0, 0) -- no location at all.
+    A three cannot be 0 ft, so those read null; located 22-ft threes (the
+    shortened 1994-97 line) are restored like the modern corner."""
+    pl = build.pl
+    raw = build.build_pbp(SHOTS_FIX, 1997, ["0029600360"])
+    shots = build.build_shots(raw)
+    origin = shots.filter(pl.col("x_legacy") == 0, pl.col("y_legacy") == 0)
+    assert origin.height == 4 and origin["shot_distance"].null_count() == 4
+    located = shots.filter((pl.col("x_legacy") != 0) | (pl.col("y_legacy") != 0))
+    assert located["shot_distance"].null_count() == 0
+    assert located["shot_distance"].min() == 22

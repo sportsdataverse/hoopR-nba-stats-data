@@ -32,7 +32,7 @@ NBA Stats Shots from hoopR data repository — `derived` (derived-level).
 | `sub_type` | String | Action detail within the family ("Jump Shot", "Offensive", ...). |
 | `shot_result` | String | "Made" / "Missed" for shot actions; empty otherwise. |
 | `shot_value` | Int64 | Point value of a shot attempt (2 or 3; 1 for free throws, 0 for non-shots). |
-| `shot_distance` | Int64 | Shot distance in feet (0 for non-shots). |
+| `shot_distance` | Int64 | Shot distance in whole feet, sqrt(x_legacy^2 + y_legacy^2) / 10 rounded half up (0 for non-shots). The play-by-play feed reports every three under 23.5 ft (the corner) as 0; those threes are restored from x_legacy / y_legacy, and are null when the three has no location (legacy 0, 0). |
 | `x_legacy` | Int64 | Shot x-coordinate in the legacy stats.nba.com coordinate frame (tenths of feet from the basket centerline; 0 for non-shot actions). |
 | `y_legacy` | Int64 | Shot y-coordinate in the legacy coordinate frame (tenths of feet from the basket toward half court, so 0 at the basket and negative for a shot from behind it; 0 for non-shot actions). |
 | `description` | String | Human-readable action narrative from the feed. |
