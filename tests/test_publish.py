@@ -208,3 +208,47 @@ def test_upload_listing_auth_failure_surfaces(tmp_path):
 
     with pytest.raises(subprocess.CalledProcessError):
         upload_artifacts(_mk(tmp_path), tag="t", repo="r/r", runner=runner)
+
+
+def test_unchanged_stem_skipped_whole_despite_rds_timestamp(tmp_path):
+    """nightly_nba_impact publishes parquet+rds+csv; the rds re-stamps every build."""
+    import hashlib
+
+    for ext, body in (("parquet", b"p"), ("csv", b"c"), ("rds", b"r-new-stamp")):
+        (tmp_path / f"m_2026.{ext}").write_bytes(body)
+    pq = "sha256:" + hashlib.sha256(b"p").hexdigest()
+    calls = []
+
+    def runner(args):
+        calls.append(args)
+        if args[0] == "api":
+            return f"m_2026.parquet\t{pq}\nm_2026.csv\tsha256:x\nm_2026.rds\tsha256:y\n"
+        return ""
+
+    exts = ("parquet", "rds", "csv")
+    res = upload_artifacts(tmp_path, tag="t", repo="r/r", exts=exts, runner=runner)
+    assert [c[0] for c in calls] == ["api"] and res["uploaded"] == 0
+
+    calls.clear()  # parquet changed: siblings first, parquet last
+    (tmp_path / "m_2026.parquet").write_bytes(b"p2")
+    upload_artifacts(tmp_path, tag="t", repo="r/r", exts=exts, runner=runner)
+    data = [Path(c[3]).name for c in calls if c[:2] == ["release", "upload"]][:3]
+    assert data == ["m_2026.csv", "m_2026.rds", "m_2026.parquet"]
+
+
+def test_failed_sibling_holds_the_parquet_back(tmp_path):
+    for ext in ("parquet", "rds"):
+        (tmp_path / f"m_2026.{ext}").write_bytes(b"x")
+    calls = []
+
+    def runner(args):
+        calls.append(args)
+        if args[0] == "api":
+            return ""
+        if args[3].endswith(".rds"):
+            raise subprocess.CalledProcessError(1, args, stderr="boom")
+        return ""
+
+    res = upload_artifacts(tmp_path, tag="t", repo="r/r", exts=("parquet", "rds"), runner=runner)
+    assert sorted(res["failed"]) == ["m_2026.parquet", "m_2026.rds"]
+    assert not any(c[3].endswith(".parquet") for c in calls if c[:2] == ["release", "upload"])

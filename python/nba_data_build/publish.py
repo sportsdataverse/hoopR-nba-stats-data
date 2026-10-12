@@ -214,19 +214,39 @@ def upload_artifacts(
             ]
         )
         remote = {}
+    # rds embeds a write timestamp so it never matches itself; it and the csv
+    # are derived from the parquet, so a stem whose parquet matches and whose
+    # siblings are all on the release is skipped whole. Per stem the parquet
+    # goes LAST and is held back if a sibling failed, so a matching parquet
+    # always means the stem's last upload completed.
+    by_stem: dict[str, list[Path]] = {}
+    for f in files:
+        by_stem.setdefault(f.name[: -len(f.suffix)] if f.suffix else f.name, []).append(f)
     uploaded: list[str] = []
     failed: list[str] = []
     skipped: list[str] = []
-    for f in files:
-        if remote.get(f.name) == _sha256(f):
-            skipped.append(f.name)
-            continue
-        try:
-            run(["release", "upload", tag, str(f), "--repo", repo, "--clobber"])
-            uploaded.append(f.name)
-        except subprocess.CalledProcessError as exc:
-            print(f"WARNING: upload failed for {f.name}: {exc}", file=sys.stderr)
-            failed.append(f.name)
+    for group in by_stem.values():
+        group.sort(key=lambda f: f.suffix == ".parquet")
+        pq = group[-1] if group[-1].suffix == ".parquet" else None
+        if pq is not None and remote.get(pq.name) == _sha256(pq):
+            if all(f.name in remote for f in group):
+                skipped += [f.name for f in group]
+                continue
+        sibling_failed = False
+        for f in group:
+            if f is pq and sibling_failed:
+                failed.append(f.name)
+                continue
+            if f is not pq and remote.get(f.name) == _sha256(f):
+                skipped.append(f.name)
+                continue
+            try:
+                run(["release", "upload", tag, str(f), "--repo", repo, "--clobber"])
+                uploaded.append(f.name)
+            except subprocess.CalledProcessError as exc:
+                print(f"WARNING: upload failed for {f.name}: {exc}", file=sys.stderr)
+                failed.append(f.name)
+                sibling_failed = True
     if skipped:
         print(f"{tag}: {len(skipped)} unchanged asset(s) skipped, {len(uploaded)} uploaded")
     # stamp LAST so the timestamp describes a finished upload, and only when
