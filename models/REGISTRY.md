@@ -6,6 +6,12 @@ live in sdv-py and each publish writes a `*_card.json` provenance sidecar,
 which is the metadata authority. `tests/test_model_registry.py` keeps this
 table in lockstep.
 
+The release card is canonical: a publish MERGES onto it (`nba_model_publish card-merge`,
+run by the `impact` CLI before any upload, `--dry-run` included) — per-season entries for the
+seasons it publishes, full-history gates (yoy / DARKO-forward / oracle) only from a build that
+publishes every season (`publish_gates.full_history_gates_as_of`). The one-season nightly
+refreshes its season and keeps the rest.
+
 | model | artifact(s) | release tag | training data | fitting script | gates at publish | last publish | cadence |
 |---|---|---|---|---|---|---|---|
 | NBA player impact (RAPM / adj-RAPM / DARKO-style engines, consolidated) | `nba_player_impact_{season}.parquet`, 30 seasons + `nba_player_impact_card.json` + `nba_player_impact_spm_coefficients.json` (additive sidecar) — **91 assets published; 92 after the next publish**; the parquet + rds + card are ALSO committed to `nba_stats/player_impact/` (decision 2026-09-02, see CLAUDE.md -- this is a deliberate carve-out from the D36 release-only rule, which governs the reshaped datasets, not model output) | `nba_player_impact` | this repo's possessions/lineups trees (offline via the committed raw store; `readonly` = offline, a store miss raises) | `nba_data_build/models.py` via `nba_models.yml` (Build + publish step) | **seven numeric floors, publish-blocking** (`nba_model_publish/gates.py`; table below) — evaluated on every `impact` invocation, report written into the card sidecar under `publish_gates` | 2026-10-12 (full 1997–2026 republish, lineup source `auto`; was `quarter_box` 2026-07-29) | `nba_models.yml` — dispatch-only BY DESIGN (rate-budgeted long build that must never auto-fire; `dry_run` defaults true; full-history backfills run from the droplet via `scripts/run_impact_backfill.sh`) |

@@ -67,12 +67,21 @@ def impact_run(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Callable[...,
     monkeypatch.setattr(cli, "_resolve_proxy_provider", lambda *a, **k: None)
 
     calls: list[bool] = []
+    order: list[str] = []
 
     def _fake_upload(*args: Any, dry_run: bool = False, **kwargs: Any) -> dict[str, Any]:
         calls.append(dry_run)
+        order.append("upload")
         return {"uploaded": 0 if dry_run else 1, "files": ["x"], "failed": []}
 
     monkeypatch.setattr(cli, "upload_artifacts", _fake_upload)
+    # The stubbed builder writes no card, and the release read is network: record
+    # the card merge instead (its own teeth live in tests/test_impact_gates.py).
+    monkeypatch.setattr("nba_model_publish.builders.published_model_card", lambda *a, **k: None)
+    monkeypatch.setattr(
+        "nba_model_publish.builders.merge_model_card", lambda *a, **k: order.append("card-merge")
+    )
+    cli._order_for_tests = order
 
     # The publish floors run against the BUILT assets; this builder is stubbed
     # and writes none, so record the gate call instead of evaluating it. The
@@ -122,6 +131,18 @@ def test_dry_run_plans_the_upload_without_performing_it(
     impact_run: Callable[..., list[bool]],
 ) -> None:
     assert impact_run("--dry-run") == [True, True]
+
+
+def test_card_merge_runs_before_any_upload_and_never_on_a_plain_build(
+    impact_run: Callable[..., list[bool]],
+) -> None:
+    """The release card is canonical: a publish (or its plan) merges onto it first."""
+    impact_run()
+    assert cli._order_for_tests == []
+    for flag in ("--publish", "--dry-run"):
+        cli._order_for_tests.clear()
+        impact_run(flag)
+        assert cli._order_for_tests == ["card-merge", "upload", "upload"]
 
 
 def test_dry_run_wins_over_publish(impact_run: Callable[..., list[bool]]) -> None:

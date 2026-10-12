@@ -96,7 +96,11 @@ for f in "${OUT_DIR}"/*.parquet; do
   [ -e "$f" ] && cp -f "$f" "${REPO_DIR}/nba_stats/player_impact/parquet/"
 done
 # The model card is the artifact that says HOW these numbers were produced;
-# committing the table without it leaves the repo copy unexplained.
+# committing the table without it leaves the repo copy unexplained. It is the
+# MERGED card: the CLI overlaid this season onto the release's card (every
+# published season + the full-history gates, which a one-season build cannot
+# compute) before uploading it -- so the tree and the release hold the same file.
+# A --dry-run runs that merge too and prints the would-be card's season span.
 for f in "${OUT_DIR}"/*_card.json; do
   [ -e "$f" ] && cp -f "$f" "${REPO_DIR}/nba_stats/player_impact/"
 done

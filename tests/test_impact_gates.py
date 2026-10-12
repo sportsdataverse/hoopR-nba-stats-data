@@ -183,3 +183,122 @@ def test_spm_sidecar_round_trips_with_the_fields_the_writeup_reads(tmp_path):
         == len(got["feature_names"])
         == len(got["feature_sd"])
     )
+
+
+# --- the model card on the release is canonical (card-merge) -----------------
+
+
+def _card(seasons, *, stamp, gated=None, checks="full"):
+    """A card shaped like _write_model_card + check_publish_floors output."""
+    gated = list(seasons) if gated is None else gated
+    return {
+        "dataset": "nba_player_impact",
+        "models": {"rapm": stamp},
+        "lineup_source": "auto",
+        "possession_pipeline_version": 5,
+        "season_types": ["Regular Season", "Playoffs"],
+        "seasons": [{"season": s, "rows": 100 + s % 100} for s in seasons],
+        "generated_at": stamp,
+        "publish_gates": {
+            "seasons_gated": gated,
+            "seasons": {str(s): {"rs_rows": s, "r_rapm_yoy": 0.3} for s in gated},
+            "summary": {"r_rapm_yoy_min": 0.29 if checks == "full" else None},
+            "checks": [{"gate": "r_rapm_yoy_min", "status": "PASS" if checks == "full" else "SKIPPED"}],
+            "scale": [{"season": s, "gate": "sd_rapm", "status": "PASS", "stamp": stamp} for s in gated],
+        },
+    }
+
+
+def _write(tmp_path, card):
+    from nba_model_publish.builders import CARD_NAME
+
+    (tmp_path / CARD_NAME).write_text(json.dumps(card), encoding="utf-8")
+    return tmp_path / CARD_NAME
+
+
+def test_a_one_season_merge_keeps_the_other_seasons_and_the_full_history_gates(tmp_path):
+    from nba_model_publish.builders import merge_model_card
+
+    release = _card(range(1997, 2027), stamp="2026-10-12T16:40:29+00:00")
+    # the nightly: a partial build (WNBA builds a window, NBA one season) that
+    # cannot compute the cross-season gates
+    path = _write(tmp_path, _card(range(2026, 2027), stamp="NIGHTLY", checks="partial"))
+
+    merge_model_card(tmp_path, [2026], release)
+
+    card = json.loads(path.read_text(encoding="utf-8"))
+    by = {r["season"]: r for r in card["seasons"]}
+    assert sorted(by) == list(range(1997, 2027))                     # every season kept
+    assert by[2026]["generated_at"] == "NIGHTLY"                     # the published season moved
+    assert all(by[s]["generated_at"] != "NIGHTLY" for s in range(1997, 2026))  # warm-ups did not
+    assert by[1997]["lineup_source"] == "auto" and by[1997]["rows"] == 197
+    g = card["publish_gates"]
+    assert g["checks"] == release["publish_gates"]["checks"]          # full-history gates kept
+    assert g["summary"]["r_rapm_yoy_min"] == 0.29
+    assert g["seasons_gated"] == list(range(1997, 2027))
+    assert g["full_history_gates_as_of"] == "2026-10-12T16:40:29+00:00"
+    assert sorted(int(k) for k in g["seasons"]) == list(range(1997, 2027))
+    assert [c["stamp"] for c in g["scale"] if c["season"] == 2026] == ["NIGHTLY"]
+    assert [c["stamp"] for c in g["scale"] if c["season"] == 2025] != ["NIGHTLY"]
+    assert card["generated_at"] == "NIGHTLY"
+
+    # merging again on top of the merged card keeps the annotation (idempotent)
+    merge_model_card(tmp_path, [2026], json.loads(path.read_text(encoding="utf-8")))
+    assert json.loads(path.read_text(encoding="utf-8"))["publish_gates"]["full_history_gates_as_of"] == (
+        "2026-10-12T16:40:29+00:00"
+    )
+    with pytest.raises(SystemExit):
+        merge_model_card(tmp_path, [2030], release)                  # a season it never built
+
+
+def test_a_full_history_build_replaces_the_global_gates(tmp_path):
+    from nba_model_publish.builders import merge_model_card
+
+    release = _card(range(1997, 2027), stamp="OLD")
+    path = _write(tmp_path, _card(range(1997, 2027), stamp="FULL"))
+
+    merge_model_card(tmp_path, range(1997, 2027), release)
+
+    card = json.loads(path.read_text(encoding="utf-8"))
+    assert {r["generated_at"] for r in card["seasons"]} == {"FULL"}
+    assert card["publish_gates"]["full_history_gates_as_of"] == "FULL"
+    assert {c["stamp"] for c in card["publish_gates"]["scale"]} == {"FULL"}
+
+
+def test_a_404_starts_fresh_from_the_build(tmp_path, monkeypatch):
+    import requests
+    from nba_model_publish.builders import merge_model_card, published_model_card
+
+    monkeypatch.setattr(requests, "get", lambda *a, **k: _Resp(404))
+    assert published_model_card("o/r", "t") is None
+
+    path = _write(tmp_path, _card([2025, 2026], stamp="NEW"))
+    merge_model_card(tmp_path, [2026], None)
+    card = json.loads(path.read_text(encoding="utf-8"))
+    assert [r["season"] for r in card["seasons"]] == [2026]
+    assert list(card["publish_gates"]["seasons"]) == ["2026"]
+    assert card["publish_gates"]["full_history_gates_as_of"] == "NEW"
+
+
+@pytest.mark.parametrize("resp", ["500", "not-json"])
+def test_an_unreadable_release_card_fails_rather_than_starting_fresh(monkeypatch, resp):
+    import requests
+    from nba_model_publish.builders import published_model_card
+
+    monkeypatch.setattr(requests, "get", lambda *a, **k: _Resp(500) if resp == "500" else _Resp(200, "<html>"))
+    with pytest.raises(Exception):
+        published_model_card("o/r", "t")
+
+
+class _Resp:
+    def __init__(self, status, body="{}"):
+        self.status_code, self._body = status, body
+
+    def raise_for_status(self):
+        import requests
+
+        if self.status_code >= 400:
+            raise requests.HTTPError(f"HTTP {self.status_code}")
+
+    def json(self):
+        return json.loads(self._body)

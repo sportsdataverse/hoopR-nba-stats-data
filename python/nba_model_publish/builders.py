@@ -233,8 +233,98 @@ def _write_model_card(
         "seasons": [{"season": r["season"], "rows": r["rows"]} for r in results],
         "generated_at": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
     }
-    path = out_dir / "nba_player_impact_card.json"
+    path = out_dir / CARD_NAME
     path.write_text(json.dumps(card, indent=2))
+    return path
+
+
+CARD_NAME = "nba_player_impact_card.json"
+#: Card fields that describe ONE season's build; every ``seasons[]`` record carries them.
+_CARD_SEASON_STAMP = ("lineup_source", "possession_pipeline_version", "season_types", "generated_at")
+
+
+def published_model_card(repo: str, tag: str) -> Optional[dict]:
+    """The model card currently on the release; ``None`` only when it does not exist.
+
+    Any other failure raises (a non-JSON body included): merging onto an unreadable
+    base would publish a card that silently dropped every other season.
+    """
+    import requests
+
+    r = requests.get(f"https://github.com/{repo}/releases/download/{tag}/{CARD_NAME}", timeout=60)
+    if r.status_code == 404:
+        return None
+    r.raise_for_status()
+    return r.json()
+
+
+def merge_model_card(out_dir: Path, seasons: Sequence[int], base: Optional[dict]) -> Path:
+    """Rewrite *out_dir*'s model card as the CANONICAL one: *base* + this publish's seasons.
+
+    Twin of wehoop-wnba-stats-data's ``merge_model_card`` -- change both together.
+
+    Per-season parts take *seasons* from the build and keep every other season from
+    *base* (the release card; ``None`` if there is none yet): ``seasons[]`` (rows plus
+    the build stamp ``_CARD_SEASON_STAMP``), ``publish_gates.seasons`` and
+    ``publish_gates.scale``.
+
+    Global parts -- ``publish_gates`` seasons_gated / summary / checks / oracle, i.e.
+    the cross-season yoy, DARKO-forward and oracle floors that only a full-history
+    build can compute -- come from the build only when it publishes every season the
+    card lists (or there is no base). Otherwise they are kept from *base*, and
+    ``publish_gates.full_history_gates_as_of`` names the build that produced them.
+    A kept ``r_rapm_yoy`` / ``r_darko_fwd`` for the season before a refreshed one is
+    therefore as of that full build. Descriptive fields (models, source, ...) are
+    code, so the build's copy wins.
+
+    Raises:
+        SystemExit: if a season to publish has no entry in the build's card.
+    """
+    path = Path(out_dir) / CARD_NAME
+    built = json.loads(path.read_text(encoding="utf-8"))
+    base = base or {}
+    seasons = sorted({int(s) for s in seasons})
+
+    def stamped(card: dict) -> dict[int, dict]:
+        top = {k: card.get(k) for k in _CARD_SEASON_STAMP}
+        return {int(r["season"]): {"season": int(r["season"]), **top, **r} for r in card.get("seasons", [])}
+
+    fresh = stamped(built)
+    missing = [s for s in seasons if s not in fresh]
+    if missing:
+        raise SystemExit(f"card-merge: no built entry for season(s) {missing} in {path}")
+    rows = stamped(base)
+    rows.update({s: fresh[s] for s in seasons})
+    full = set(rows) == set(seasons)  # this publish covers every season on the card
+
+    bg, ng = base.get("publish_gates") or {}, built.get("publish_gates") or {}
+    if full:
+        src, as_of = ng, built.get("generated_at")
+    else:
+        src, as_of = bg, bg.get("full_history_gates_as_of", base.get("generated_at"))
+    per = {k: v for k, v in (bg.get("seasons") or {}).items() if int(k) not in seasons}
+    per.update({k: v for k, v in (ng.get("seasons") or {}).items() if int(k) in seasons})
+    scale = [c for c in bg.get("scale") or [] if int(c["season"]) not in seasons]
+    scale += [c for c in ng.get("scale") or [] if int(c["season"]) in seasons]
+
+    card = {**built, "seasons": [rows[s] for s in sorted(rows)]}
+    for k in ("lineup_source", "possession_pipeline_version"):
+        vals = {json.dumps(r.get(k)) for r in card["seasons"]}
+        card[k] = card["seasons"][0].get(k) if len(vals) == 1 else "mixed: see seasons[]"
+    card["season_types"] = list(dict.fromkeys(t for r in card["seasons"] for t in r.get("season_types") or []))
+    card["publish_gates"] = {
+        **{k: v for k, v in src.items() if k not in ("seasons", "scale")},
+        "full_history_gates_as_of": as_of,
+        "seasons": dict(sorted(per.items(), key=lambda kv: int(kv[0]))),
+        "scale": sorted(scale, key=lambda c: int(c["season"])),
+    }
+    path.write_text(json.dumps(card, indent=2), encoding="utf-8")
+    gated = card["publish_gates"].get("seasons_gated") or ["-"]
+    print(
+        f"card-merge: {len(rows)} seasons {min(rows)}..{max(rows)}; refreshed {seasons}; "
+        f"full-history gates {'REPLACED by this build' if full else 'kept from the release'} "
+        f"(as of {as_of}, gated {gated[0]}..{gated[-1]}) -> {path}"
+    )
     return path
 
 

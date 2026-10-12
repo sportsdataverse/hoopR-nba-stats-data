@@ -258,7 +258,11 @@ for every season** under `nba_stats/{key}/parquet/` (key = release tag minus
 no rds, no csv. This supersedes D36's release-only stance (2026-08-07) for
 parquet. Writers: the daily processor (reshaped datasets, per season),
 `nightly_nba_season_refresh.sh` (v3 families + leaguedash, current season),
-`nightly_nba_impact.sh` (`nba_player_impact` parquet + `*_card.json`). A new
+`nightly_nba_impact.sh` (`nba_player_impact` parquet + `*_card.json` — the MERGED card: the
+release card is canonical, the `impact` CLI overlays only the seasons it publishes onto it via
+`builders.merge_model_card` before any upload and keeps the full-history gates unless the
+publish covers every season; `python -m nba_model_publish card-merge` for manual uploads;
+twin of the WNBA card-merge). A new
 dataset lands its committed parquet in the same change;
 `/mnt/sdv_repos/bin/stats_release_audit.py` flags any released parquet with no
 committed copy (NO-COMMIT). Every file in `nba_stats/{key}/parquet/` is an asset of
