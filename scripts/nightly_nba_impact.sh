@@ -101,6 +101,8 @@ done
 # published season + the full-history gates, which a one-season build cannot
 # compute) before uploading it -- so the tree and the release hold the same file.
 # A --dry-run runs that merge too and prints the would-be card's season span.
+# The SPM coefficient sidecar gets the same treatment (spm-merge, before the card):
+# uploaded merged, release-only -- the tree's docs/models copy is the writeup's.
 for f in "${OUT_DIR}"/*_card.json; do
   [ -e "$f" ] && cp -f "$f" "${REPO_DIR}/nba_stats/player_impact/"
 done

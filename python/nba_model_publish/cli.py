@@ -266,6 +266,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sc.add_argument("--out", required=True, help="Directory to write the sidecar into.")
 
+    sm = sub.add_parser(
+        "spm-merge",
+        help="Make a built dir's SPM sidecar the canonical one: the release's records + --seasons from the build.",
+    )
+    sm.add_argument("--dir", required=True, help="Built artifact directory (holds the build's sidecar).")
+    sm.add_argument("--seasons", required=True, help="The seasons being PUBLISHED (END years), e.g. 2026.")
+    sm.add_argument("--tag", default="nba_player_impact", help="GitHub release tag.")
+    sm.add_argument("--repo", default=_REPO_DEFAULT, help="GitHub repo owning the release.")
+
     cm = sub.add_parser(
         "card-merge",
         help="Make a built dir's model card the canonical one: the release's card + --seasons from the build.",
@@ -379,16 +388,24 @@ def main(argv=None) -> int:
             )
             return 0
         if built:
-            # The card on the release is canonical: every published season plus the
-            # full-history gates. A partial build overlays its seasons instead of
-            # replacing it -- before ANY upload, so an unreadable release card blocks
+            # Both json sidecars on the release are canonical: the SPM sidecar (one
+            # record per published season) and the card (every published season plus
+            # the full-history gates). A partial build overlays its seasons instead of
+            # replacing them -- before ANY upload, so an unreadable release copy blocks
             # the publish rather than half-completing it. Runs on --dry-run too: the
-            # merged card is part of the plan (the line it prints is the preview).
-            from .builders import merge_model_card, published_model_card
-
-            merge_model_card(
-                Path(args.out), [b["season"] for b in built], published_model_card(args.repo, args.tag)
+            # merged files are part of the plan (the lines they print are the preview).
+            from .builders import (
+                merge_model_card,
+                merge_spm_coefficients,
+                published_model_card,
+                published_spm_coefficients,
             )
+
+            seasons = [b["season"] for b in built]
+            merge_spm_coefficients(
+                Path(args.out), seasons, published_spm_coefficients(args.repo, args.tag)
+            )
+            merge_model_card(Path(args.out), seasons, published_model_card(args.repo, args.tag))
         res = upload_artifacts(
             args.out,
             args.tag,
@@ -443,6 +460,12 @@ def main(argv=None) -> int:
         out.mkdir(parents=True, exist_ok=True)
         path = write_spm_coefficients(out, records)
         print(f"spm-coefficients: {len(records)} seasons -> {path}")
+    elif args.cmd == "spm-merge":
+        from .builders import merge_spm_coefficients, published_spm_coefficients
+
+        merge_spm_coefficients(
+            Path(args.dir), _parse_seasons(args.seasons), published_spm_coefficients(args.repo, args.tag)
+        )
     elif args.cmd == "card-merge":
         from .builders import merge_model_card, published_model_card
 

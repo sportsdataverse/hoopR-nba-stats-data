@@ -262,6 +262,8 @@ parquet. Writers: the daily processor (reshaped datasets, per season),
 release card is canonical, the `impact` CLI overlays only the seasons it publishes onto it via
 `builders.merge_model_card` before any upload and keeps the full-history gates unless the
 publish covers every season; `python -m nba_model_publish card-merge` for manual uploads;
+`nba_player_impact_spm_coefficients.json` likewise -- `merge_spm_coefficients` / `spm-merge`
+keeps one record per PUBLISHED season, never a build dir's sidecar as-is;
 twin of the WNBA card-merge). A new
 dataset lands its committed parquet in the same change;
 `/mnt/sdv_repos/bin/stats_release_audit.py` flags any released parquet with no

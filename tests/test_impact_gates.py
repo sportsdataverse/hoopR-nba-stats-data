@@ -185,6 +185,59 @@ def test_spm_sidecar_round_trips_with_the_fields_the_writeup_reads(tmp_path):
     )
 
 
+
+# --- the SPM sidecar on the release is canonical (spm-merge) -----------------
+
+
+def test_the_canonical_sidecar_takes_only_the_published_seasons(tmp_path):
+    """A one-season nightly publishes one season: only that record may move."""
+    from nba_model_publish.builders import merge_spm_coefficients
+
+    published = {"records": [{"season": s, "coef": [float(s)]} for s in range(1997, 2027)]}
+    write_spm_coefficients(tmp_path, [{"season": 2026, "coef": [-1.0]}])
+
+    merge_spm_coefficients(tmp_path, [2026], published)
+
+    payload = json.loads((tmp_path / SPM_SIDECAR_NAME).read_text(encoding="utf-8"))
+    by_season = {r["season"]: r["coef"] for r in payload["records"]}
+    assert payload["seasons"] == list(range(1997, 2027))       # full history kept
+    assert by_season[2026] == [-1.0]                            # the published season moved
+    assert all(by_season[s] == [float(s)] for s in range(1997, 2026))
+    with pytest.raises(SystemExit):
+        merge_spm_coefficients(tmp_path, [2030], published)    # a season it never built
+
+
+def test_a_full_history_spm_merge_replaces_every_record(tmp_path):
+    from nba_model_publish.builders import merge_spm_coefficients
+
+    published = {"records": [{"season": s, "coef": [0.0]} for s in range(1997, 2027)]}
+    write_spm_coefficients(tmp_path, [{"season": s, "coef": [1.0]} for s in range(1997, 2027)])
+    merge_spm_coefficients(tmp_path, range(1997, 2027), published)
+    payload = json.loads((tmp_path / SPM_SIDECAR_NAME).read_text(encoding="utf-8"))
+    assert {tuple(r["coef"]) for r in payload["records"]} == {(1.0,)}
+
+
+def test_no_published_sidecar_yet_starts_from_the_build(tmp_path, monkeypatch):
+    import requests
+    from nba_model_publish.builders import merge_spm_coefficients, published_spm_coefficients
+
+    monkeypatch.setattr(requests, "get", lambda *a, **k: _Resp(404))
+    assert published_spm_coefficients("o/r", "t") is None
+    write_spm_coefficients(tmp_path, [{"season": 2025, "coef": [1.0]}, {"season": 2026, "coef": [2.0]}])
+    merge_spm_coefficients(tmp_path, [2026], None)
+    payload = json.loads((tmp_path / SPM_SIDECAR_NAME).read_text(encoding="utf-8"))
+    assert payload["seasons"] == [2026]
+
+
+@pytest.mark.parametrize("resp", ["500", "not-json"])
+def test_an_unreadable_release_sidecar_fails_rather_than_starting_fresh(monkeypatch, resp):
+    import requests
+    from nba_model_publish.builders import published_spm_coefficients
+
+    monkeypatch.setattr(requests, "get", lambda *a, **k: _Resp(500) if resp == "500" else _Resp(200, "<html>"))
+    with pytest.raises(Exception):
+        published_spm_coefficients("o/r", "t")
+
 # --- the model card on the release is canonical (card-merge) -----------------
 
 

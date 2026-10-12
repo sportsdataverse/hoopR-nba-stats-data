@@ -449,6 +449,50 @@ def write_spm_coefficients(
     return path
 
 
+def merge_spm_coefficients(out_dir: Path, seasons: Sequence[int], base: Optional[dict]) -> Path:
+    """Rewrite *out_dir*'s sidecar as the CANONICAL one: *base* + this publish's seasons.
+
+    Twin of wehoop-wnba-stats-data's ``merge_spm_coefficients`` (5f5d625) -- change
+    both together. The release asset holds one record per PUBLISHED season (the fit
+    behind that season's published ``spm``); a build's own sidecar holds only what
+    it built, so uploading it as-is would replace the 1997-... history with that
+    build. Start from *base* (the published sidecar, ``None`` if there is none yet)
+    and overlay only *seasons* from the build; every other record stays.
+
+    Raises:
+        SystemExit: if a season to publish has no record in the build's sidecar.
+    """
+    path = Path(out_dir) / SPM_SIDECAR_NAME
+    built = {int(r["season"]): r for r in json.loads(path.read_text(encoding="utf-8"))["records"]}
+    seasons = sorted({int(s) for s in seasons})
+    missing = [s for s in seasons if s not in built]
+    if missing:
+        raise SystemExit(f"spm-merge: no built record for season(s) {missing} in {path}")
+    merged = {int(r["season"]): r for r in (base or {}).get("records") or []}
+    merged.update({s: built[s] for s in seasons})
+    write_spm_coefficients(out_dir, list(merged.values()))
+    print(
+        f"spm-merge: {len(merged)} seasons {min(merged)}..{max(merged)}; refreshed {seasons} "
+        f"onto the {'published' if base else 'empty (404)'} sidecar -> {path}"
+    )
+    return path
+
+
+def published_spm_coefficients(repo: str, tag: str) -> Optional[dict]:
+    """The sidecar currently on the release; ``None`` only when it does not exist.
+
+    Any other failure raises: merging onto an unreadable base would publish a
+    sidecar that silently dropped every other season.
+    """
+    import requests
+
+    r = requests.get(f"https://github.com/{repo}/releases/download/{tag}/{SPM_SIDECAR_NAME}", timeout=60)
+    if r.status_code == 404:
+        return None
+    r.raise_for_status()
+    return r.json()
+
+
 def spm_coefficients_from_frames(
     frames: dict,
     *,
