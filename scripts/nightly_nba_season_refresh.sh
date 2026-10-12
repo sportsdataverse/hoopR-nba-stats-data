@@ -136,14 +136,23 @@ fi
 # on a schedule -- the tags sat at the 2026-09-30 operator publish. Each CLI skips
 # a season with no rows (synergy/hustle/matchups are empty until games are
 # played), so this no-ops before tip-off. The combine year is the same END key
-# (2027 = the 2026 combine, the file the raw daily refreshes).
+# (2027 = the 2026 combine, the file the raw daily refreshes). May-Jul the
+# raw daily also looks one key ahead for the combine (the May combine belongs to
+# NEXT season's key), so compile that key too. PIPELINE_MONTH overrides for tests.
+CMONTH=$((10#${PIPELINE_MONTH:-$(date -u +%m)}))
+COMBINE_YEARS="$SEASON"
+if [ "$CMONTH" -ge 5 ] && [ "$CMONTH" -le 7 ]; then COMBINE_YEARS="$SEASON $((SEASON + 1))"; fi
 for spec in synergy_cli:--seasons:synergy matchups_cli:--seasons:matchups \
             hustle_cli:--seasons:hustle combine_cli:--years:draft_combine; do
   IFS=: read -r cli flag key <<< "${spec}"
-  if "$PY" -m "nba_data_build.${cli}" "${flag}" "$SEASON" \
+  years="$SEASON"; [ "$key" = draft_combine ] && years="$COMBINE_YEARS"
+  # shellcheck disable=SC2086  # $years is a space-separated year list
+  if "$PY" -m "nba_data_build.${cli}" "${flag}" $years \
        --raw-root "${RAW_ROOT}/nba_stats/json" --out "${RAWC_OUT}" "${LD_MODE}"; then
-    for src in "${RAWC_OUT}/nba_stats_${key}"/*_"${SEASON}".parquet; do
-      [ -e "$src" ] && tree_copy "$src" "nba_stats/${key}/parquet"
+    for y in $years; do
+      for src in "${RAWC_OUT}/nba_stats_${key}"/*_"${y}".parquet; do
+        [ -e "$src" ] && tree_copy "$src" "nba_stats/${key}/parquet"
+      done
     done
   else
     rc=1
