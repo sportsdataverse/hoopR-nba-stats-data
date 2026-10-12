@@ -37,6 +37,7 @@ python -m nba_data_build.synergy_cli --seasons 2024 --publish     # publish (del
 python -m nba_data_build.matchups_cli --seasons 2024 2025         # matchups, BUILD-ONLY
 python -m nba_data_build.combine_cli                              # draft combine, BUILD-ONLY
 python -m nba_data_build.hustle_cli --seasons 2024 2025           # hustle, BUILD-ONLY
+# ^ the current season of these four is published nightly by scripts/nightly_nba_season_refresh.sh (cron)
 bash scripts/run_impact_backfill.sh        # nba_player_impact full-history backfill, BUILD-ONLY
 bash scripts/run_impact_backfill.sh 2025 --publish   # ...and upload to the release (deliberate)
 bash scripts/nightly_nba_impact.sh --dry-run         # current season, plan only, no commit

@@ -5,6 +5,7 @@
 #   1. Program V v3 families -> nba_stats_{schedules,pbp,possessions,game_lineups}
 #      (the nba_*_{season}.* assets -- the ones sdv-py's load_nba_stats_* read)
 #   2. the league-dash cube  -> nba_stats_leaguedash
+#   3. raw-store compiles    -> nba_stats_{synergy,matchups,hustle,draft_combine}
 #
 # Both were operator-only runs: 2025-26 was published once after the Finals
 # (2026-08-13), and nothing would have created a single 2026-27 v3 asset. Twin of
@@ -72,7 +73,8 @@ RAW_ROOT="${NBA_RAW_CHECKOUT:-/mnt/sdv_repos/hoopR-nba-stats-raw}"
 # A fresh per-game cache every run: it is keyed by game id only, so a sdv-py
 # bump would otherwise keep serving frames the old engine built.
 CACHE_DIR="$(mktemp -d "/tmp/nba_v3_cache_${SEASON}.XXXXXX")"
-trap 'rm -rf "${CACHE_DIR}"' EXIT
+RAWC_OUT="$(mktemp -d "/tmp/nba_rawc_${SEASON}.XXXXXX")"
+trap 'rm -rf "${CACHE_DIR}" "${RAWC_OUT}"' EXIT
 
 echo "=== nightly season refresh ${SEASON} started $(date -u +'%F %T')Z ==="
 git pull -q --ff-only || echo "WARN: git pull failed -- continuing on the checked-out tree"
@@ -128,6 +130,25 @@ if "$PY" -m nba_data_build.leaguedash_cli --seasons "$SEASON" \
 else
   rc=1
 fi
+
+# Raw-store compiles (no network): hoopR-nba-stats-raw's 08:00 daily re-fetches
+# these season-level payloads for the current season, but nothing compiled them
+# on a schedule -- the tags sat at the 2026-09-30 operator publish. Each CLI skips
+# a season with no rows (synergy/hustle/matchups are empty until games are
+# played), so this no-ops before tip-off. The combine year is the same END key
+# (2027 = the 2026 combine, the file the raw daily refreshes).
+for spec in synergy_cli:--seasons:synergy matchups_cli:--seasons:matchups \
+            hustle_cli:--seasons:hustle combine_cli:--years:draft_combine; do
+  IFS=: read -r cli flag key <<< "${spec}"
+  if "$PY" -m "nba_data_build.${cli}" "${flag}" "$SEASON" \
+       --raw-root "${RAW_ROOT}/nba_stats/json" --out "${RAWC_OUT}" "${LD_MODE}"; then
+    for src in "${RAWC_OUT}/nba_stats_${key}"/*_"${SEASON}".parquet; do
+      [ -e "$src" ] && tree_copy "$src" "nba_stats/${key}/parquet"
+    done
+  else
+    rc=1
+  fi
+done
 
 if [ "${#TREE_PATHS[@]}" -gt 0 ]; then
   # END year, matching this repo's history; (Start: YYYY End: YYYY) is parsed downstream.
