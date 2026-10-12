@@ -41,12 +41,24 @@ git config --local user.name "Github Action" >/dev/null 2>&1 || true
 # NBA seasons are END years with an October rollover: October 2025 starts the
 # 2025-26 season, keyed 2026. `test -ge` is base-10 even on a zero-padded month
 # (unlike $(( )), which would read "08" as octal), so no 10# prefix is needed.
-if [ -n "${1:-}" ]; then
-  SEASON="$1"
+# The season is an OPTIONAL leading 4-digit arg; everything else passes through to
+# the CLI. The cron calls `nightly_nba_impact.sh --publish`, which the old
+# "$1 is the season" parse turned into SEASON=--publish with no flags forwarded.
+if [[ "${1:-}" =~ ^[0-9]{4}$ ]]; then
+  SEASON="$1"; shift
 else
   YEAR=$(date -u +%Y); MONTH=$(date -u +%m)
   if [ "$MONTH" -ge 10 ]; then SEASON=$((YEAR + 1)); else SEASON=$YEAR; fi
 fi
+# Lineup source pinned to quarter_box (override: NBA_IMPACT_LINEUP_SOURCE, or pass
+# --lineup-source): the published 1997-2025 history was built quarter_box (model
+# card, 2026-07-28), and the CLI default `auto` (rotation-first) would build the
+# live season by a different method than every season before it. Revisit only
+# with a full-history re-run in the new mode (sdv-py #818 measurement, 2026-10-12).
+case " $* " in
+  *" --lineup-source "*) ;;
+  *) set -- "$@" --lineup-source "${NBA_IMPACT_LINEUP_SOURCE:-quarter_box}" ;;
+esac
 RAW_STORE="${NBA_RAW_STORE:-/mnt/sdv_repos/hoopR-nba-stats-raw/nba_stats/json}"
 
 # A scratch dir, never a repo path: the builder's output is an intermediate, and
@@ -62,7 +74,7 @@ trap 'rm -rf "${OUT_DIR}"' EXIT
   --raw-store-dir "$RAW_STORE" \
   --repo sportsdataverse/sportsdataverse-data \
   --tag nba_player_impact \
-  "${@:2}"
+  "$@"
 rc=$?
 if [ "$rc" -ne 0 ]; then
   echo "EXIT=$rc"
@@ -72,7 +84,7 @@ fi
 # A dry run builds but publishes nothing, so it must not move the tracked tree
 # either -- a plan run that silently commits is the same class of surprise as a
 # plan run that silently uploads.
-case " ${*:2} " in
+case " $* " in
   *" --dry-run "*) echo "dry run: not committing"; echo "EXIT=0"; exit 0 ;;
 esac
 
