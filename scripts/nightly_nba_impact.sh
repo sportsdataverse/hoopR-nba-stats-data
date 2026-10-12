@@ -50,14 +50,16 @@ else
   YEAR=$(date -u +%Y); MONTH=$(date -u +%m)
   if [ "$MONTH" -ge 10 ]; then SEASON=$((YEAR + 1)); else SEASON=$YEAR; fi
 fi
-# Lineup source pinned to quarter_box (override: NBA_IMPACT_LINEUP_SOURCE, or pass
-# --lineup-source): the published 1997-2025 history was built quarter_box (model
-# card, 2026-07-28), and the CLI default `auto` (rotation-first) would build the
-# live season by a different method than every season before it. Revisit only
-# with a full-history re-run in the new mode (sdv-py #818 measurement, 2026-10-12).
+# Lineup source pinned to auto (override: NBA_IMPACT_LINEUP_SOURCE, or pass
+# --lineup-source): the published 1997-2026 history was re-run and republished in
+# `auto` (rotation-first, quarter_box fallback) on 2026-10-12, so the live season
+# must be built the same way as every season before it. `auto` beat quarter_box on
+# box-score minutes in all 9 seasons measured, with equal gates and RAPM rank
+# correlation >= 0.998 vs the old release (sdv-py #818 measurement, 2026-10-12).
+# Changing this again means another full-history re-run in the new mode.
 case " $* " in
   *" --lineup-source "*) ;;
-  *) set -- "$@" --lineup-source "${NBA_IMPACT_LINEUP_SOURCE:-quarter_box}" ;;
+  *) set -- "$@" --lineup-source "${NBA_IMPACT_LINEUP_SOURCE:-auto}" ;;
 esac
 RAW_STORE="${NBA_RAW_STORE:-/mnt/sdv_repos/hoopR-nba-stats-raw/nba_stats/json}"
 
