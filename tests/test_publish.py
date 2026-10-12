@@ -154,3 +154,57 @@ def test_published_seasons_reraises_on_auth_failure():
 
     with pytest.raises(subprocess.CalledProcessError):
         published_seasons("nba_stats_rapm", "r/r", runner=runner_auth_fail)
+
+
+def test_upload_skips_assets_whose_digest_matches_the_release(tmp_path):
+    """One listing call per tag; an unchanged asset costs no upload and no stamp."""
+    import hashlib
+
+    d = _mk(tmp_path)
+    same = "sha256:" + hashlib.sha256(b"x").hexdigest()  # nba_rapm_2023 unchanged
+    remote = {"nba_rapm_2023.parquet": same, "nba_rapm_2024.parquet": "sha256:stale"}
+    calls = []
+
+    def runner(args):
+        calls.append(args)
+        if args[0] == "api":
+            return "".join(f"{k}\t{v}\n" for k, v in remote.items())
+        return ""
+
+    res = upload_artifacts(d, tag="nba_stats_rapm", repo="r/r", runner=runner)
+    assert sum(c[0] == "api" for c in calls) == 1
+    assert not any(c[:2] == ["release", "create"] for c in calls)
+    data = [
+        c
+        for c in calls
+        if c[:2] == ["release", "upload"] and not Path(c[3]).name.startswith(SIDECARS)
+    ]
+    assert [Path(c[3]).name for c in data] == ["nba_rapm_2024.parquet"]
+    assert res["skipped"] == ["nba_rapm_2023.parquet"] and res["uploaded"] == 1
+
+    calls.clear()
+    remote["nba_rapm_2024.parquet"] = "sha256:" + hashlib.sha256(b"y").hexdigest()
+    res = upload_artifacts(d, tag="nba_stats_rapm", repo="r/r", runner=runner)
+    assert res["uploaded"] == 0 and [c[0] for c in calls] == ["api"]  # no stamp either
+
+
+def test_upload_creates_release_on_404_listing(tmp_path):
+    d = _mk(tmp_path)
+    calls = []
+
+    def runner(args):
+        calls.append(args)
+        if args[0] == "api":
+            raise subprocess.CalledProcessError(1, args, stderr="gh: Not Found (HTTP 404)")
+        return ""
+
+    upload_artifacts(d, tag="nba_stats_rapm", repo="r/r", runner=runner)
+    assert calls[1][:2] == ["release", "create"]
+
+
+def test_upload_listing_auth_failure_surfaces(tmp_path):
+    def runner(args):
+        raise subprocess.CalledProcessError(1, args, stderr="HTTP 401: Bad credentials")
+
+    with pytest.raises(subprocess.CalledProcessError):
+        upload_artifacts(_mk(tmp_path), tag="t", repo="r/r", runner=runner)

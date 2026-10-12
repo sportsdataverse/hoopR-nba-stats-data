@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 import subprocess
 import sys
@@ -25,20 +26,34 @@ def _gh_runner(args: list[str]) -> str:
     ).stdout
 
 
-def _gh_release_exists(tag: str, repo: str) -> bool:
+def _release_digests(tag: str, repo: str, run: Runner) -> Optional[dict[str, str]]:
+    """``{asset name: "sha256:<hex>"}`` for *tag* in ONE core API call; ``None`` = no release.
+
+    The release object embeds its full asset list (GitHub caps a release at 1,000
+    assets; 833 measured on nba_stats_leaguedash, all present) and every asset
+    carries a server-computed ``digest``, so this replaces both the old
+    ``gh release view`` existence probe and any per-file lookup.
+    """
     try:
-        subprocess.run(
-            ["gh", "release", "view", tag, "--repo", repo],
-            check=True,
-            capture_output=True,
-            timeout=_GH_TIMEOUT,
+        out = run(
+            [
+                "api",
+                f"repos/{repo}/releases/tags/{tag}",
+                "--jq",
+                r'.assets[] | "\(.name)\t\(.digest)"',
+            ]
         )
-        return True
-    except subprocess.CalledProcessError:
-        # FIX 2: subprocess.TimeoutExpired is intentionally NOT caught here — a spurious
-        # False would trigger a `gh release create` that then fails because the release
-        # already exists.
-        return False
+    except subprocess.CalledProcessError as exc:
+        # 404 = first publish; anything else (auth, rate limit) must surface.
+        if "404" in (exc.stderr or "") or "not found" in (exc.stderr or "").lower():
+            return None
+        raise
+    return dict(ln.split("\t", 1) for ln in (out or "").splitlines() if "\t" in ln)
+
+
+def _sha256(path: Path) -> str:
+    with open(path, "rb") as fh:
+        return "sha256:" + hashlib.file_digest(fh, "sha256").hexdigest()
 
 
 #: Release sidecar metadata: the loader a consumer reads each tag through.
@@ -168,15 +183,23 @@ def upload_artifacts(
         dict with keys:
             ``uploaded``: int count of files uploaded (0 if *dry_run* is True).
             ``failed``: list of asset filenames whose upload raised.
+            ``skipped``: asset filenames whose sha256 already matched the release.
             ``files``: list of asset filenames that were (or would be) uploaded.
     """
     # FIX 4: drop needless lambda — _gh_runner already matches the Runner signature.
     run = runner or _gh_runner
-    exists = exists_check or _gh_release_exists
     files = plan_uploads(artifacts_dir, seasons, pattern=pattern, exts=exts)
     if dry_run:
         return {"uploaded": 0, "failed": [], "files": [f.name for f in files]}
-    if not exists(tag, repo):
+    # One listing per tag: an asset whose sha256 already matches the release is
+    # skipped, so a nightly that rebuilds an unchanged season costs one API call
+    # instead of ~3 per file (the shared 5,000/h droplet quota). An injected
+    # exists_check (tests) keeps the old probe and uploads everything.
+    if exists_check is not None:
+        remote: Optional[dict[str, str]] = {} if exists_check(tag, repo) else None
+    else:
+        remote = _release_digests(tag, repo, run)
+    if remote is None:
         run(
             [
                 "release",
@@ -190,15 +213,22 @@ def upload_artifacts(
                 notes or f"{tag} datasets (NBA model zoo)",
             ]
         )
+        remote = {}
     uploaded: list[str] = []
     failed: list[str] = []
+    skipped: list[str] = []
     for f in files:
+        if remote.get(f.name) == _sha256(f):
+            skipped.append(f.name)
+            continue
         try:
             run(["release", "upload", tag, str(f), "--repo", repo, "--clobber"])
             uploaded.append(f.name)
         except subprocess.CalledProcessError as exc:
             print(f"WARNING: upload failed for {f.name}: {exc}", file=sys.stderr)
             failed.append(f.name)
+    if skipped:
+        print(f"{tag}: {len(skipped)} unchanged asset(s) skipped, {len(uploaded)} uploaded")
     # stamp LAST so the timestamp describes a finished upload, and only when
     # something actually uploaded -- a stamp on a no-op run would claim data
     # moved when it did not
@@ -207,5 +237,6 @@ def upload_artifacts(
     return {
         "uploaded": len(uploaded),
         "failed": failed,
+        "skipped": skipped,
         "files": [f.name for f in files],
     }
