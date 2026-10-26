@@ -33,6 +33,20 @@ if [ -z "${PY}" ]; then
 fi
 [ -n "${PY}" ] || { echo "FATAL: no venv python (uv sync first, or set HOOPR_NBA_STATS_PYBIN)" >&2; exit 1; }
 
+# Proxy credentials live in ~/.Renviron, which only R loads -- lift them here
+# (same block as scripts/nightly_nba_season_refresh.sh). Never echoed. Without them the
+# leaguegamelog call goes direct and Akamai answers 403 (every night from 2026-10-21).
+for f in "${HOME}/.Renviron" "${HOME}/Documents/.Renviron"; do
+  [ -f "${f}" ] || continue
+  for v in PROXY_ENDPOINT PROXY_KEY PROXY_PKG; do
+    if [ -z "${!v:-}" ]; then
+      val="$(sed -nE "s/^[[:space:]]*${v}[[:space:]]*=[[:space:]]*//p" "${f}" \
+             | head -1 | tr -d "\"'" | tr -d '\r')"
+      [ -n "${val}" ] && export "${v}=${val}"
+    fi
+  done
+done
+
 # shellcheck source=scripts/_commit.sh
 source "$(dirname "${BASH_SOURCE[0]}")/_commit.sh"
 git config --local user.email "action@github.com" >/dev/null 2>&1 || true
