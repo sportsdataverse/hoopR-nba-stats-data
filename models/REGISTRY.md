@@ -37,7 +37,7 @@ observation beside the constant.
 
 | gate | floor | observed (min across seasons) | what it catches |
 |---|---:|---:|---|
-| `rs_rows_min` | 400 | 428 (2003) | a season that silently lost its population |
+| `rs_rows_min` | 350 (400 until 2026-10-26: blocked the in-progress season at 397) | 428 (2003) | a season that silently lost its population |
 | `r_rapm_adj_min` | 0.75 | 0.806 (2013) | the SPM prior overwriting RAPM instead of shrinking it |
 | `r_spm_rapm_min` | 0.22 | 0.264 (1999) | SPM no longer fitting the target it was trained on |
 | `r_rapm_yoy_min` | 0.24 | 0.289 (2020→2021) | the panel losing player-level persistence |

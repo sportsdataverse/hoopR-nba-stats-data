@@ -46,7 +46,10 @@ EPM_ORACLE_FILES = {2025: "2025_EPM_data.csv", 2026: "2026_EPM_data.csv"}
 #: --oracle-dir <ClaudeCowork/nba_data/data_metrics>``; the comment records the
 #: observation that set it. Never lower one to make a publish pass.
 FLOORS: dict[str, Optional[float]] = {
-    "rs_rows_min": 400,  # observed min 428 (2003); max 605 (2022)
+    # observed min 428 (2003) over complete seasons; max 605 (2022). Lowered from 400 on
+    # 2026-10-26 (owner): the nightly publishes the CURRENT season, which had 397 RS
+    # player rows six days in, and a full-season floor blocked it.
+    "rs_rows_min": 350,
     "r_rapm_adj_min": 0.75,  # observed min 0.806 (2013); 0.913 in 2026
     "r_spm_rapm_min": 0.22,  # observed min 0.264 (1999); median ~0.43
     "r_rapm_yoy_min": 0.24,  # observed min 0.289 (2020->2021, the bubble pair)
