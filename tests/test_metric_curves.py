@@ -16,7 +16,7 @@ import pytest
 from nba_data_build import docs
 from nba_data_build.models import MODELS, polars_schema
 from nba_data_build.reshape import build, cli, datasets
-from sportsdataverse.metric_curves import BUCKET_EDGES, OUTPUT_SCHEMA
+from sportsdataverse.analytics.metric_curves import BUCKET_EDGES, OUTPUT_SCHEMA
 
 REPO = Path(__file__).resolve().parents[1]
 #: 2024-25: the committed file carries play-in (5) and NBA Cup final (6) shots

@@ -353,9 +353,9 @@ def_jersey_num: >-
 
 # --- derived curves (`metric_curves`) and windows (`rolling_windows`) ----------
 #
-# sdv-py's cross-league contracts: `sportsdataverse.metric_curves` (F4), one row
+# sdv-py's cross-league contracts: `sportsdataverse.analytics.metric_curves` (F4), one row
 # per (season, entity, bucket) of FG% by shot distance, and
-# `sportsdataverse.rolling_windows` (F3), one row per (season, player, window).
+# `sportsdataverse.analytics.rolling_windows` (F3), one row per (season, player, window).
 # Ids are TEXT on both -- the four leagues share one table shape, and `id_source`
 # names the namespace.
 entity_type: >-

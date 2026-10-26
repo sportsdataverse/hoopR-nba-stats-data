@@ -18,7 +18,7 @@ from nba_data_build import docs
 from nba_data_build.models import MODELS, polars_schema
 from nba_data_build.reshape import build, cli, datasets
 from polars.testing import assert_frame_equal
-from sportsdataverse.rolling_windows import OUTPUT_SCHEMA, rolling_windows, shot_events
+from sportsdataverse.analytics.rolling_windows import OUTPUT_SCHEMA, rolling_windows, shot_events
 
 REPO = Path(__file__).resolve().parents[1]
 TREE = REPO / "nba_stats"
