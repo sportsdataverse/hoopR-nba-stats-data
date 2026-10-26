@@ -103,9 +103,12 @@ elif "$PY" -m nba_data_build.v3_backfill -s "$SEASON" -e "$SEASON" \
        --raw-root "$RAW_ROOT" --cache-dir "$CACHE_DIR" --rebuild; then
   # --no-readme: each tag's README states the full published season range; a
   # one-season run would rewrite it as "${SEASON}-${SEASON}".
+  # NBA_V3_ALLOW_DIFF="SEASON:FAMILY=REASON" passes ONE explained gate finding for a
+  # manual re-run (echoed into the manifest). Unset on the cron: a new DIFF must page.
   if "$PY" -m nba_data_build.v3_cutover -s "$SEASON" -e "$SEASON" \
        --raw-root "$RAW_ROOT" --no-readme \
        --manifest "${REPO_DIR}/build_out/v3_cutover_manifest_nightly.md" \
+       ${NBA_V3_ALLOW_DIFF:+--allow-diff "$NBA_V3_ALLOW_DIFF"} \
        ${EXECUTE}; then
     # Owner rule: the tree carries every compiled dataset's parquet (release
     # carries all three formats). Only after a publish, so the tree never shows
