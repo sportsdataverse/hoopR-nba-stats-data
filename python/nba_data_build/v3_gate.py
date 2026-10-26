@@ -277,11 +277,16 @@ def gate_pbp(
 
     # No legacy: validate against the raw store (games/season, events/game).
     raw_ids = raw_ids or set()
-    uncompiled = sorted(raw_ids - staged_games)
+    # Core-to-core, like every other check here: a non-core capture with no pbp (the
+    # NBA Cup final placeholder 006..., a preseason game before 2010-11) is reported,
+    # never a diff.
+    uncompiled = sorted(core_ids(raw_ids) - staged_games)
+    noncore_uncompiled = len(raw_ids - staged_games) - len(uncompiled)
     phantom = sorted(staged_games - raw_ids)
     detail = (
         f"staged_games={len(staged_games)} raw_captured={len(raw_ids)} "
-        f"uncompiled={len(uncompiled)} phantom={len(phantom)} min_events={min_events} "
+        f"uncompiled={len(uncompiled)} noncore_uncompiled={noncore_uncompiled} "
+        f"phantom={len(phantom)} min_events={min_events} "
         f"scores_vs_sched={n_cmp} score_mismatch={n_bad}"
     )
     if uncompiled:

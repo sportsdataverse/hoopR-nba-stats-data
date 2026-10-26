@@ -116,6 +116,16 @@ def test_gate_pbp_no_legacy_validates_against_raw_store() -> None:
     assert "uncompiled=1" in short["detail"]
 
 
+def test_gate_pbp_no_legacy_noncore_capture_without_pbp_is_not_a_diff() -> None:
+    """The 2027 NBA Cup final placeholder 0062600001 is captured with actions: [] and
+    never compiles; it failed the nightly gate for 8 days (2026-10-18..26)."""
+    staged = _pbp({"0022600001": (10, 110, 105)})
+    sched = _sched([("0022600001", 110, 105)])
+    f = vg.gate_pbp(2027, staged, sched, None, raw_ids={"0022600001", "0062600001"})
+    assert f["verdict"] == "NO_LEGACY_OK"
+    assert "uncompiled=0 noncore_uncompiled=1" in f["detail"]
+
+
 def test_gate_schedule_without_legacy_is_not_fatal(tmp_path) -> None:
     """The legacy schedule family was retired 2026-09-30: an absent legacy file
     reports NO_LEGACY against the raw store and never fails the gate."""
