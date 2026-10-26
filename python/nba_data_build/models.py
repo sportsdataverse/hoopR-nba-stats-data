@@ -1133,7 +1133,7 @@ class GameMatchups(NbaStatsDataset):
 
 
 class MetricCurves(NbaStatsDataset):
-    """`metric_curves` -- `sportsdataverse.metric_curves.OUTPUT_SCHEMA` (F4-T4).
+    """`metric_curves` -- `sportsdataverse.analytics.metric_curves.OUTPUT_SCHEMA` (F4-T4).
 
     Ids are TEXT here, unlike the reshaped datasets: the sdv-py contract keys every
     league's entities as strings so the four leagues' curves share one table, and
@@ -1157,7 +1157,7 @@ class MetricCurves(NbaStatsDataset):
 
 
 class RollingWindows(NbaStatsDataset):
-    """`rolling_windows` -- `sportsdataverse.rolling_windows.OUTPUT_SCHEMA` + `id_source` (F3b-T2).
+    """`rolling_windows` -- `sportsdataverse.analytics.rolling_windows.OUTPUT_SCHEMA` + `id_source` (F3b-T2).
 
     Ids are TEXT, as in `MetricCurves`: the cross-league contract keys every league's
     entities as strings, and `id_source` ("nba_stats") names the namespace.

@@ -21,14 +21,14 @@ from pathlib import Path
 from typing import Any
 
 import polars as pl
-from sportsdataverse.metric_curves import (
+from sportsdataverse.analytics.metric_curves import (
     OUTPUT_SCHEMA,
     SHOT_ATTEMPT_COLUMNS,
     metric_curves,
     shot_attempts,
 )
-from sportsdataverse.rolling_windows import OUTPUT_SCHEMA as ROLLING_SCHEMA
-from sportsdataverse.rolling_windows import SHOT_COLUMNS, rolling_windows, shot_events
+from sportsdataverse.analytics.rolling_windows import OUTPUT_SCHEMA as ROLLING_SCHEMA
+from sportsdataverse.analytics.rolling_windows import SHOT_COLUMNS, rolling_windows, shot_events
 
 from . import raw
 from .datasets import Dataset
@@ -359,7 +359,7 @@ def committed_shots(
 def build_metric_curves(shots: pl.DataFrame) -> pl.DataFrame:
     """``metric_curves``: FG% by shot distance for the league, every team and every shooter.
 
-    ``sportsdataverse.metric_curves`` over one season's ``shots`` (this run's
+    ``sportsdataverse.analytics.metric_curves`` over one season's ``shots`` (this run's
     :func:`build_shots` frame or :func:`committed_shots`). The adapter keeps
     regular-season and playoff attempts only (``season_type_id`` ``"2"`` / ``"4"``;
     play-in and Cup-final games are not counted), bins by ``shot_distance`` (1-ft
@@ -373,7 +373,7 @@ def build_metric_curves(shots: pl.DataFrame) -> pl.DataFrame:
 
 #: First END-year season of the shots tree (1996-97): a career baseline starts here.
 FIRST_SHOTS_SEASON = 1997
-#: ``sportsdataverse.rolling_windows.OUTPUT_SCHEMA`` plus the id namespace column.
+#: ``sportsdataverse.analytics.rolling_windows.OUTPUT_SCHEMA`` plus the id namespace column.
 ROLLING_WINDOWS_SCHEMA: dict[str, pl.DataType] = {**ROLLING_SCHEMA, "id_source": pl.Utf8}
 
 

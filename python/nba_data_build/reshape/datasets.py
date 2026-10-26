@@ -217,7 +217,7 @@ RELEASE_NOTES: dict[str, str] = {
     "nba_stats_rolling_windows": (
         "Rolling shooting form -- every shooter's last N field-goal attempts (`fga`, metric "
         "`fg_pct`) and last N three-point attempts (`fg3a`, metric `fg3_pct`), N = 50 and 200, "
-        "computed by `sportsdataverse.rolling_windows` from the committed `nba_stats_shots`. One "
+        "computed by `sportsdataverse.analytics.rolling_windows` from the committed `nba_stats_shots`. One "
         "row per (season, player, window_unit, window_n) for every player with an attempt that "
         "season. Windows count ATTEMPTS, not games, and cross season boundaries: `cur` is the "
         "make rate over the last `n` attempts through the season (`n < window_n` only for a "
@@ -233,7 +233,7 @@ RELEASE_NOTES: dict[str, str] = {
     ),
     "nba_stats_metric_curves": (
         "FG% by shot distance -- league, team and player curves per season, computed by "
-        "`sportsdataverse.metric_curves` from the committed `nba_stats_shots`. One row per "
+        "`sportsdataverse.analytics.metric_curves` from the committed `nba_stats_shots`. One row per "
         "(season, entity, bucket): 1-ft bins from 0 to 35 ft, then 35-50 and 50-95 ft "
         "(`x_lo` inclusive, `x_hi` exclusive), each carrying `attempts`, `successes` (makes) "
         "and `rate = successes / attempts`; an empty bucket is absent, never a zero row. "

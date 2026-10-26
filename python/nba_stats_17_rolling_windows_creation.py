@@ -9,7 +9,7 @@ Stage numbers follow the ``DATASETS`` registry order in
 ``rolling_windows`` (17) derives from ``shots`` (15) and builds before
 ``metric_curves`` (18).
 
-Rolling shooting form (sdv-py ``sportsdataverse.rolling_windows``): every shooter's
+Rolling shooting form (sdv-py ``sportsdataverse.analytics.rolling_windows``): every shooter's
 last 50 / 200 field-goal and three-point attempts, against the window before, the
 window entering the season and the career before it. Regular-season + playoff
 attempts only, ids as text with ``id_source`` ``"nba_stats"``. Reads this run's

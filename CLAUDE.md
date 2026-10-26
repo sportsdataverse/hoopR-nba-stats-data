@@ -139,7 +139,7 @@ through the generic sync loop. Seasons are END years in and out (no START offset
 
 **`metric_curves` is stage 18, derived from the committed `shots` tree** (F4-T4,
 2026-10-01). sdv-py's
-`sportsdataverse.metric_curves` over one season's shots: FG% by shot distance for
+`sportsdataverse.analytics.metric_curves` over one season's shots: FG% by shot distance for
 the league, every team and every shooter, 1-ft bins to 35 ft then 35-50 and 50-95,
 regular season + playoffs only (`season_type_id` 2/4 -- play-in and Cup final are
 not counted), ids as TEXT with `id_source = "nba_stats"` (the cross-league
