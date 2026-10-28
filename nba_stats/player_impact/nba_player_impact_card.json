@@ -361,11 +361,11 @@
       "season_types": [
         "Regular Season"
       ],
-      "generated_at": "2026-10-26T18:04:25+00:00",
-      "rows": 397
+      "generated_at": "2026-10-28T08:00:53+00:00",
+      "rows": 407
     }
   ],
-  "generated_at": "2026-10-26T18:04:25+00:00",
+  "generated_at": "2026-10-28T08:00:53+00:00",
   "publish_gates": {
     "seasons_gated": [
       1997,
@@ -832,9 +832,9 @@
         "n_fwd": 0
       },
       "2027": {
-        "rs_rows": 397,
-        "r_rapm_adj": 0.7764757909187608,
-        "r_spm_rapm": 0.2640520256464813,
+        "rs_rows": 407,
+        "r_rapm_adj": 0.7599376316210666,
+        "r_spm_rapm": 0.2644266040553169,
         "r_rapm_yoy": null,
         "r_darko_fwd": null,
         "n_fwd": 0
