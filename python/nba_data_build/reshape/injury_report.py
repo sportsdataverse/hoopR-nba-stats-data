@@ -227,9 +227,11 @@ def build_injury_report(
 ) -> pl.DataFrame:
     """One season of ``injury_report`` (``SCHEMA``), sorted by version, game and team.
 
-    Reads the raw file for every date of the season year, August 1 of the start year
-    through July 31 of ``season`` (Summer League reports file in July), capped at
-    ``today``; a date with no file is skipped. ``box`` is the season's player boxscores
+    Reads the raw file for every date from August 1 of the start year through October 31
+    of ``season``, capped at ``today``; a date with no file is skipped. The raw store files
+    a season October 1 to September 30 (2019-20 runs to 2020-10-11, the bubble), and each
+    date sits in exactly one season directory, so the wider window never reads a date
+    twice. ``box`` is the season's player boxscores
     (this run's frame), else the committed
     ``{base}/player_boxscores/parquet/player_boxscores_{season}.parquet``; the
     ``roster`` fallback reads the committed ``{base}/rosters/parquet/rosters_{season}.parquet``.
@@ -239,7 +241,7 @@ def build_injury_report(
     # reshape, so a new season's reports can arrive first -- keep them, ids null
     games = season_games(base, season)
     first = dt.date(season - 1, 8, 1)
-    last = min(dt.date(season, 7, 31), today or dt.date.today())
+    last = min(dt.date(season, 10, 31), today or dt.date.today())
     dates = [first + dt.timedelta(days=i) for i in range((last - first).days + 1)]
     reports = read_reports(root, season, dates)
     if reports.is_empty():
