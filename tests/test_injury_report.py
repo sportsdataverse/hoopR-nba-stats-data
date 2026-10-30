@@ -79,11 +79,25 @@ def test_an_unsubmitted_team_is_kept_as_one_row(report) -> None:
     assert jan.height > 0 and jan["team_id"].is_not_null().all()
 
 
-def test_the_season_year_runs_through_july_and_stops_at_today(report) -> None:
+def test_the_season_year_stops_at_today(report) -> None:
     days = set(report["report_datetime"].dt.date().to_list())
     assert days == {dt.date(2026, 1, 8), dt.date(2026, 7, 15)}  # Summer League files in July
     early = build_injury_report(RAW, SEASON, BASE, today=dt.date(2026, 3, 1))
     assert set(early["report_datetime"].dt.date().to_list()) == {dt.date(2026, 1, 8)}
+
+
+def test_the_season_reads_through_october_of_its_end_year(tmp_path) -> None:
+    """The store files a season to September 30 (2019-20 to 2020-10-11); August-October must not be dropped."""
+    import shutil
+
+    raw = tmp_path / "raw"
+    shutil.copytree(RAW, raw)
+    july = raw / "injury_report" / "2026" / "2026-07-15.json"
+    # the July version relabelled to the bubble's last day, the latest the store files a season
+    late = july.read_text(encoding="utf-8").replace("2026-07-15", "2026-10-11")
+    (july.parent / "2026-10-11.json").write_bytes(late.encode("utf-8"))
+    out = build_injury_report(raw, SEASON, BASE, today=TODAY)
+    assert dt.date(2026, 10, 11) in set(out["report_datetime"].dt.date().to_list())
 
 
 def test_a_season_with_no_raw_files_is_empty() -> None:
