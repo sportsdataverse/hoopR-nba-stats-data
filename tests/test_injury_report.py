@@ -86,9 +86,22 @@ def test_the_season_year_runs_through_july_and_stops_at_today(report) -> None:
     assert set(early["report_datetime"].dt.date().to_list()) == {dt.date(2026, 1, 8)}
 
 
-def test_a_season_missing_from_the_schedule_is_empty() -> None:
+def test_a_season_with_no_raw_files_is_empty() -> None:
     out = build_injury_report(RAW, 2019, BASE, today=TODAY)
     assert out.height == 0 and dict(out.schema) == SCHEMA
+
+
+def test_reports_are_kept_before_the_schedule_has_the_season(report, tmp_path) -> None:
+    """The daily run refreshes the schedule master after the reshape; a new season's reports must not be dropped."""
+    base = tmp_path / "nba_stats"
+    base.mkdir()
+    master = pl.read_parquet(BASE / "nba_stats_schedule_master.parquet")
+    master.filter(pl.col("season") != SEASON).write_parquet(
+        base / "nba_stats_schedule_master.parquet"
+    )
+    out = build_injury_report(RAW, SEASON, base, box=None, today=TODAY)
+    assert out.height == report.height and dict(out.schema) == SCHEMA
+    assert out["game_id"].is_null().all() and out["team_id"].is_null().all()
 
 
 def test_this_runs_boxscores_take_precedence_over_the_committed_file(report) -> None:

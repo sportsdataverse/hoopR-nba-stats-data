@@ -235,9 +235,9 @@ def build_injury_report(
     ``roster`` fallback reads the committed ``{base}/rosters/parquet/rosters_{season}.parquet``.
     With neither, ``person_id`` is null.
     """
+    # no early return on an empty schedule: the daily run refreshes the master after the
+    # reshape, so a new season's reports can arrive first -- keep them, ids null
     games = season_games(base, season)
-    if games.is_empty():
-        return pl.DataFrame(schema=SCHEMA)
     first = dt.date(season - 1, 8, 1)
     last = min(dt.date(season, 7, 31), today or dt.date.today())
     dates = [first + dt.timedelta(days=i) for i in range((last - first).days + 1)]
