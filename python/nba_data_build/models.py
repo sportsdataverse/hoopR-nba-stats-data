@@ -1186,6 +1186,28 @@ class RollingWindows(NbaStatsDataset):
     id_source: Optional[str] = None
 
 
+class InjuryReport(NbaStatsDataset):
+    """`injury_report` -- the official injury report, one row per listing per version."""
+
+    season: Optional[int] = None
+    report_datetime: Optional[datetime] = None
+    game_date: Optional[date] = None
+    game_time: Optional[str] = None
+    report_matchup: Optional[str] = None
+    away_team_abbr: Optional[str] = None
+    home_team_abbr: Optional[str] = None
+    team: Optional[str] = None
+    report_player_name: Optional[str] = None
+    current_status: Optional[str] = None
+    reason: Optional[str] = None
+    category: Optional[str] = None
+    previous_status: Optional[str] = None
+    game_id: Optional[str] = None
+    team_id: Optional[int] = None
+    person_id: Optional[int] = None
+    match_method: Optional[str] = None
+
+
 MODELS: dict[str, type[NbaStatsDataset]] = {
     "standings": Standings,
     "player_season_stats": PlayerSeasonStats,
@@ -1203,6 +1225,7 @@ MODELS: dict[str, type[NbaStatsDataset]] = {
     "game_matchups": GameMatchups,
     "rolling_windows": RollingWindows,
     "metric_curves": MetricCurves,
+    "injury_report": InjuryReport,
     "schedule_master": ScheduleMaster,
     "games_in_data_repo": GamesInDataRepo,
 }

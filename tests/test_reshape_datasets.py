@@ -6,14 +6,16 @@ from nba_data_build.reshape import datasets
 from nba_data_build.reshape.datasets import BY_KEY, DATASETS, RELEASE_TAGS
 
 
-def test_exactly_sixteen_datasets() -> None:
+def test_exactly_seventeen_datasets() -> None:
     # 15 through the v3 reshape spec + game_matchups (2026-09-02), minus the
     # legacy pbp + schedules reshapes retired 2026-09-30, plus metric_curves
     # (stage 18, 2026-10-01) and rolling_windows (stage 17, F3b-T2), both derived
-    # from the committed shots.
-    assert len(DATASETS) == 16
+    # from the committed shots, plus injury_report (stage 19), read from the raw
+    # store's own per-date format.
+    assert len(DATASETS) == 17
     assert "pbp" not in BY_KEY and "schedules" not in BY_KEY
-    assert DATASETS[-1].key == "metric_curves" and BY_KEY["metric_curves"].level == "derived"
+    assert DATASETS[-2].key == "metric_curves" and BY_KEY["metric_curves"].level == "derived"
+    assert DATASETS[-1].key == "injury_report" and BY_KEY["injury_report"].level == "derived"
 
 
 def test_release_tags_are_nba_stats_and_unique() -> None:
@@ -38,10 +40,11 @@ def test_the_floored_datasets_are_the_two_tracking_ones() -> None:
 
     lineups: tracking-style lineup data begins 2007-08. game_matchups: matchup
     tracking begins 2017-18 (2016-17 holds 21 of 1,414 games, everything earlier
-    is a well-formed empty envelope). Floors are END years.
+    is a well-formed empty envelope). injury_report: the league's report archive
+    starts 2018-12-17, inside 2018-19. Floors are END years.
     """
     floored = {d.key: d.season_floor for d in DATASETS if d.season_floor is not None}
-    assert floored == {"lineups": 2008, "game_matchups": 2018}
+    assert floored == {"lineups": 2008, "game_matchups": 2018, "injury_report": 2019}
 
 
 def test_nba_type_strings_describe_the_repo() -> None:

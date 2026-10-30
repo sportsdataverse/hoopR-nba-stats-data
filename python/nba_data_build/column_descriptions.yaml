@@ -432,3 +432,40 @@ last_event_date: >-
 as_of_date: >-
   Date of the latest counted attempt league-wide that season: the date the
   windows are current through.
+
+# --- injury_report (the league's official injury report PDFs) ----------------
+report_datetime: >-
+  Publish time of the injury-report version the row comes from (US Eastern,
+  naive). The league re-publishes the report through the day, so one listing
+  repeats once per version.
+game_time: >-
+  Tip time as the injury report prints it ("07:30 (ET)", no AM/PM).
+report_matchup: >-
+  Game as the injury report prints it, away@home tricodes ("CLE@ATL").
+away_team_abbr: >-
+  Away team tricode as the injury report prints it ("CLE").
+home_team_abbr: >-
+  Home team tricode as the injury report prints it ("ATL").
+team: >-
+  Team the listing belongs to, full name as the injury report prints it
+  ("Cleveland Cavaliers").
+report_player_name: >-
+  Player as the injury report prints it, "Last, First" ("James, LeBron");
+  null on a team's "NOT YET SUBMITTED" row.
+current_status: >-
+  Listed status in that version: Available, Probable, Questionable, Doubtful
+  or Out (null on a "NOT YET SUBMITTED" row).
+reason: >-
+  Reason as printed ("Injury/Illness - Left Ankle; Sprain", "G League -
+  Two-Way", "NOT YET SUBMITTED" for a team that had not filed).
+category: >-
+  Category column of the early report format; last printed 2019-11-14, null
+  after.
+previous_status: >-
+  Previous Status column of the early report format (the player's status in
+  the prior version); last printed 2019-12-17, null after.
+match_method: >-
+  How person_id was matched to the printed name: exact (full name on the team
+  that season), family (family name + first initial, unique on the team),
+  league (name unique league-wide that season), roster (name on the team's
+  roster, which also lists players who have not played), or null (unmatched).
