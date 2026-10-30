@@ -138,7 +138,8 @@ def test_stage_18_is_registered_everywhere():
         "derived",
         None,
     )
-    assert datasets.DATASETS[-1].key == "metric_curves", "stage numbers follow registry order"
+    # stage numbers follow registry order: 18 is followed only by injury_report (19)
+    assert [d.key for d in datasets.DATASETS[-2:]] == ["metric_curves", "injury_report"]
     notes = datasets.RELEASE_NOTES["nba_stats_metric_curves"]
     for phrase in ("shot distance", "1997", "season_type_id", "id_source"):
         assert phrase in notes

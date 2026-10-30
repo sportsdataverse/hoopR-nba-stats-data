@@ -208,6 +208,22 @@ DATASETS: tuple[Dataset, ...] = (
         f"NBA Stats Metric Curves {_R}",
         level="derived",
     ),
+    # -- read straight from the raw store's own format (stage 19) -------------------
+    #
+    # The official injury report is not a stats.nba.com endpoint: the raw store keeps
+    # one JSON per report date (`injury_report/{E}/{YYYY-MM-DD}.json`), parsed from the
+    # league's PDFs, so it has a dedicated builder (reshape/injury_report.py).
+    Dataset(
+        "injury_report",
+        None,
+        None,
+        "injury_report",
+        "nba_stats_injury_report",
+        f"NBA Stats Official Injury Report {_R}",
+        level="derived",
+        # The league's report archive starts 2018-12-17, inside the 2018-19 season.
+        season_floor=2019,
+    ),
 )
 
 #: Reader-facing description per release tag: the body a tag is created with
@@ -246,6 +262,22 @@ RELEASE_NOTES: dict[str, str] = {
         "(END-year seasons: 1997 = 1996-97)."
     ),
 }
+
+RELEASE_NOTES["nba_stats_injury_report"] = (
+    "The NBA's official injury report -- every published version, one row per listing. "
+    "The league re-publishes the report through the day (three times a day through "
+    "2021-10-14, hourly until 2025-12-21, every 15 minutes since), so a player appears "
+    "once per version he is listed in, and `report_datetime` (US/Eastern, naive) tells "
+    "the versions apart. `current_status` is the printed status (Available, Probable, "
+    "Questionable, Doubtful, Out); a team that had not filed by a version is one row with "
+    'a null `report_player_name` and `reason` "NOT YET SUBMITTED". `game_id` and '
+    "`team_id` are joined from the schedule (`game_id` is null for a game postponed off "
+    "its printed date, or a playoff game that was not needed); `person_id` is matched by "
+    "name on the team from the season's player boxscores, then its rosters "
+    "(`match_method` exact / family / league / roster, null when unmatched). Span "
+    "2018-12-17 (the archive's first report) to present; seasons are END years "
+    "(2019 = 2018-19)."
+)
 
 BY_KEY: dict[str, Dataset] = {d.key: d for d in DATASETS}
 

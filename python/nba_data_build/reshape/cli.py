@@ -67,6 +67,7 @@ from nba_data_build.publish import upload_artifacts
 
 from . import build as _build
 from .datasets import BY_KEY, DATASETS, RELEASE_NOTES, Dataset
+from .injury_report import build_injury_report
 from .io import write_release_formats
 from .raw import _is_url
 
@@ -136,6 +137,7 @@ def build_dataset(
     *,
     _pbp: Optional[pl.DataFrame] = None,
     _shots: Optional[pl.DataFrame] = None,
+    _box: Optional[pl.DataFrame] = None,
     base: str | Path = "nba_stats",
 ) -> pl.DataFrame:
     """Build one dataset for one season, routing v3-nested datasets to their builders.
@@ -143,7 +145,9 @@ def build_dataset(
     ``_pbp`` lets the caller pass an already-built play-by-play frame for ``shots``
     (derived from pbp) so the season's pbp is bound once; ``_shots`` does the same
     for ``rolling_windows`` and ``metric_curves`` (derived from shots), which
-    otherwise read the committed tree under ``base``.
+    otherwise read the committed tree under ``base``. ``_box`` passes this run's
+    ``player_boxscores`` to ``injury_report`` (its person-id rosters), which
+    otherwise reads the committed season file.
     """
     if dataset.key == "shots":
         pbp = _pbp if _pbp is not None else _build.build_pbp(root, season)
@@ -153,6 +157,8 @@ def build_dataset(
     if dataset.key == "metric_curves":
         shots = _shots if _shots is not None else _build.committed_shots(base, season)
         return _build.build_metric_curves(shots)
+    if dataset.key == "injury_report":
+        return build_injury_report(root, season, base, _box)
     if dataset.key == "player_boxscores":
         return _build.build_boxscores(root, season, team_level=False)
     if dataset.key == "team_boxscores":
@@ -186,15 +192,20 @@ def main(argv: Optional[list[str]] = None) -> int:
         # builds shots first), never from yesterday's committed file when both are in
         # the run.
         shots: Optional[pl.DataFrame] = None
+        box: Optional[pl.DataFrame] = None
         for dataset in datasets:
             # Pre-floor seasons have no source data: skip rather than ship an
             # empty release (see Dataset.season_floor).
             if dataset.season_floor is not None and season < dataset.season_floor:
                 print(f"skip {dataset.key} {season}: below season_floor {dataset.season_floor}")
                 continue
-            df = build_dataset(root, dataset, season, _pbp=pbp, _shots=shots, base=args.base)
+            df = build_dataset(
+                root, dataset, season, _pbp=pbp, _shots=shots, _box=box, base=args.base
+            )
             if dataset.key == "shots":
                 shots = df
+            if dataset.key == "player_boxscores":
+                box = df
             if df.is_empty():
                 print(f"skip {dataset.key} {season}: no rows")
                 continue
