@@ -239,3 +239,57 @@ def test_season_game_ids_adds_play_in_and_cup_final_from_the_schedule(tmp_path: 
         {"leagueSchedule": {"gameDates": [{"games": [{"gameId": i} for i in ids]}]}},
     )
     assert raw.season_game_ids(tmp_path, 2026) == ["0022500001", "0052500101", "0062500001"]
+
+
+def test_list_variants_over_a_github_url_root(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A variant-backed season (no bare {season}.json) must be listable from the
+    raw.githubusercontent root the daily workflow uses, via the contents API."""
+    seen: list[str] = []
+
+    class _Resp:
+        def __enter__(self) -> "_Resp":
+            return self
+
+        def __exit__(self, *exc: object) -> bool:
+            return False
+
+        def read(self) -> bytes:
+            return (
+                b'[{"name": "regular-season.json", "type": "file"},'
+                b' {"name": "playoffs.json", "type": "file"},'
+                b' {"name": "README.md", "type": "file"}]'
+            )
+
+    def _open(req, timeout: int = 60):
+        seen.append(req.full_url)
+        return _Resp()
+
+    monkeypatch.setattr(raw.urllib.request, "urlopen", _open)
+    assert raw.list_variants(raw.RAW_BASE, "leaguestandingsv3", 2027) == [
+        "playoffs",
+        "regular-season",
+    ]
+    assert seen == [
+        "https://api.github.com/repos/sportsdataverse/hoopR-nba-stats-raw/contents/"
+        "nba_stats/json/leaguestandingsv3/2027?ref=main"
+    ]
+
+    # An uncaptured season is absent only when the root itself resolves...
+    def _season_missing(req, timeout: int = 60):
+        if req.full_url.split("?")[0].endswith("/1990"):
+            raise _http_error(404)
+        return _Resp()
+
+    monkeypatch.setattr(raw.urllib.request, "urlopen", _season_missing)
+    assert raw.list_variants(raw.RAW_BASE, "leaguestandingsv3", 1990) == []
+
+    # ...a root that 404s too (typo'd repo/ref, private repo) must not read as empty.
+    def _missing(req, timeout: int = 60):
+        raise _http_error(404)
+
+    monkeypatch.setattr(raw.urllib.request, "urlopen", _missing)
+    with pytest.raises(ValueError, match="does not resolve"):
+        raw.list_variants(raw.RAW_BASE, "leaguestandingsv3", 1990)
+
+    with pytest.raises(ValueError):
+        raw.list_variants("https://example.com/store", "leaguestandingsv3", 2027)
