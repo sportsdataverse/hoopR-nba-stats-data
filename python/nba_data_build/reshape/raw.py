@@ -121,15 +121,23 @@ def list_variants(root: str | Path, endpoint: str, season: int) -> list[str]:
     if not str(root).startswith(prefix):
         raise ValueError(f"cannot list {endpoint}/{season} under {root}; use a local root")
     owner, repo, ref, *path = str(root)[len(prefix) :].rstrip("/").split("/")
-    api = (
-        f"https://api.github.com/repos/{owner}/{repo}/contents/"
-        f"{'/'.join([*path, endpoint, str(season)])}?ref={ref}"
-    )
     headers = {"Accept": "application/vnd.github+json"}
     token = os.environ.get("GITHUB_PAT") or os.environ.get("GH_TOKEN")
     if token:
         headers["Authorization"] = f"Bearer {token}"
-    entries = _get_json(urllib.request.Request(api, headers=headers)) or []
+
+    def _contents(parts: list[str]) -> Any | None:
+        api = f"https://api.github.com/repos/{owner}/{repo}/contents/{'/'.join(parts)}?ref={ref}"
+        return _get_json(urllib.request.Request(api, headers=headers))
+
+    entries = _contents([*path, endpoint, str(season)])
+    if entries is None:
+        # GitHub 404s a missing repo, ref or path -- and an inaccessible one -- the
+        # same way it 404s an uncaptured season. Only call the season absent once
+        # the root itself resolves; otherwise a typo publishes an empty season.
+        if _contents(path) is None:
+            raise ValueError(f"raw root {root} does not resolve via the GitHub contents API")
+        return []
     # ponytail: the contents API caps a listing at 1,000 entries -- fine for variant
     # dirs (a handful of slugs), not for per-game dirs; use the git trees API there.
     return sorted(

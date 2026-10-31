@@ -274,11 +274,22 @@ def test_list_variants_over_a_github_url_root(monkeypatch: pytest.MonkeyPatch) -
         "nba_stats/json/leaguestandingsv3/2027?ref=main"
     ]
 
+    # An uncaptured season is absent only when the root itself resolves...
+    def _season_missing(req, timeout: int = 60):
+        if req.full_url.split("?")[0].endswith("/1990"):
+            raise _http_error(404)
+        return _Resp()
+
+    monkeypatch.setattr(raw.urllib.request, "urlopen", _season_missing)
+    assert raw.list_variants(raw.RAW_BASE, "leaguestandingsv3", 1990) == []
+
+    # ...a root that 404s too (typo'd repo/ref, private repo) must not read as empty.
     def _missing(req, timeout: int = 60):
         raise _http_error(404)
 
     monkeypatch.setattr(raw.urllib.request, "urlopen", _missing)
-    assert raw.list_variants(raw.RAW_BASE, "leaguestandingsv3", 1990) == []
+    with pytest.raises(ValueError, match="does not resolve"):
+        raw.list_variants(raw.RAW_BASE, "leaguestandingsv3", 1990)
 
     with pytest.raises(ValueError):
         raw.list_variants("https://example.com/store", "leaguestandingsv3", 2027)
