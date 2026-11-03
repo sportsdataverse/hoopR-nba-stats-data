@@ -361,11 +361,11 @@
       "season_types": [
         "Regular Season"
       ],
-      "generated_at": "2026-11-02T09:00:31+00:00",
-      "rows": 440
+      "generated_at": "2026-11-03T09:00:29+00:00",
+      "rows": 441
     }
   ],
-  "generated_at": "2026-11-02T09:00:31+00:00",
+  "generated_at": "2026-11-03T09:00:29+00:00",
   "publish_gates": {
     "seasons_gated": [
       1997,
@@ -832,9 +832,9 @@
         "n_fwd": 0
       },
       "2027": {
-        "rs_rows": 440,
-        "r_rapm_adj": 0.7714269041162651,
-        "r_spm_rapm": 0.2737126812400416,
+        "rs_rows": 441,
+        "r_rapm_adj": 0.7712634694137033,
+        "r_spm_rapm": 0.23059632643734757,
         "r_rapm_yoy": null,
         "r_darko_fwd": null,
         "n_fwd": 0
@@ -2045,7 +2045,7 @@
         "season": 2027,
         "gate": "scale",
         "status": "SKIPPED",
-        "reason": "only 2 qualified players"
+        "reason": "only 3 qualified players"
       }
     ]
   }
