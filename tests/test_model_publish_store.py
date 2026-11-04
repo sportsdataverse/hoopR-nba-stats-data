@@ -57,13 +57,9 @@ def test_variant_leaguegamelog_team_and_player_are_distinct_captures():
     player-log processing."""
     assert B._store_variant("leaguegamelog", {}) == "regular-season"
     assert (
-        B._store_variant("leaguegamelog", {"player_or_team_abbreviation": "T"})
-        == "regular-season"
+        B._store_variant("leaguegamelog", {"player_or_team_abbreviation": "T"}) == "regular-season"
     )
-    assert (
-        B._store_variant("leaguegamelog", {"season_type_all_star": "Playoffs"})
-        == "playoffs"
-    )
+    assert B._store_variant("leaguegamelog", {"season_type_all_star": "Playoffs"}) == "playoffs"
     assert (
         B._store_variant("leaguegamelog", {"player_or_team_abbreviation": "P"})
         == "regular-season_p"
@@ -89,15 +85,11 @@ def test_store_backed_serves_committed_capture(monkeypatch):
     seen: dict = {}
 
     def fake_reader(endpoint, season, variant, *, raw_store_dir):
-        seen.update(
-            endpoint=endpoint, season=season, variant=variant, root=raw_store_dir
-        )
+        seen.update(endpoint=endpoint, season=season, variant=variant, root=raw_store_dir)
         return frame
 
     monkeypatch.setattr(B, "nba_raw_store_season_frame", fake_reader)
-    fetch = B._store_backed(
-        "leaguedashplayerbiostats", _live_boom, None, "https://cdn/x"
-    )
+    fetch = B._store_backed("leaguedashplayerbiostats", _live_boom, None, "https://cdn/x")
     out = fetch(season="2023-24", league_id="00")
     assert out.equals(frame)
     assert seen == {
@@ -143,9 +135,7 @@ def test_store_backed_without_live_raises_on_miss(monkeypatch):
 
 
 def test_store_backed_without_live_still_serves_hits(monkeypatch):
-    monkeypatch.setattr(
-        B, "nba_raw_store_season_frame", lambda *a, **k: pl.DataFrame({"x": [1]})
-    )
+    monkeypatch.setattr(B, "nba_raw_store_season_frame", lambda *a, **k: pl.DataFrame({"x": [1]}))
     fetch = B._store_backed("playerindex", _live_boom, None, "/store", allow_live=False)
     assert fetch(season="2023-24").height == 1
 
@@ -209,3 +199,40 @@ def test_missing_proxy_still_fatal_without_a_store(monkeypatch):
     )
     with _pytest.raises(SystemExit):
         cli._resolve_proxy_provider(False, None)
+
+
+@pytest.mark.parametrize(
+    "provider,extra,expected",
+    [(None, [], False), (None, ["--no-proxy"], True), (lambda: "http://p", [], True)],
+)
+def test_cli_disallows_live_only_without_proxy_or_no_proxy(
+    monkeypatch, tmp_path, provider, extra, expected
+):
+    """cli.main is what decides allow_live: no proxy and no --no-proxy -> False."""
+    from nba_model_publish import cli
+
+    seen: dict = {}
+
+    class _Stop(Exception):
+        pass
+
+    def fake_build(*a, **kw):
+        seen.update(kw)
+        raise _Stop
+
+    monkeypatch.setattr("nba_model_publish.builders.build_nba_player_impact", fake_build)
+    monkeypatch.setattr(cli, "_resolve_proxy_provider", lambda *a, **k: provider)
+    with pytest.raises(_Stop):
+        cli.main(
+            [
+                "impact",
+                "--seasons",
+                "2026",
+                "--out",
+                str(tmp_path),
+                "--raw-store-dir",
+                "/store",
+                *extra,
+            ]
+        )
+    assert seen["allow_live"] is expected
