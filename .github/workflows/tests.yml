@@ -45,8 +45,10 @@ jobs:
           cache-dependency-glob: uv.lock
 
       - name: Install
-        # --frozen: a PR must not silently re-resolve the lockfile. The daily
-        # workflow is the only place that runs `uv lock --upgrade`.
+        # --frozen: a PR must not silently re-resolve the lockfile. The sportsdataverse
+        # pin in uv.lock is deliberate and no workflow upgrades it: bump it with
+        # `uv lock --upgrade-package sportsdataverse` in a reviewed commit (the droplet
+        # nightlies `uv sync --frozen` to it on their next run).
         run: uv sync --frozen --dev
 
       - name: Tests
