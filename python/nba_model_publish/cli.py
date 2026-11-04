@@ -338,8 +338,9 @@ def _resolve_proxy_provider(no_proxy: bool, raw_store_dir: str | None = None):
     if not proxies and raw_store_dir:
         print(
             "impact: no proxies configured -- proceeding because --raw-store-dir is set, "
-            "so the committed captures serve the fetches. A season MISSING from the store "
-            "would fall through to stats.nba.com unproxied and hang on a datacenter IP."
+            "so the committed captures serve the fetches. A season-level capture MISSING "
+            "from the store fails the run instead of calling stats.nba.com unproxied, "
+            "which would hang on a datacenter IP."
         )
         return None
     if not proxies:
@@ -359,16 +360,19 @@ def main(argv=None) -> int:
     if args.cmd == "impact":
         from .builders import build_nba_player_impact
 
+        provider = _resolve_proxy_provider(args.no_proxy, args.raw_store_dir)
         built = build_nba_player_impact(
             args.seasons,
             args.out,
-            proxy_provider=_resolve_proxy_provider(args.no_proxy, args.raw_store_dir),
+            proxy_provider=provider,
             lineup_source=args.lineup_source,
             cache_dir=args.cache_dir,
             delay_s=args.delay_s,
             season_types=args.season_types,
             replacement_level=args.replacement_level,
             raw_store_dir=args.raw_store_dir,
+            # No proxy and no --no-proxy: a store miss must fail, not go live.
+            allow_live=provider is not None or args.no_proxy,
         )
         total_rows = sum(b["rows"] for b in built)
         if built:
