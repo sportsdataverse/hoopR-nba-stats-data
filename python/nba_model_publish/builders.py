@@ -328,7 +328,9 @@ def merge_model_card(out_dir: Path, seasons: Sequence[int], base: Optional[dict]
     return path
 
 
-def _store_only(endpoint: str, raw_store_dir: str) -> Callable[..., Any]:
+def _store_only(
+    endpoint: str, raw_store_dir: str, label: str = "spm-coefficients"
+) -> Callable[..., Any]:
     """Store-backed season fetch that RAISES on a miss — offline by contract.
 
     ``_store_backed`` falls through to the live API on a miss, which is right for
@@ -351,7 +353,7 @@ def _store_only(endpoint: str, raw_store_dir: str) -> Callable[..., Any]:
         )
         if frame is None:
             raise SystemExit(
-                f"spm-coefficients: {endpoint} season={kwargs.get('season')!r} "
+                f"{label}: {endpoint} season={kwargs.get('season')!r} "
                 f"variant={variant!r} is not in the raw store ({raw_store_dir}) — "
                 "this path is offline by contract; capture the season first"
             )
@@ -595,6 +597,7 @@ def _store_backed(
     wrapper: Callable[..., Any],
     provider: Optional[ProxyProvider],
     raw_store_dir: Optional[str],
+    allow_live: bool = True,
 ) -> Callable[..., Any]:
     """Season-level ``fetch=`` seam that reads the committed raw store first.
 
@@ -602,10 +605,16 @@ def _store_backed(
     ``-raw`` checkout OR an ``http(s)://`` base such as raw.githubusercontent /
     a CDN) is parsed and returned; only a genuine miss touches stats.nba.com,
     through the proxied wrapper. With no store configured this IS ``_proxied``.
+
+    ``allow_live=False`` (no proxy and no ``--no-proxy``, e.g. a GitHub runner)
+    makes a miss raise instead: an unproxied stats.nba.com call from a
+    datacenter IP hangs rather than errors.
     """
     proxied = _proxied(wrapper, provider)
     if not raw_store_dir:
         return proxied
+    if not allow_live:
+        return _store_only(endpoint, raw_store_dir, label="impact")
 
     def _f(*args: Any, **kwargs: Any) -> Any:
         variant = _store_variant(endpoint, kwargs)
@@ -651,6 +660,7 @@ def build_nba_player_impact(
     replacement_level: float = DEFAULT_REPLACEMENT_LEVEL,
     proxy_provider: Optional[ProxyProvider] = None,
     raw_store_dir: Optional[str] = None,
+    allow_live: bool = True,
 ) -> list[dict]:
     """Build per-season consolidated player-impact tables and write parquet.
 
@@ -704,6 +714,9 @@ def build_nba_player_impact(
             Every season-level surface this builder touches is now covered,
             including ``nba_box_logs``' player-log call (the raw store carries
             both the team and the ``_p`` player ``leaguegamelog`` captures).
+        allow_live: When False, a season-level store miss raises instead of
+            falling through to stats.nba.com. The CLI sets it False when no proxy
+            is configured and ``--no-proxy`` was not passed.
 
     Returns:
         List of ``{"season": int, "rows": int, "path": str}`` dicts, one per
@@ -748,16 +761,17 @@ def build_nba_player_impact(
     # URL base) so a CI build needs neither a proxy nor a clone; identical to the
     # plain proxied form when it is not.
     _leaguegamelog = _store_backed(
-        "leaguegamelog", nba_stats_leaguegamelog, proxy_provider, raw_store_dir
+        "leaguegamelog", nba_stats_leaguegamelog, proxy_provider, raw_store_dir, allow_live
     )
     _playerindex = _store_backed(
-        "playerindex", nba_stats_playerindex, proxy_provider, raw_store_dir
+        "playerindex", nba_stats_playerindex, proxy_provider, raw_store_dir, allow_live
     )
     _biostats = _store_backed(
         "leaguedashplayerbiostats",
         nba_stats_leaguedashplayerbiostats,
         proxy_provider,
         raw_store_dir,
+        allow_live,
     )
 
     for end_year in sorted(seasons):

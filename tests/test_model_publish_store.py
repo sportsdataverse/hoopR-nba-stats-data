@@ -134,6 +134,22 @@ def test_store_backed_falls_back_to_live_on_miss(monkeypatch):
     assert out.height == 1 and len(calls) == 1
 
 
+def test_store_backed_without_live_raises_on_miss(monkeypatch):
+    """No proxy on a cloud runner: a miss must fail fast, never call live."""
+    monkeypatch.setattr(B, "nba_raw_store_season_frame", lambda *a, **k: None)
+    fetch = B._store_backed("leaguegamelog", _live_boom, None, "/store", allow_live=False)
+    with pytest.raises(SystemExit, match="impact: leaguegamelog"):
+        fetch(season="2026-27", player_or_team_abbreviation="P")
+
+
+def test_store_backed_without_live_still_serves_hits(monkeypatch):
+    monkeypatch.setattr(
+        B, "nba_raw_store_season_frame", lambda *a, **k: pl.DataFrame({"x": [1]})
+    )
+    fetch = B._store_backed("playerindex", _live_boom, None, "/store", allow_live=False)
+    assert fetch(season="2023-24").height == 1
+
+
 def test_store_backed_player_and_team_read_different_captures(monkeypatch):
     """Both leaguegamelog calls are served offline, each from its OWN capture --
     a "P" call must never be handed the team file (no PLAYER_ID in it)."""
@@ -178,8 +194,8 @@ def test_store_backed_run_survives_missing_proxy_credentials(monkeypatch, capsys
     assert provider is None
     out = capsys.readouterr().out
     assert "--raw-store-dir is set" in out
-    # the warning must not overclaim: a store miss still reaches the network
-    assert "hang" in out.lower()
+    # the warning says a store miss fails rather than reaching the network
+    assert "fails the run" in out
 
 
 def test_missing_proxy_still_fatal_without_a_store(monkeypatch):
