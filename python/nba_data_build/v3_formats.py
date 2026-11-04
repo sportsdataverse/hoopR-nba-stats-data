@@ -71,9 +71,11 @@ _ALLOWED: dict[str, tuple[str, ...]] = {
     "Int32": ("integer",),
     "UInt8": ("integer",),
     "UInt16": ("integer",),
-    "Int64": ("integer", "double"),
-    "UInt32": ("integer", "double"),
-    "UInt64": ("integer", "double"),
+    # sportsdataverse's writer emits an out-of-int32 Int64 as character, exact (a double
+    # collides ids past 2**53); "double" stays allowed for files written before that change.
+    "Int64": ("integer", "double", "character"),
+    "UInt32": ("integer", "double", "character"),
+    "UInt64": ("integer", "double", "character"),
     "Float32": ("double",),
     "Float64": ("double",),
     "String": ("character",),

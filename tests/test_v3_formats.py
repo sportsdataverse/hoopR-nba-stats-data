@@ -84,7 +84,8 @@ def test_rds_round_trips_shape_names_and_types(tmp_path):
     got = vf.read_rds_structure(out["rds"])
     assert (got.nrows, got.ncols) == (df.height, df.width)
     assert got.names == df.columns
-    assert got.types == ["character", "integer", "double", "double", "logical", "double"]
+    # big_id is past int32: the writer stores it as character, exact, not as a double
+    assert got.types == ["character", "integer", "character", "double", "logical", "double"]
 
 
 def test_rds_carries_the_hoopr_s3_class_chain(tmp_path):
