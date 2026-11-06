@@ -198,9 +198,9 @@ EXPECTED_COLS = {
     "dbpm",
     "bpm",
     "war",
-    "darko_filtered_skill",
-    "darko_projected_rating",
-    "darko_projected_sd",
+    "boban_filtered_skill",
+    "boban_projected_rating",
+    "boban_projected_sd",
 }
 
 
@@ -241,8 +241,8 @@ def test_darko_null_until_two_seasons(stubbed, tmp_path):
     results = B.build_nba_player_impact([2023, 2024], tmp_path)
     first = pl.read_parquet(results[0]["path"])
     second = pl.read_parquet(results[1]["path"])
-    assert first["darko_projected_rating"].null_count() == first.height
-    assert second["darko_projected_rating"].null_count() == 0
+    assert first["boban_projected_rating"].null_count() == first.height
+    assert second["boban_projected_rating"].null_count() == 0
     # the darko panel spans both seasons by the second iteration
     assert stubbed["darko_panels"][0]["season"].n_unique() == 2
 
@@ -596,7 +596,7 @@ def test_darko_panel_and_last_season_join_stay_start_year_under_the_end_year_fli
     ``season`` column and filename are now end-year. If either were
     accidentally relabeled to ``season_end`` this test fails two ways: the
     captured panel's ``season`` values would be end-year, and/or the fixed
-    player's ``darko_projected_rating`` would no longer match a pinned
+    player's ``boban_projected_rating`` would no longer match a pinned
     start-year build (the join would silently miss and null out instead)."""
     panels = []
     monkeypatch.setattr(
@@ -619,14 +619,14 @@ def test_darko_panel_and_last_season_join_stay_start_year_under_the_end_year_fli
     # perturb the panel or the join, and it must not go null from a missed join.
     df = pl.read_parquet(out[-1]["path"])
     row = df.filter(pl.col("player_id") == 1).row(0, named=True)
-    assert row["darko_projected_rating"] == pytest.approx(1.2)
+    assert row["boban_projected_rating"] == pytest.approx(1.2)
 
 
 def test_both_season_type_rows_carry_the_same_darko_projection(tmp_path, stubbed):
     out = B.build_nba_player_impact([2023, 2024], tmp_path)
     df = pl.read_parquet(out[-1]["path"])
     per_player = df.group_by("player_id").agg(
-        pl.col("darko_projected_rating").n_unique().alias("n")
+        pl.col("boban_projected_rating").n_unique().alias("n")
     )
     assert per_player["n"].max() == 1
 

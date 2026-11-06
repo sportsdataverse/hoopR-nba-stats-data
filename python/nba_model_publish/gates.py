@@ -101,13 +101,13 @@ def internal_metrics(frames: dict[int, pl.DataFrame]) -> dict[str, dict]:
         }
         nxt = frames.get(season + 1)
         if nxt is not None:
-            pair = rs.select("player_id", "rapm", "darko_projected_rating").join(
+            pair = rs.select("player_id", "rapm", "boban_projected_rating").join(
                 _rs(nxt).select("player_id", pl.col("rapm").alias("next_rapm")),
                 on="player_id",
                 how="inner",
             )
             row["r_rapm_yoy"] = _pearson(pair, "rapm", "next_rapm")
-            row["r_darko_fwd"] = _pearson(pair, "darko_projected_rating", "next_rapm")
+            row["r_darko_fwd"] = _pearson(pair, "boban_projected_rating", "next_rapm")
             row["n_fwd"] = pair.drop_nulls().height
         out[str(season)] = row
     return out
@@ -338,6 +338,20 @@ def format_report(report: dict) -> str:
     return "\n".join(lines)
 
 
+#: BB-D11 renamed the published ``darko_*`` columns to ``boban_*``; a season published before the
+#: rename still carries the old names until it is republished.
+_BOBAN_RENAMES = {
+    "darko_filtered_skill": "boban_filtered_skill",
+    "darko_projected_rating": "boban_projected_rating",
+    "darko_projected_sd": "boban_projected_sd",
+}
+
+
+def _boban_names(frame: pl.DataFrame) -> pl.DataFrame:
+    """A published frame with the ``boban_*`` names, whichever the season was published with."""
+    return frame.rename({o: n for o, n in _BOBAN_RENAMES.items() if o in frame.columns and n not in frame.columns})
+
+
 def load_frames_from_dir(out_dir: Path, seasons: Iterable[int]) -> dict[int, pl.DataFrame]:
     seasons = list(seasons)
     if not seasons:
@@ -349,7 +363,7 @@ def load_frames_from_dir(out_dir: Path, seasons: Iterable[int]) -> dict[int, pl.
         p = Path(out_dir) / f"{TAG}_{s}.parquet"
         if not p.is_file():
             raise SystemExit(f"gates: missing built asset {p}")
-        frames[int(s)] = pl.read_parquet(p)
+        frames[int(s)] = _boban_names(pl.read_parquet(p))
     return frames
 
 
@@ -361,7 +375,7 @@ def load_frames_from_release(seasons: Iterable[int]) -> dict[int, pl.DataFrame]:
     for s in seasons:
         r = requests.get(f"{RELEASE_BASE}/{TAG}_{s}.parquet", timeout=120)
         if r.status_code == 200:
-            frames[int(s)] = pl.read_parquet(io.BytesIO(r.content))
+            frames[int(s)] = _boban_names(pl.read_parquet(io.BytesIO(r.content)))
         else:
             unavailable[int(s)] = r.status_code
     # Symmetric with load_frames_from_dir, which raises on a missing built asset. Dropping

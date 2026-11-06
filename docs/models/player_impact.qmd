@@ -32,7 +32,10 @@ frames = []
 for season in range(1997, 2027):
     r = requests.get(f"{BASE}/{TAG}_{season}.parquet", timeout=60)
     if r.status_code == 200:
-        frames.append(pl.read_parquet(io.BytesIO(r.content)))
+        f = pl.read_parquet(io.BytesIO(r.content))
+        # BB-D11: a season published before the rename carries darko_* until it is republished
+        frames.append(f.rename({c: c.replace("darko_", "boban_") for c in f.columns
+                                if c.startswith("darko_") and c.replace("darko_", "boban_") not in f.columns}))
 imp = pl.concat(frames, how="diagonal_relaxed")
 SEASONS = sorted(imp["season"].unique().to_list())
 rs = imp.filter(pl.col("season_type") == "Regular Season")
@@ -110,7 +113,7 @@ long = cur.select("rapm", "adj_rapm", "spm", "bpm", "war").unpivot(
 
 ```{python}
 #| fig-cap: "Cross-engine agreement, latest regular season (Pearson r) — engines measure related but distinct things."
-cols = ["rapm", "adj_rapm", "spm", "bpm", "war", "darko_filtered_skill"]
+cols = ["rapm", "adj_rapm", "spm", "bpm", "war", "boban_filtered_skill"]
 sub = cur.select(cols).drop_nulls().to_pandas()
 cm = sub.corr()
 rows = []
@@ -223,20 +226,20 @@ r_agree = float(cur.select(pl.corr("rapm", "adj_rapm")).item())
 ## Evaluation
 
 **DARKO forward validation** is the suite's headline out-of-sample test: the
-projection made in season t (`darko_projected_rating`, which sees nothing
+projection made in season t (`boban_projected_rating`, which sees nothing
 after t) against the realized RAPM in season t+1. Recomputed at render time
 over every adjacent published season pair:
 
 ```{python}
-proj = rs.select("player_id", "season", "darko_projected_rating")
+proj = rs.select("player_id", "season", "boban_projected_rating")
 real = rs.select("player_id", (pl.col("season") - 1).alias("season"),
                  pl.col("rapm").alias("next_rapm"),
                  (pl.col("off_poss") + pl.col("def_poss")).alias("next_poss"))
 fwd = proj.join(real, on=["player_id", "season"], how="inner").drop_nulls()
 by = (
     fwd.group_by("season")
-    .agg(pl.corr("darko_projected_rating", "next_rapm").alias("pearson"),
-         (pl.col("darko_projected_rating") - pl.col("next_rapm")).abs().mean().alias("MAE"),
+    .agg(pl.corr("boban_projected_rating", "next_rapm").alias("pearson"),
+         (pl.col("boban_projected_rating") - pl.col("next_rapm")).abs().mean().alias("MAE"),
          pl.len().alias("n"))
     .sort("season")
 )
@@ -296,7 +299,7 @@ the comparison honest — a longer target window would otherwise also change
 the population:
 
 ```{python}
-fw = rs.select("player_id", "season", "rapm", "darko_projected_rating",
+fw = rs.select("player_id", "season", "rapm", "boban_projected_rating",
                (pl.col("off_poss") + pl.col("def_poss")).alias("poss"))
 
 def blended_target(k: int) -> pl.DataFrame:
@@ -322,9 +325,9 @@ for k in (1, 2, 3):
     ceiling.append({
         "target": f"{k}-season RAPM" if k > 1 else "next season only",
         "n": m.height,
-        "r_darko": float(m.select(pl.corr("darko_projected_rating", "target")).item()),
+        "r_darko": float(m.select(pl.corr("boban_projected_rating", "target")).item()),
         "r_carry_forward": float(m.select(pl.corr("rapm", "target")).item()),
-        "MAE_darko": float(m.select((pl.col("darko_projected_rating") - pl.col("target")).abs().mean()).item()),
+        "MAE_darko": float(m.select((pl.col("boban_projected_rating") - pl.col("target")).abs().mean()).item()),
         "MAE_carry_forward": float(m.select((pl.col("rapm") - pl.col("target")).abs().mean()).item()),
         "sd_target": float(m["target"].std()),
     })
@@ -349,7 +352,7 @@ Two readings, both worth stating plainly:
   well as the DARKO projection does (marginally better, in fact). Where the
   projection does earn its keep is **level**: its MAE is lower against every
   target, which is what shrinkage toward the aging-curve mean buys. Treat
-  `darko_projected_rating` as a better-calibrated magnitude, not a better
+  `boban_projected_rating` as a better-calibrated magnitude, not a better
   ordering — and the gap to persistence is the honest measure of what the
   Kalman step is currently adding.
 

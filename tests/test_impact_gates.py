@@ -40,7 +40,7 @@ def _season(season: int, *, noise: float = 0.25, seed: int = 0) -> pl.DataFrame:
             "rapm": jit(noise),
             "adj_rapm": jit(noise),
             "spm": jit(noise),
-            "darko_projected_rating": jit(noise),
+            "boban_projected_rating": jit(noise),
             "min": rng.uniform(200, 2500, n),
         }
     )
@@ -355,3 +355,13 @@ class _Resp:
 
     def json(self):
         return json.loads(self._body)
+
+
+def test_a_season_published_before_the_boban_rename_still_gates(tmp_path):
+    """BB-D11: a release season still carrying ``darko_*`` reads as ``boban_*``, next to a renamed one."""
+    old, new = _season(2023), _season(2024)
+    old.rename({"boban_projected_rating": "darko_projected_rating"}).write_parquet(tmp_path / f"{G.TAG}_2023.parquet")
+    new.write_parquet(tmp_path / f"{G.TAG}_2024.parquet")
+    frames = G.load_frames_from_dir(tmp_path, [2023, 2024])
+    assert all("boban_projected_rating" in f.columns and "darko_projected_rating" not in f.columns for f in frames.values())
+    assert _status(G.gate_report(frames), "r_darko_fwd_min") == "PASS"

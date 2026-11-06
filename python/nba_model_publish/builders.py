@@ -25,7 +25,7 @@ joining the sdv-py NBA model-zoo outputs on ``player_id``:
   intentionally ships no invented default.
 * DARKO (``nba_darko``) — Kalman forecast off the multi-season RAPM panel
   accumulated **within this invocation**; seasons before the panel has two
-  distinct seasons carry null ``darko_*`` columns.
+  distinct seasons carry null ``boban_*`` columns (BOBAN, renamed from darko_*).
 
 Fidelity note for single-season runs (the nightly cron): pass a few trailing
 seasons (e.g. ``--seasons 2021:2025``) — the per-game possession cache makes
@@ -79,7 +79,7 @@ ProxyProvider = Callable[[], Optional[str]]
 #: relative to league average. ``nba_war`` requires an explicit value.
 DEFAULT_REPLACEMENT_LEVEL = -2.0
 
-_DARKO_COLS = ["darko_filtered_skill", "darko_projected_rating", "darko_projected_sd"]
+_BOBAN_COLS = ["boban_filtered_skill", "boban_projected_rating", "boban_projected_sd"]
 
 
 def _season_str(year: int) -> str:
@@ -225,7 +225,7 @@ def _write_model_card(
                 "process variance are per-season quantities, so playoffs enter "
                 "as a blend, not a second time step). DARKO projects the NEXT "
                 "season, so both season_type rows carry the same projection; "
-                "darko_* columns are null until the panel spans >= 2 seasons"
+                "boban_* (renamed from darko_*) columns are null until the panel spans >= 2 seasons"
             ),
         },
         "possession_pipeline_version": PIPELINE_VERSION,
@@ -998,9 +998,9 @@ def build_nba_player_impact(
             # last_season join stays START-year to match the panel above.
             darko_season = darko.filter(pl.col("last_season") == season).select(
                 "player_id",
-                pl.col("filtered_skill").alias("darko_filtered_skill"),
-                pl.col("projected_rating").alias("darko_projected_rating"),
-                pl.col("projected_sd").alias("darko_projected_sd"),
+                pl.col("filtered_skill").alias("boban_filtered_skill"),
+                pl.col("projected_rating").alias("boban_projected_rating"),
+                pl.col("projected_sd").alias("boban_projected_sd"),
             )
         else:
             darko_season = None
@@ -1012,7 +1012,7 @@ def build_nba_player_impact(
             if darko_season is not None:
                 f = _join_on_player(f, darko_season, "darko")
             else:
-                f = f.with_columns([pl.lit(None, dtype=pl.Float64).alias(c) for c in _DARKO_COLS])
+                f = f.with_columns([pl.lit(None, dtype=pl.Float64).alias(c) for c in _BOBAN_COLS])
             out_frames.append(f)
         impact = pl.concat(out_frames, how="vertical")
 
