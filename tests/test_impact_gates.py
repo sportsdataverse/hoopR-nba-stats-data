@@ -400,3 +400,14 @@ def test_an_immature_season_does_not_hide_a_mature_one():
     assert report["immature_seasons"] == [2027]
     assert _status(report, "r_rapm_adj_min") == "FAIL"
     assert _status(report, "r_rapm_yoy_min") == "SKIPPED"  # the 2026->2027 pair is excluded
+
+
+def test_a_blank_off_poss_column_does_not_make_a_season_immature():
+    """A build that nulls off_poss must still face its correlation floors."""
+    frames = _frames(seasons=(2027,))
+    frames[2027] = frames[2027].with_columns(
+        pl.col("adj_rapm").shuffle(seed=7), pl.lit(None, dtype=pl.Float64).alias("off_poss")
+    )
+    report = G.gate_report(frames)
+    assert report["immature_seasons"] == []
+    assert _status(report, "r_rapm_adj_min") == "FAIL"

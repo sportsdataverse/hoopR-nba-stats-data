@@ -376,13 +376,16 @@ def gate_report(frames: dict[int, pl.DataFrame], *, oracle_dir: Optional[Path] =
 def immature_seasons(frames: dict[int, pl.DataFrame]) -> set[int]:
     """Seasons with fewer than MIN_QUALIFIED_PLAYERS qualified players.
 
-    A frame without ``off_poss`` cannot be measured and is treated as mature, so a
-    build that drops the column is still gated rather than waved through.
+    A frame without ``off_poss``, or with no non-null value in it, cannot be measured
+    and is treated as mature, so a build that drops or blanks the column is still
+    gated rather than waved through. Counts qualifying ROWS (every season type), the
+    same rows the scale bands measure and the count MIN_QUALIFIED_PLAYERS was drawn from.
     """
     return {
         s
         for s, f in frames.items()
         if "off_poss" in f.columns
+        and f["off_poss"].null_count() < f.height
         and f.filter(pl.col("off_poss") >= SCALE_QUALIFY_POSS).height < MIN_QUALIFIED_PLAYERS
     }
 
