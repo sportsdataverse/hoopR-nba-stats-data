@@ -224,6 +224,15 @@ def _min_of(values: Iterable[Optional[float]]) -> Optional[float]:
 #: publish rather than fix anything. Fix the scale, then draw the band from the
 #: oracle rather than from our own history.
 SCALE_QUALIFY_POSS = 500
+#: Season-maturity minimum (owner, 2026-11-08). A season with fewer qualified players
+#: (off_poss >= SCALE_QUALIFY_POSS, every season type) than this is IMMATURE: its scale
+#: bands and its per-season correlation floors are SKIPPED, not evaluated, because an
+#: in-progress season's ratings are noisy against bands and floors drawn from complete
+#: ones. Observed: complete seasons 1997-2026 carry 366 (1999 lockout) - 507 (2026);
+#: 2027 carried 3 on 2026-11-03, and on 2026-11-07 failed sd_adj_rapm 9.26 and
+#: r_rapm_adj 0.735 at well under this count. This is a sample minimum, not a widened
+#: band or a lowered floor -- a mature season still has to pass every one of them.
+MIN_QUALIFIED_PLAYERS = 250
 SCALE_BANDS: dict[str, tuple[float, float]] = {
     "mean_rapm": (-1.0, 1.0),  # observed |mean| <= 0.19
     "sd_rapm": (0.5, 3.5),  # observed 0.99 - 2.27
@@ -244,13 +253,26 @@ def scale_checks(frames: dict[int, pl.DataFrame]) -> list[dict]:
         missing = [c for c in ("off_poss", "rapm", "adj_rapm") if c not in frame.columns]
         if missing:
             # cannot measure a level without these -- SKIPPED, never PASS
-            out.append({"season": season, "gate": "scale", "status": "SKIPPED",
-                        "reason": f"frame has no {', '.join(missing)}"})
+            out.append(
+                {
+                    "season": season,
+                    "gate": "scale",
+                    "status": "SKIPPED",
+                    "reason": f"frame has no {', '.join(missing)}",
+                }
+            )
             continue
         qualified = frame.filter(pl.col("off_poss") >= SCALE_QUALIFY_POSS)
-        if qualified.height < 20:
-            out.append({"season": season, "gate": "scale", "status": "SKIPPED",
-                        "reason": f"only {qualified.height} qualified players"})
+        if qualified.height < MIN_QUALIFIED_PLAYERS:
+            out.append(
+                {
+                    "season": season,
+                    "gate": "scale",
+                    "status": "SKIPPED",
+                    "reason": f"season immature: {qualified.height} qualified players "
+                    f"< {MIN_QUALIFIED_PLAYERS}",
+                }
+            )
             continue
         stats = {
             "mean_rapm": qualified["rapm"].mean(),
@@ -261,14 +283,25 @@ def scale_checks(frames: dict[int, pl.DataFrame]) -> list[dict]:
         for name, (lo, hi) in SCALE_BANDS.items():
             observed = stats[name]
             if observed is None:
-                out.append({"season": season, "gate": name, "status": "SKIPPED",
-                            "reason": "not computable"})
+                out.append(
+                    {
+                        "season": season,
+                        "gate": name,
+                        "status": "SKIPPED",
+                        "reason": "not computable",
+                    }
+                )
                 continue
             observed = float(observed)
-            out.append({
-                "season": season, "gate": name, "observed": observed, "band": [lo, hi],
-                "status": "PASS" if lo <= observed <= hi else "FAIL",
-            })
+            out.append(
+                {
+                    "season": season,
+                    "gate": name,
+                    "observed": observed,
+                    "band": [lo, hi],
+                    "status": "PASS" if lo <= observed <= hi else "FAIL",
+                }
+            )
     return out
 
 
@@ -280,16 +313,25 @@ def gate_report(frames: dict[int, pl.DataFrame], *, oracle_dir: Optional[Path] =
     no forward pair) is SKIPPED, which is not PASS.
     """
     seasons = internal_metrics(frames)
+    immature = immature_seasons(frames)
+    for s, row in seasons.items():
+        row["immature"] = int(s) in immature
     per = seasons.values()
+    # An immature season's correlations are not gated (MIN_QUALIFIED_PLAYERS); a forward
+    # pair is excluded when either end is immature. rs_rows still applies to every season.
+    own = [r for s, r in seasons.items() if int(s) not in immature]
+    fwd_rows = [r for s, r in seasons.items() if not {int(s), int(s) + 1} & immature]
     summary: dict[str, Optional[float]] = {
         "rs_rows_min": _min_of(r["rs_rows"] for r in per),
-        "r_rapm_adj_min": _min_of(r["r_rapm_adj"] for r in per),
-        "r_spm_rapm_min": _min_of(r["r_spm_rapm"] for r in per),
-        "r_rapm_yoy_min": _min_of(r["r_rapm_yoy"] for r in per),
-        "r_darko_fwd_min": _min_of(r["r_darko_fwd"] for r in per),
+        "r_rapm_adj_min": _min_of(r["r_rapm_adj"] for r in own),
+        "r_spm_rapm_min": _min_of(r["r_spm_rapm"] for r in own),
+        "r_rapm_yoy_min": _min_of(r["r_rapm_yoy"] for r in fwd_rows),
+        "r_darko_fwd_min": _min_of(r["r_darko_fwd"] for r in fwd_rows),
     }
     fwd = [
-        (r["r_darko_fwd"], r["n_fwd"]) for r in per if r["r_darko_fwd"] is not None and r["n_fwd"]
+        (r["r_darko_fwd"], r["n_fwd"])
+        for r in fwd_rows
+        if r["r_darko_fwd"] is not None and r["n_fwd"]
     ]
     summary["r_darko_fwd_wmean"] = (
         (sum(r * n for r, n in fwd) / sum(n for _, n in fwd)) if fwd else None
@@ -322,7 +364,27 @@ def gate_report(frames: dict[int, pl.DataFrame], *, oracle_dir: Optional[Path] =
         else:
             status = "PASS" if observed >= floor else "FAIL"
         checks.append({"gate": gate, "floor": floor, "observed": observed, "status": status})
-    return {"seasons": seasons, "summary": summary, "oracle": oracle, "checks": checks}
+    return {
+        "seasons": seasons,
+        "summary": summary,
+        "oracle": oracle,
+        "checks": checks,
+        "immature_seasons": sorted(immature),
+    }
+
+
+def immature_seasons(frames: dict[int, pl.DataFrame]) -> set[int]:
+    """Seasons with fewer than MIN_QUALIFIED_PLAYERS qualified players.
+
+    A frame without ``off_poss`` cannot be measured and is treated as mature, so a
+    build that drops the column is still gated rather than waved through.
+    """
+    return {
+        s
+        for s, f in frames.items()
+        if "off_poss" in f.columns
+        and f.filter(pl.col("off_poss") >= SCALE_QUALIFY_POSS).height < MIN_QUALIFIED_PLAYERS
+    }
 
 
 def format_report(report: dict) -> str:
@@ -331,6 +393,11 @@ def format_report(report: dict) -> str:
         obs = "—" if c["observed"] is None else f"{c['observed']:.3f}"
         floor = "—" if c["floor"] is None else f"{c['floor']:.3f}"
         lines.append(f"{c['gate']:32s} {floor:>8s} {obs:>10s}  {c['status']}")
+    if report.get("immature_seasons"):
+        lines.append(
+            f"immature (< {MIN_QUALIFIED_PLAYERS} qualified players; correlation floors "
+            f"SKIPPED): {', '.join(map(str, report['immature_seasons']))}"
+        )
     lines.append(
         f"oracle: {report['oracle'].get('status')}"
         + (f" ({report['oracle']['reason']})" if report["oracle"].get("reason") else "")
@@ -349,7 +416,9 @@ _BOBAN_RENAMES = {
 
 def _boban_names(frame: pl.DataFrame) -> pl.DataFrame:
     """A published frame with the ``boban_*`` names, whichever the season was published with."""
-    return frame.rename({o: n for o, n in _BOBAN_RENAMES.items() if o in frame.columns and n not in frame.columns})
+    return frame.rename(
+        {o: n for o, n in _BOBAN_RENAMES.items() if o in frame.columns and n not in frame.columns}
+    )
 
 
 def load_frames_from_dir(out_dir: Path, seasons: Iterable[int]) -> dict[int, pl.DataFrame]:

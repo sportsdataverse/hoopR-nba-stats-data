@@ -365,3 +365,38 @@ def test_a_season_published_before_the_boban_rename_still_gates(tmp_path):
     frames = G.load_frames_from_dir(tmp_path, [2023, 2024])
     assert all("boban_projected_rating" in f.columns and "darko_projected_rating" not in f.columns for f in frames.values())
     assert _status(G.gate_report(frames), "r_darko_fwd_min") == "PASS"
+
+
+def _with_qualified(frame: pl.DataFrame, n: int) -> pl.DataFrame:
+    """Give the first *n* players a qualifying off_poss, the rest a thin one."""
+    q = G.SCALE_QUALIFY_POSS
+    return frame.with_columns(
+        pl.Series("off_poss", [q + 10] * n + [q - 10] * (frame.height - n))
+    )
+
+
+def test_an_immature_season_skips_its_correlation_floors():
+    """A broken adj_rapm in an immature season is not gated -- and is gated once it matures."""
+    frames = _frames(seasons=(2027,))
+    frames[2027] = frames[2027].with_columns(pl.col("adj_rapm").shuffle(seed=7))
+
+    young = {2027: _with_qualified(frames[2027], G.MIN_QUALIFIED_PLAYERS - 1)}
+    report = G.gate_report(young)
+    assert report["immature_seasons"] == [2027]
+    assert _status(report, "r_rapm_adj_min") == "SKIPPED"
+    assert _status(report, "rs_rows_min") == "PASS"  # row count still applies
+
+    mature = {2027: _with_qualified(frames[2027], G.MIN_QUALIFIED_PLAYERS)}
+    assert _status(G.gate_report(mature), "r_rapm_adj_min") == "FAIL"
+
+
+def test_an_immature_season_does_not_hide_a_mature_one():
+    frames = _frames(seasons=(2026, 2027))
+    frames[2026] = _with_qualified(
+        frames[2026].with_columns(pl.col("adj_rapm").shuffle(seed=7)), 400
+    )
+    frames[2027] = _with_qualified(frames[2027], 10)
+    report = G.gate_report(frames)
+    assert report["immature_seasons"] == [2027]
+    assert _status(report, "r_rapm_adj_min") == "FAIL"
+    assert _status(report, "r_rapm_yoy_min") == "SKIPPED"  # the 2026->2027 pair is excluded

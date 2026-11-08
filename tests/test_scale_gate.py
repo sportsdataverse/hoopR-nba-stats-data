@@ -13,7 +13,7 @@ from nba_model_publish.gates import SCALE_BANDS, SCALE_QUALIFY_POSS, scale_check
 _QUAL = SCALE_QUALIFY_POSS
 
 
-def _season(scale: float = 1.0, n: int = 200) -> pl.DataFrame:
+def _season(scale: float = 1.0, n: int = 300) -> pl.DataFrame:
     """A plausible season, optionally rescaled by ``scale``."""
     rapm = [(-3.0 + 6.0 * i / (n - 1)) * scale for i in range(n)]
     return pl.DataFrame(
@@ -72,3 +72,16 @@ def test_a_frame_without_the_level_columns_is_skipped_not_passed():
 
     assert [c["status"] for c in checks] == ["SKIPPED"]
     assert "off_poss" in checks[0]["reason"]
+
+
+def test_an_immature_season_is_skipped_until_enough_players_qualify():
+    """The early-season sample minimum: below it the bands are not evaluated at all."""
+    from nba_model_publish.gates import MIN_QUALIFIED_PLAYERS
+
+    young = _season(scale=10.0, n=MIN_QUALIFIED_PLAYERS - 1)  # would FAIL if measured
+    checks = scale_checks({2027: young})
+    assert [c["status"] for c in checks] == ["SKIPPED"]
+    assert "immature" in checks[0]["reason"]
+
+    mature = _season(scale=10.0, n=MIN_QUALIFIED_PLAYERS)
+    assert any(c["status"] == "FAIL" for c in scale_checks({2027: mature}))
