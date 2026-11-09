@@ -59,6 +59,8 @@ from sportsdataverse.nba import (
     nba_darko,
     nba_player_ages,
     nba_player_identity,
+    nba_player_impact_context,
+    nba_player_impact_league_averages,
     nba_player_positions,
     nba_raw_store_season_frame,
     nba_spm,
@@ -1015,6 +1017,8 @@ def build_nba_player_impact(
                 f = f.with_columns([pl.lit(None, dtype=pl.Float64).alias(c) for c in _BOBAN_COLS])
             out_frames.append(f)
         impact = pl.concat(out_frames, how="vertical")
+        # <metric>_n / _rank / _pct per (season, season_type), gated on each metric's sample.
+        impact = nba_player_impact_context(impact, league_id="00")
 
         # Track what was ACTUALLY built (not merely requested) for the model
         # card: a season with no playoffs must not have the card claim a
@@ -1034,6 +1038,13 @@ def build_nba_player_impact(
             out_dir / f"nba_player_impact_{season_end}.rds",
             cls=list(RDS_CLASS),
         )
+        # League-average rows (one per season type and metric), same three formats and tag:
+        # the ``_{season}`` suffix puts them in the season-scoped upload set.
+        averages = nba_player_impact_league_averages(impact, league_id="00")
+        avg_stem = out_dir / f"nba_player_impact_league_averages_{season_end}"
+        averages.write_parquet(avg_stem.with_suffix(".parquet"))
+        averages.write_csv(avg_stem.with_suffix(".csv"))
+        write_rds(averages, avg_stem.with_suffix(".rds"), cls=list(RDS_CLASS))
         results.append({"season": season_end, "rows": impact.height, "path": str(path)})
         print(
             f"impact: season={season} (output season={season_end}) rows={impact.height} "

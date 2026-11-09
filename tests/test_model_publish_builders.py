@@ -13,6 +13,8 @@ import json
 import nba_model_publish.builders as B
 import polars as pl
 import pytest
+from sportsdataverse._common.league_context import LEAGUE_AVERAGES_SCHEMA
+from sportsdataverse.nba.nba_player_impact import IMPACT_RANKED
 
 
 class _Coef:
@@ -201,7 +203,7 @@ EXPECTED_COLS = {
     "boban_filtered_skill",
     "boban_projected_rating",
     "boban_projected_sd",
-}
+} | {f"{m}_{suffix}" for m in IMPACT_RANKED for suffix in ("n", "rank", "pct")}
 
 
 def test_impact_schema_and_outputs(stubbed, tmp_path):
@@ -844,3 +846,68 @@ def test_playoffs_first_input_order_is_canonicalized_to_regular_season_first(
     assert order == ["Regular Season", "Playoffs"]
     # compile_nba_season receives the (end-year) input value directly.
     assert stubbed["compile_order"] == [2024, 2024]
+
+
+def test_impact_carries_rank_context_for_every_ranked_metric(stubbed, tmp_path):
+    # nba_player_impact_context runs before the write: every ranked metric gets its
+    # sample size, rank and percentile, typed, on both season types.
+    results = B.build_nba_player_impact([2024], tmp_path)
+    df = pl.read_parquet(results[0]["path"])
+    for m in IMPACT_RANKED:
+        assert df.schema[f"{m}_n"] == pl.Int64
+        assert df.schema[f"{m}_rank"] == pl.Float64
+        assert df.schema[f"{m}_pct"] == pl.Float64
+    assert sorted(df["season_type"].unique().to_list()) == ["Playoffs", "Regular Season"]
+    # 3 stub players is under the 10-player cohort minimum: ranks are null, sizes are not.
+    assert df["adj_rapm_rank"].null_count() == df.height
+    assert df["adj_rapm_n"].to_list() == [200] * df.height
+    assert df["o_adj_rapm_n"].to_list() == [100] * df.height
+
+
+def test_league_averages_written_beside_each_season_in_three_formats(
+    stubbed, monkeypatch, tmp_path
+):
+    # Possessions past every gate (sportsdataverse ON_OFF_MIN_N, NBA level), so each metric
+    # with a value has a qualified cohort. Averages are reported even below the 10-player
+    # rank cohort.
+    def _big(frame):
+        return frame.with_columns(
+            off_poss=pl.lit(4000, dtype=pl.Int64), def_poss=pl.lit(4000, dtype=pl.Int64)
+        )
+
+    monkeypatch.setattr(B, "nba_rapm", lambda poss, **kw: _big(_rapm([1, 2, 3])))
+    monkeypatch.setattr(B, "nba_adj_rapm", lambda poss, prior, **kw: _big(_adj([1, 2, 3])))
+    B.build_nba_player_impact([2023, 2024], tmp_path)
+    boban = {m for m in IMPACT_RANKED if m.startswith("boban_")}
+    for season, metrics in ((2023, set(IMPACT_RANKED) - boban), (2024, set(IMPACT_RANKED))):
+        stem = tmp_path / f"nba_player_impact_league_averages_{season}"
+        for ext in ("parquet", "csv", "rds"):
+            assert stem.with_suffix(f".{ext}").is_file()
+        avg = pl.read_parquet(stem.with_suffix(".parquet"))
+        assert avg.schema == pl.Schema(LEAGUE_AVERAGES_SCHEMA)
+        assert set(avg["category"].unique().to_list()) == {
+            "player_impact_playoffs",
+            "player_impact_regular_season",
+        }
+        # BOBAN needs two seasons of panel: null (so unqualified) in the first one.
+        assert set(avg["metric"].unique().to_list()) == metrics
+        assert avg["season"].unique().to_list() == [season]
+        rs = avg.filter(
+            (pl.col("category") == "player_impact_regular_season")
+            & (pl.col("metric") == "adj_rapm")
+        )
+        assert rs["n"].to_list() == [3]
+        assert rs["mean"].to_list() == [pytest.approx(1.5)]
+
+
+def test_league_averages_ride_the_season_scoped_impact_upload(stubbed, tmp_path):
+    # The cli uploads plan_uploads(out, seasons, exts=parquet/rds/csv): the league-average
+    # files must be in that set for the seasons built, and absent for seasons not built.
+    from nba_data_build.publish import plan_uploads
+
+    B.build_nba_player_impact([2023, 2024], tmp_path)
+    names = {p.name for p in plan_uploads(tmp_path, [2024], exts=("parquet", "rds", "csv"))}
+    assert {
+        f"nba_player_impact_league_averages_2024.{ext}" for ext in ("parquet", "csv", "rds")
+    } <= names
+    assert not any("2023" in n for n in names)
