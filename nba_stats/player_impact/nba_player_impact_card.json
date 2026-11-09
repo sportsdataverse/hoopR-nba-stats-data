@@ -19,7 +19,7 @@
     "spm": "sportsdataverse.nba.train_spm + nba_spm. Coefficients are trained ONCE per season, on the Regular Season box features + RAPM target, and reused for the Playoffs pass -- re-fitting on a ~15-game playoff sample would train noise on noise. Playoff figures are therefore on the same scale as regular-season ones but rest on far fewer possessions; treat them as directional.",
     "bpm": "sportsdataverse.nba.nba_bpm (BPM 2.0, season granularity)",
     "war": "sportsdataverse.nba.nba_war on the RAPM rating; pts_per_win calibrated ONCE per season from Regular Season team game logs (OLS wins ~ total margin) and reused for the Playoffs pass; replacement_level = -2.0 per 100 (basketball-reference VORP convention)",
-    "darko": "sportsdataverse.nba.nba_darko on a SEASON-GRANULAR panel: one row per player-season whose rating is the possession-weighted blend of Regular Season + Playoffs (DARKO's aging curve and process variance are per-season quantities, so playoffs enter as a blend, not a second time step). DARKO projects the NEXT season, so both season_type rows carry the same projection; darko_* columns are null until the panel spans >= 2 seasons"
+    "darko": "sportsdataverse.nba.nba_darko on a SEASON-GRANULAR panel: one row per player-season whose rating is the possession-weighted blend of Regular Season + Playoffs (DARKO's aging curve and process variance are per-season quantities, so playoffs enter as a blend, not a second time step). DARKO projects the NEXT season, so both season_type rows carry the same projection; boban_* (renamed from darko_*) columns are null until the panel spans >= 2 seasons"
   },
   "possession_pipeline_version": 5,
   "lineup_source": "auto",
@@ -361,11 +361,11 @@
       "season_types": [
         "Regular Season"
       ],
-      "generated_at": "2026-11-03T09:00:29+00:00",
-      "rows": 441
+      "generated_at": "2026-11-09T09:00:38+00:00",
+      "rows": 458
     }
   ],
-  "generated_at": "2026-11-03T09:00:29+00:00",
+  "generated_at": "2026-11-09T09:00:38+00:00",
   "publish_gates": {
     "seasons_gated": [
       1997,
@@ -832,12 +832,13 @@
         "n_fwd": 0
       },
       "2027": {
-        "rs_rows": 441,
-        "r_rapm_adj": 0.7712634694137033,
-        "r_spm_rapm": 0.23059632643734757,
+        "rs_rows": 458,
+        "r_rapm_adj": 0.8769129191709644,
+        "r_spm_rapm": 0.30319728885988717,
         "r_rapm_yoy": null,
         "r_darko_fwd": null,
-        "n_fwd": 0
+        "n_fwd": 0,
+        "immature": true
       }
     },
     "scale": [
@@ -2045,7 +2046,7 @@
         "season": 2027,
         "gate": "scale",
         "status": "SKIPPED",
-        "reason": "only 3 qualified players"
+        "reason": "season immature: 108 qualified players < 250"
       }
     ]
   }
