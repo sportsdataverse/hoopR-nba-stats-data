@@ -3,7 +3,7 @@ name = "hoopr-nba-stats-data-build"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
-    "sportsdataverse @ git+https://github.com/sportsdataverse/sportsdataverse-py@main",
+    "sportsdataverse @ git+https://github.com/sportsdataverse/sportsdataverse-py@65e8c620b691596ce1a8c13679e79947b724c42c",
     "polars>=1.0",
     "pyarrow>=15.0",
     "scikit-learn>=1.0",

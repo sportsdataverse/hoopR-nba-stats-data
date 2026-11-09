@@ -65,19 +65,13 @@ def with_possession_flags(poss: pl.DataFrame, pbp: pl.DataFrame) -> pl.DataFrame
 
     sportsdataverse-py's :func:`~sportsdataverse.nba.nba_possession_flags.add_possession_flags`,
     over the season's possessions and the play-by-play they came from. Flags already on the
-    frame are recomputed, so a rebuilt season carries the installed window. A pinned
-    sportsdataverse without the module (before BB-D7) publishes the possessions unflagged and
-    says so in the log.
+    frame are recomputed, so a rebuilt season carries the installed window.
     """
-    try:
-        from sportsdataverse.nba.nba_possession_flags import (
-            POSSESSION_FLAGS_SCHEMA,
-            add_possession_flags,
-        )
-    except ImportError:
-        # ponytail: a pin-bump switch; drop the guard once uv.lock is past BB-D7 everywhere
-        _log("  WARN: the pinned sportsdataverse has no nba_possession_flags (BB-D7)")
-        return poss
+    from sportsdataverse.nba.nba_possession_flags import (
+        POSSESSION_FLAGS_SCHEMA,
+        add_possession_flags,
+    )
+
     if "possession_start_type" not in poss.columns:  # the empty-season placeholder frame
         return poss
     return add_possession_flags(poss.drop(*POSSESSION_FLAGS_SCHEMA, strict=False), pbp)

@@ -327,7 +327,9 @@ def test_read_summary_rejects_partial_or_foreign_summaries(tmp_path: Path) -> No
 
 def test_possessions_get_bb_d7_flags() -> None:
     """The staged possessions carry seconds_to_first_shot / is_transition / is_garbage_time, rows unchanged."""
-    flags = pytest.importorskip("sportsdataverse.nba.nba_possession_flags")
+    from sportsdataverse.nba import nba_possession_flags as flags
+
+    assert flags.TRANSITION_SECONDS == 8.0  # the pin must be past sportsdataverse-py BB-D7 decision 2
     from nba_data_build.process.from_raw import process_game
 
     pg = process_game(str(FIXTURE_RAW), "0022300001")
@@ -337,12 +339,3 @@ def test_possessions_get_bb_d7_flags() -> None:
     assert out["is_transition"].sum() > 0
     # a rebuilt season re-flags rather than failing on the existing columns
     assert vb.with_possession_flags(out, pg.enriched_pbp).equals(out)
-
-
-def test_possessions_unflagged_on_a_pin_before_bb_d7(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A sportsdataverse pin without nba_possession_flags publishes the frame unchanged (and logs it)."""
-    import sys
-
-    monkeypatch.setitem(sys.modules, "sportsdataverse.nba.nba_possession_flags", None)
-    poss = pl.DataFrame({"game_id": ["0022300001"], "possession_start_type": ["OffDeadball"]})
-    assert vb.with_possession_flags(poss, pl.DataFrame()).equals(poss)
