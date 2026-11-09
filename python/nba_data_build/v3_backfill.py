@@ -428,6 +428,9 @@ def build_season(
         prior = read_summary(staging, season_end) or {}
         return {**prior, "season": season_end, "status": "skipped"}
 
+    # Drop the checkpoint first: a rebuild that fails part-way (after the schedule and pbp are
+    # rewritten) must not leave a summary that marks the mixed old/new season done.
+    summary_path(staging, season_end).unlink(missing_ok=True)
     t0 = time.time()
     sched = season_schedule(raw_root, season_end)
     game_ids = sched["game_id"].to_list()

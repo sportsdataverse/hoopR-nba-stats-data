@@ -339,3 +339,21 @@ def test_possessions_get_bb_d7_flags() -> None:
     assert out["is_transition"].sum() > 0
     # a rebuilt season re-flags rather than failing on the existing columns
     assert vb.with_possession_flags(out, pg.enriched_pbp).equals(out)
+
+
+def test_a_failed_rebuild_leaves_the_season_undone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """--rebuild drops the checkpoint before it rewrites anything, so a crash mid-build is retried."""
+    staging = tmp_path / "v3_staging"
+    staging.mkdir()
+    for p in vb.season_paths(staging, 2006).values():
+        pl.DataFrame({"game_id": ["0020500001"]}).write_parquet(p)
+    vb.summary_path(staging, 2006).write_text(json.dumps(_summary()), encoding="utf-8")
+    assert vb.season_done(staging, 2006)
+
+    def boom(*_a, **_k):
+        raise RuntimeError("mid-build failure")
+
+    monkeypatch.setattr(vb, "season_schedule", boom)
+    with pytest.raises(RuntimeError):
+        vb.build_season(tmp_path / "raw", 2006, staging, tmp_path / "cache", rebuild=True)
+    assert not vb.season_done(staging, 2006)
