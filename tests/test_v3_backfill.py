@@ -327,7 +327,9 @@ def test_read_summary_rejects_partial_or_foreign_summaries(tmp_path: Path) -> No
 
 def test_possessions_get_bb_d7_flags() -> None:
     """The staged possessions carry seconds_to_first_shot / is_transition / is_garbage_time, rows unchanged."""
-    flags = pytest.importorskip("sportsdataverse.nba.nba_possession_flags")
+    from sportsdataverse.nba import nba_possession_flags as flags
+
+    assert flags.TRANSITION_SECONDS == 8.0  # the pin must be past sportsdataverse-py BB-D7 decision 2
     from nba_data_build.process.from_raw import process_game
 
     pg = process_game(str(FIXTURE_RAW), "0022300001")
@@ -339,10 +341,19 @@ def test_possessions_get_bb_d7_flags() -> None:
     assert vb.with_possession_flags(out, pg.enriched_pbp).equals(out)
 
 
-def test_possessions_unflagged_on_a_pin_before_bb_d7(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A sportsdataverse pin without nba_possession_flags publishes the frame unchanged (and logs it)."""
-    import sys
+def test_a_failed_rebuild_leaves_the_season_undone(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """--rebuild drops the checkpoint before it rewrites anything, so a crash mid-build is retried."""
+    staging = tmp_path / "v3_staging"
+    staging.mkdir()
+    for p in vb.season_paths(staging, 2006).values():
+        pl.DataFrame({"game_id": ["0020500001"]}).write_parquet(p)
+    vb.summary_path(staging, 2006).write_text(json.dumps(_summary()), encoding="utf-8")
+    assert vb.season_done(staging, 2006)
 
-    monkeypatch.setitem(sys.modules, "sportsdataverse.nba.nba_possession_flags", None)
-    poss = pl.DataFrame({"game_id": ["0022300001"], "possession_start_type": ["OffDeadball"]})
-    assert vb.with_possession_flags(poss, pl.DataFrame()).equals(poss)
+    def boom(*_a, **_k):
+        raise RuntimeError("mid-build failure")
+
+    monkeypatch.setattr(vb, "season_schedule", boom)
+    with pytest.raises(RuntimeError):
+        vb.build_season(tmp_path / "raw", 2006, staging, tmp_path / "cache", rebuild=True)
+    assert not vb.season_done(staging, 2006)

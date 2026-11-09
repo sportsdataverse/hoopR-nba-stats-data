@@ -34,6 +34,9 @@ set -uo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_DIR" || exit 1
 
+# Pull before the venv sync below, so a merged pin bump is installed before its code runs.
+git pull -q --ff-only || echo "WARN: git pull failed -- continuing on the checked-out tree"
+
 # Sync the venv to uv.lock first: this droplet job runs .venv's python directly, so a merged
 # sportsdataverse pin bump never reached it otherwise (hoopR-nba-stats-data#51). --inexact keeps
 # anything else installed; skipped when an explicit interpreter is given.
@@ -84,7 +87,6 @@ RAWC_OUT="$(mktemp -d "/tmp/nba_rawc_${SEASON}.XXXXXX")"
 trap 'rm -rf "${CACHE_DIR}" "${RAWC_OUT}"' EXIT
 
 echo "=== nightly season refresh ${SEASON} started $(date -u +'%F %T')Z ==="
-git pull -q --ff-only || echo "WARN: git pull failed -- continuing on the checked-out tree"
 
 # Commit + push helper, shared with the processor and the impact driver.
 # shellcheck source=scripts/_commit.sh
