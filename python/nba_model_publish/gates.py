@@ -211,18 +211,20 @@ def _min_of(values: Iterable[Optional[float]]) -> Optional[float]:
 #: off_poss >= 500); the comment records the observation that set each one.
 #: Never widen a band to make a publish pass -- debug the build.
 #:
-#: KNOWN LIMIT of these bands, and it is not a small one. They are set from OUR OWN
-#: published values, so they can only catch a CHANGE -- never a miscalibration that
-#: was already present when the band was drawn. `sd_adj_rapm` is the worked example:
-#: the band (3.0, 8.0) was set around "observed 4.47 - 6.20", but the external
-#: oracles put a player-rating SD near 2.3 (EPM 2.281, DARKO 1.760) on the same
-#: 2026 rows. So the band's FLOOR already sits above the true scale, and an
-#: adj_rapm that is ~2.1x too wide passes it by construction. See the
-#: `sd_ratio_*` metrics in oracle_checks(), which anchor to EPM instead; a ratio
-#: near 1.0 is the target, and adj_rapm currently reports ~2.1.
-#: Do NOT tighten this band before the model is retuned -- it would block every
-#: publish rather than fix anything. Fix the scale, then draw the band from the
-#: oracle rather than from our own history.
+#: KNOWN LIMIT of these bands: they are set from OUR OWN published values, so they
+#: can only catch a CHANGE -- never a miscalibration already present when a band is
+#: drawn. `sd_adj_rapm` was the worked example: (3.0, 8.0) was drawn around "observed
+#: 4.47 - 6.20" while the external oracles read a player-rating SD near 2.3 (EPM
+#: 2.281, DARKO 1.760) on the same 2026 rows, i.e. adj_rapm ~2.1x too wide.
+#:
+#: Resolved 2026-11-09. sportsdataverse-py #1137 gave the adj-RAPM ridge an
+#: unpenalized intercept (o/d had absorbed the league's points per possession, means
+#: ~+11 / -11) and #1150 fits it at one penalty per league with a 2x SPM prior. On
+#: 8a5f511b, 1997-2026 read sd_adj_rapm 1.64 (1999) - 2.06 (2016), sd_adj_rapm /
+#: sd_rapm 0.94 - 1.16 (no collapsed season); 2026 reads 1.99 = 0.87x EPM, 1.13x
+#: DARKO. sd_adj_rapm is re-derived from that history by the 2026-09-02 method
+#: (round values strictly outside the observed range, floor ~0.6x, ceiling ~1.5x).
+#: Keep the oracle_checks() sd_ratio_* metrics as the external check on it.
 SCALE_QUALIFY_POSS = 500
 #: Season-maturity minimum (owner, 2026-11-08). A season with fewer qualified players
 #: (off_poss >= SCALE_QUALIFY_POSS, every season type) than this is IMMATURE: its scale
@@ -237,7 +239,7 @@ SCALE_BANDS: dict[str, tuple[float, float]] = {
     "mean_rapm": (-1.0, 1.0),  # observed |mean| <= 0.19
     "sd_rapm": (0.5, 3.5),  # observed 0.99 - 2.27
     "mean_adj_rapm": (-3.0, 3.0),  # observed |mean| <= 1.00
-    "sd_adj_rapm": (3.0, 8.0),  # observed 4.47 - 6.20
+    "sd_adj_rapm": (1.0, 3.0),  # observed 1.64 - 2.06 (2026-11-09, #1150; see above)
 }
 
 

@@ -19,7 +19,9 @@ def _season(scale: float = 1.0, n: int = 300) -> pl.DataFrame:
     return pl.DataFrame(
         {
             "rapm": rapm,
-            "adj_rapm": [v * 2.5 for v in rapm],
+            # centred adj RAPM tracks plain RAPM (sd ratio 0.94-1.16 on #1150); the old 2.5x
+            # was the uncentred pre-#1137 spread
+            "adj_rapm": [v * 1.1 for v in rapm],
             "off_poss": [_QUAL + 10] * n,
         }
     )
