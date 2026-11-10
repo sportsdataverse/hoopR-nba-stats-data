@@ -21,351 +21,351 @@
     "war": "sportsdataverse.nba.nba_war on the RAPM rating; pts_per_win calibrated ONCE per season from Regular Season team game logs (OLS wins ~ total margin) and reused for the Playoffs pass; replacement_level = -2.0 per 100 (basketball-reference VORP convention)",
     "darko": "sportsdataverse.nba.nba_darko on a SEASON-GRANULAR panel: one row per player-season whose rating is the possession-weighted blend of Regular Season + Playoffs (DARKO's aging curve and process variance are per-season quantities, so playoffs enter as a blend, not a second time step). DARKO projects the NEXT season, so both season_type rows carry the same projection; boban_* (renamed from darko_*) columns are null until the panel spans >= 2 seasons"
   },
-  "possession_pipeline_version": 5,
+  "possession_pipeline_version": 7,
   "lineup_source": "auto",
   "seasons": [
     {
       "season": 1997,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 631
     },
     {
       "season": 1998,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 629
     },
     {
       "season": 1999,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 629
     },
     {
       "season": 2000,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 620
     },
     {
       "season": 2001,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 630
     },
     {
       "season": 2002,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 625
     },
     {
       "season": 2003,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 615
     },
     {
       "season": 2004,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 631
     },
     {
       "season": 2005,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 651
     },
     {
       "season": 2006,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 652
     },
     {
       "season": 2007,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 649
     },
     {
       "season": 2008,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 653
     },
     {
       "season": 2009,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 644
     },
     {
       "season": 2010,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 640
     },
     {
       "season": 2011,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 644
     },
     {
       "season": 2012,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 681
     },
     {
       "season": 2013,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 678
     },
     {
       "season": 2014,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 686
     },
     {
       "season": 2015,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 700
     },
     {
       "season": 2016,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 691
     },
     {
       "season": 2017,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 701
     },
     {
       "season": 2018,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 752
     },
     {
       "season": 2019,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 742
     },
     {
       "season": 2020,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 744
     },
     {
       "season": 2021,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 779
     },
     {
       "season": 2022,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 820
     },
     {
       "season": 2023,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 756
     },
     {
       "season": 2024,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 786
     },
     {
       "season": 2025,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 788
     },
     {
       "season": 2026,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season",
         "Playoffs"
       ],
-      "generated_at": "2026-10-12T16:40:29+00:00",
+      "generated_at": "2026-11-10T00:17:48+00:00",
       "rows": 812
     },
     {
       "season": 2027,
       "lineup_source": "auto",
-      "possession_pipeline_version": 5,
+      "possession_pipeline_version": 7,
       "season_types": [
         "Regular Season"
       ],
-      "generated_at": "2026-11-09T09:00:38+00:00",
-      "rows": 458
+      "generated_at": "2026-11-10T09:02:09+00:00",
+      "rows": 460
     }
   ],
-  "generated_at": "2026-11-09T09:00:38+00:00",
+  "generated_at": "2026-11-10T09:02:09+00:00",
   "publish_gates": {
     "seasons_gated": [
       1997,
@@ -401,440 +401,339 @@
     ],
     "summary": {
       "rs_rows_min": 428,
-      "r_rapm_adj_min": 0.805384451843152,
-      "r_spm_rapm_min": 0.2635162716039406,
-      "r_rapm_yoy_min": 0.2902153581571023,
-      "r_darko_fwd_min": 0.24308914393113062,
-      "r_darko_fwd_wmean": 0.36218975796889524,
-      "oracle_rapm_r_min": 0.948232062441115,
-      "oracle_rapm_beat_minutes_min": 0.6029879765761883
+      "r_rapm_adj_min": 0.851337656004337,
+      "r_spm_rapm_min": 0.2627127895059296,
+      "r_rapm_yoy_min": 0.259270013050755,
+      "r_darko_fwd_min": 0.22562604339046238,
+      "r_darko_fwd_wmean": 0.36514568236148826,
+      "oracle_rapm_r_min": null,
+      "oracle_rapm_beat_minutes_min": null
     },
     "oracle": {
-      "dir": "/mnt/sdv_repos/ClaudeCowork/nba_data/data_metrics",
-      "rapm": {
-        "2010": {
-          "n": 355,
-          "coverage_pct": 80.5,
-          "r_rapm": 0.9716404107213732,
-          "r_adj_rapm": 0.8674142838337856,
-          "r_minutes": 0.3539430383513575,
-          "beat_minutes": 0.6176973723700157
-        },
-        "2011": {
-          "n": 400,
-          "coverage_pct": 88.5,
-          "r_rapm": 0.9767824395515782,
-          "r_adj_rapm": 0.8813468244236397,
-          "r_minutes": 0.365311536486132,
-          "beat_minutes": 0.6114709030654462
-        },
-        "2012": {
-          "n": 478,
-          "coverage_pct": 100.0,
-          "r_rapm": 0.9795210751693028,
-          "r_adj_rapm": 0.8691461212364534,
-          "r_minutes": 0.33444614907106174,
-          "beat_minutes": 0.645074926098241
-        },
-        "2013": {
-          "n": 468,
-          "coverage_pct": 99.8,
-          "r_rapm": 0.9732946753552372,
-          "r_adj_rapm": 0.8425728851694266,
-          "r_minutes": 0.3420055859006543,
-          "beat_minutes": 0.6312890894545828
-        },
-        "2014": {
-          "n": 482,
-          "coverage_pct": 100.0,
-          "r_rapm": 0.948232062441115,
-          "r_adj_rapm": 0.8029098223553288,
-          "r_minutes": 0.28339721693773645,
-          "beat_minutes": 0.6648348455033786
-        },
-        "2015": {
-          "n": 492,
-          "coverage_pct": 100.0,
-          "r_rapm": 0.9516986054250607,
-          "r_adj_rapm": 0.8010962847924072,
-          "r_minutes": 0.3487106288488724,
-          "beat_minutes": 0.6029879765761883
-        },
-        "2016": {
-          "n": 476,
-          "coverage_pct": 100.0,
-          "r_rapm": 0.9840919515150971,
-          "r_adj_rapm": 0.7760961302206857,
-          "r_minutes": 0.3246130811160188,
-          "beat_minutes": 0.6594788703990784
-        },
-        "2017": {
-          "n": 486,
-          "coverage_pct": 100.0,
-          "r_rapm": 0.9498626358359311,
-          "r_adj_rapm": 0.7882751444113778,
-          "r_minutes": 0.34526121331046644,
-          "beat_minutes": 0.6046014225254647
-        },
-        "2018": {
-          "n": 540,
-          "coverage_pct": 99.6,
-          "r_rapm": 0.9490254074954063,
-          "r_adj_rapm": 0.8091832362758962,
-          "r_minutes": 0.27500147864107627,
-          "beat_minutes": 0.67402392885433
-        },
-        "2019": {
-          "n": 529,
-          "coverage_pct": 99.8,
-          "r_rapm": 0.9892906610122388,
-          "r_adj_rapm": 0.8029274036206163,
-          "r_minutes": 0.32697331524974027,
-          "beat_minutes": 0.6623173457624986
-        },
-        "2020": {
-          "n": 529,
-          "coverage_pct": 100.0,
-          "r_rapm": 0.988744530741494,
-          "r_adj_rapm": 0.8026172905985294,
-          "r_minutes": 0.23907747737280816,
-          "beat_minutes": 0.7496670533686859
-        },
-        "2021": {
-          "n": 539,
-          "coverage_pct": 99.8,
-          "r_rapm": 0.9856152928692531,
-          "r_adj_rapm": 0.7906476643020888,
-          "r_minutes": 0.30678487916920244,
-          "beat_minutes": 0.6788304137000507
-        },
-        "2022": {
-          "n": 605,
-          "coverage_pct": 100.0,
-          "r_rapm": 0.9902996291900616,
-          "r_adj_rapm": 0.7977762278695353,
-          "r_minutes": 0.31536169793833196,
-          "beat_minutes": 0.6749379312517296
-        },
-        "2023": {
-          "n": 539,
-          "coverage_pct": 100.0,
-          "r_rapm": 0.988139531313714,
-          "r_adj_rapm": 0.8095874980540196,
-          "r_minutes": 0.2879697442617033,
-          "beat_minutes": 0.7001697870520107
-        }
-      },
-      "epm": {
-        "2025": {
-          "n": 569,
-          "r_rapm": 0.6371924496201431,
-          "r_adj_rapm": 0.5472572660702075,
-          "r_minutes": 0.6195739044720316,
-          "sd_ratio_rapm": 0.5688016646215698,
-          "sd_ratio_adj_rapm": 2.0629688245890447
-        },
-        "2026": {
-          "n": 582,
-          "r_rapm": 0.6593462432755853,
-          "r_adj_rapm": 0.5842452458418367,
-          "r_minutes": 0.6222101276922734,
-          "sd_ratio_rapm": 0.9587136378186312,
-          "sd_ratio_adj_rapm": 2.089364061887407
-        }
-      },
-      "status": "RAN"
+      "status": "SKIPPED",
+      "reason": "SDV_PY_NBA_ORACLE_DIR unset / no rapm_ryan_davis.csv"
     },
     "checks": [
       {
         "gate": "rs_rows_min",
-        "floor": 400,
+        "floor": 350,
         "observed": 428,
         "status": "PASS"
       },
       {
         "gate": "r_rapm_adj_min",
         "floor": 0.75,
-        "observed": 0.805384451843152,
+        "observed": 0.851337656004337,
         "status": "PASS"
       },
       {
         "gate": "r_spm_rapm_min",
         "floor": 0.22,
-        "observed": 0.2635162716039406,
+        "observed": 0.2627127895059296,
         "status": "PASS"
       },
       {
         "gate": "r_rapm_yoy_min",
         "floor": 0.24,
-        "observed": 0.2902153581571023,
+        "observed": 0.259270013050755,
         "status": "PASS"
       },
       {
         "gate": "r_darko_fwd_min",
         "floor": 0.2,
-        "observed": 0.24308914393113062,
+        "observed": 0.22562604339046238,
         "status": "PASS"
       },
       {
         "gate": "oracle_rapm_r_min",
         "floor": 0.9,
-        "observed": 0.948232062441115,
-        "status": "PASS"
+        "observed": null,
+        "status": "SKIPPED"
       },
       {
         "gate": "oracle_rapm_beat_minutes_min",
         "floor": 0.5,
-        "observed": 0.6029879765761883,
-        "status": "PASS"
+        "observed": null,
+        "status": "SKIPPED"
       }
     ],
-    "full_history_gates_as_of": "2026-10-12T16:40:29+00:00",
+    "immature_seasons": [],
+    "full_history_gates_as_of": "2026-11-10T00:17:48+00:00",
     "seasons": {
       "1997": {
         "rs_rows": 442,
-        "r_rapm_adj": 0.9151277926420113,
-        "r_spm_rapm": 0.4553635143570281,
-        "r_rapm_yoy": 0.4092919482662016,
+        "r_rapm_adj": 0.9964319238999785,
+        "r_spm_rapm": 0.44817597597189873,
+        "r_rapm_yoy": 0.43008978612750304,
         "r_darko_fwd": null,
-        "n_fwd": 0
+        "n_fwd": 0,
+        "immature": false
       },
       "1998": {
         "rs_rows": 439,
-        "r_rapm_adj": 0.9156135756432815,
-        "r_spm_rapm": 0.4048149535327372,
-        "r_rapm_yoy": 0.419616296510341,
-        "r_darko_fwd": 0.39933818328629467,
-        "n_fwd": 354
+        "r_rapm_adj": 0.900590011832056,
+        "r_spm_rapm": 0.40864154361297,
+        "r_rapm_yoy": 0.43937723769652376,
+        "r_darko_fwd": 0.4246447832069554,
+        "n_fwd": 354,
+        "immature": false
       },
       "1999": {
         "rs_rows": 440,
-        "r_rapm_adj": 0.9204558849761505,
-        "r_spm_rapm": 0.2635162716039406,
-        "r_rapm_yoy": 0.3003820909203065,
-        "r_darko_fwd": 0.28516869926269095,
-        "n_fwd": 358
+        "r_rapm_adj": 0.851337656004337,
+        "r_spm_rapm": 0.2627127895059296,
+        "r_rapm_yoy": 0.3275959637013694,
+        "r_darko_fwd": 0.3115568149626416,
+        "n_fwd": 358,
+        "immature": false
       },
       "2000": {
         "rs_rows": 439,
-        "r_rapm_adj": 0.9186101203003475,
-        "r_spm_rapm": 0.4454917462345905,
-        "r_rapm_yoy": 0.33020592455571096,
-        "r_darko_fwd": 0.333253570215145,
-        "n_fwd": 358
+        "r_rapm_adj": 0.9661461860657038,
+        "r_spm_rapm": 0.4466672925361913,
+        "r_rapm_yoy": 0.3372939764235596,
+        "r_darko_fwd": 0.34164028152063786,
+        "n_fwd": 358,
+        "immature": false
       },
       "2001": {
         "rs_rows": 441,
-        "r_rapm_adj": 0.9197606391937527,
-        "r_spm_rapm": 0.42655467727921936,
-        "r_rapm_yoy": 0.4040579828261011,
-        "r_darko_fwd": 0.4016006045383717,
-        "n_fwd": 357
+        "r_rapm_adj": 0.9073954703399338,
+        "r_spm_rapm": 0.37763712396846144,
+        "r_rapm_yoy": 0.3761315941630227,
+        "r_darko_fwd": 0.3762857773493571,
+        "n_fwd": 357,
+        "immature": false
       },
       "2002": {
         "rs_rows": 440,
-        "r_rapm_adj": 0.9254649192566577,
-        "r_spm_rapm": 0.4879081157883088,
-        "r_rapm_yoy": 0.40325124376761995,
-        "r_darko_fwd": 0.38853161811573855,
-        "n_fwd": 355
+        "r_rapm_adj": 0.9086107399751764,
+        "r_spm_rapm": 0.4712832103953707,
+        "r_rapm_yoy": 0.4149845626514954,
+        "r_darko_fwd": 0.40460804787701715,
+        "n_fwd": 355,
+        "immature": false
       },
       "2003": {
         "rs_rows": 428,
-        "r_rapm_adj": 0.915635170675965,
-        "r_spm_rapm": 0.4641172204012228,
-        "r_rapm_yoy": 0.3448756298032529,
-        "r_darko_fwd": 0.3459709541808356,
-        "n_fwd": 350
+        "r_rapm_adj": 0.9004761447436076,
+        "r_spm_rapm": 0.4631791010404333,
+        "r_rapm_yoy": 0.35920564470967287,
+        "r_darko_fwd": 0.35990489423477934,
+        "n_fwd": 350,
+        "immature": false
       },
       "2004": {
         "rs_rows": 442,
-        "r_rapm_adj": 0.9253691548802504,
-        "r_spm_rapm": 0.4216195434848048,
-        "r_rapm_yoy": 0.3458655035485618,
-        "r_darko_fwd": 0.3361007019643474,
-        "n_fwd": 380
+        "r_rapm_adj": 0.8751796777771921,
+        "r_spm_rapm": 0.41236480747168425,
+        "r_rapm_yoy": 0.3660173844118804,
+        "r_darko_fwd": 0.35958533117124813,
+        "n_fwd": 380,
+        "immature": false
       },
       "2005": {
         "rs_rows": 464,
-        "r_rapm_adj": 0.918261410912381,
-        "r_spm_rapm": 0.4685925693459862,
-        "r_rapm_yoy": 0.3773446722181369,
-        "r_darko_fwd": 0.3758625330901639,
-        "n_fwd": 366
+        "r_rapm_adj": 0.9200352958448316,
+        "r_spm_rapm": 0.4660326967701634,
+        "r_rapm_yoy": 0.3899518796539022,
+        "r_darko_fwd": 0.3878855515850288,
+        "n_fwd": 366,
+        "immature": false
       },
       "2006": {
         "rs_rows": 457,
-        "r_rapm_adj": 0.9349721547187462,
-        "r_spm_rapm": 0.4724015137374334,
-        "r_rapm_yoy": 0.37509410448714886,
-        "r_darko_fwd": 0.3693887534147917,
-        "n_fwd": 369
+        "r_rapm_adj": 0.8888468304837485,
+        "r_spm_rapm": 0.46171929012596297,
+        "r_rapm_yoy": 0.3997890756375102,
+        "r_darko_fwd": 0.39186601280429967,
+        "n_fwd": 369,
+        "immature": false
       },
       "2007": {
         "rs_rows": 458,
-        "r_rapm_adj": 0.9186064313978538,
-        "r_spm_rapm": 0.40557916015948,
-        "r_rapm_yoy": 0.34309659601136755,
-        "r_darko_fwd": 0.3385474492016363,
-        "n_fwd": 371
+        "r_rapm_adj": 0.8666090874739542,
+        "r_spm_rapm": 0.4003849631428491,
+        "r_rapm_yoy": 0.37611806556375393,
+        "r_darko_fwd": 0.37330562408841905,
+        "n_fwd": 371,
+        "immature": false
       },
       "2008": {
         "rs_rows": 451,
-        "r_rapm_adj": 0.9205132362939535,
-        "r_spm_rapm": 0.4408746364291388,
-        "r_rapm_yoy": 0.34969602330175487,
-        "r_darko_fwd": 0.3373203771387201,
-        "n_fwd": 366
+        "r_rapm_adj": 0.8957826963694966,
+        "r_spm_rapm": 0.4339456591800436,
+        "r_rapm_yoy": 0.3778289822294248,
+        "r_darko_fwd": 0.3674078385044956,
+        "n_fwd": 366,
+        "immature": false
       },
       "2009": {
         "rs_rows": 445,
-        "r_rapm_adj": 0.9273611508784714,
-        "r_spm_rapm": 0.4615218681536726,
-        "r_rapm_yoy": 0.33221547723118955,
-        "r_darko_fwd": 0.32354941440405116,
-        "n_fwd": 365
+        "r_rapm_adj": 0.8921654909828431,
+        "r_spm_rapm": 0.4456958789968254,
+        "r_rapm_yoy": 0.33830570024046536,
+        "r_darko_fwd": 0.33495437310584764,
+        "n_fwd": 365,
+        "immature": false
       },
       "2010": {
         "rs_rows": 441,
-        "r_rapm_adj": 0.8200867059533432,
-        "r_spm_rapm": 0.44354258420233106,
-        "r_rapm_yoy": 0.3889265981754487,
-        "r_darko_fwd": 0.37879743466595434,
-        "n_fwd": 371
+        "r_rapm_adj": 0.8702791842310158,
+        "r_spm_rapm": 0.46461963773044207,
+        "r_rapm_yoy": 0.40320215532001424,
+        "r_darko_fwd": 0.39636983825241756,
+        "n_fwd": 371,
+        "immature": false
       },
       "2011": {
         "rs_rows": 452,
-        "r_rapm_adj": 0.93042483224368,
-        "r_spm_rapm": 0.4272431953034,
-        "r_rapm_yoy": 0.4111383051208371,
-        "r_darko_fwd": 0.41160307327499707,
-        "n_fwd": 379
+        "r_rapm_adj": 0.8808546544419251,
+        "r_spm_rapm": 0.43028798924431155,
+        "r_rapm_yoy": 0.4397642297249823,
+        "r_darko_fwd": 0.4427258014897105,
+        "n_fwd": 379,
+        "immature": false
       },
       "2012": {
         "rs_rows": 478,
-        "r_rapm_adj": 0.9082335154555056,
-        "r_spm_rapm": 0.4433392876336679,
-        "r_rapm_yoy": 0.37871677390866715,
-        "r_darko_fwd": 0.36564609917390245,
-        "n_fwd": 377
+        "r_rapm_adj": 0.8736934163253833,
+        "r_spm_rapm": 0.435786175049514,
+        "r_rapm_yoy": 0.37460406962178594,
+        "r_darko_fwd": 0.3625914323940917,
+        "n_fwd": 377,
+        "immature": false
       },
       "2013": {
         "rs_rows": 469,
-        "r_rapm_adj": 0.805384451843152,
-        "r_spm_rapm": 0.36709134102358787,
-        "r_rapm_yoy": 0.31385696789908984,
-        "r_darko_fwd": 0.30737367467855997,
-        "n_fwd": 384
+        "r_rapm_adj": 0.8959031211576998,
+        "r_spm_rapm": 0.37647499920612815,
+        "r_rapm_yoy": 0.3228287161165827,
+        "r_darko_fwd": 0.31856954143124333,
+        "n_fwd": 384,
+        "immature": false
       },
       "2014": {
         "rs_rows": 482,
-        "r_rapm_adj": 0.9266880948727011,
-        "r_spm_rapm": 0.4131257438129695,
-        "r_rapm_yoy": 0.37969590893418614,
-        "r_darko_fwd": 0.37544877819203004,
-        "n_fwd": 395
+        "r_rapm_adj": 0.9303440870832951,
+        "r_spm_rapm": 0.4057296234317069,
+        "r_rapm_yoy": 0.4102155993640588,
+        "r_darko_fwd": 0.4090408597164241,
+        "n_fwd": 395,
+        "immature": false
       },
       "2015": {
         "rs_rows": 492,
-        "r_rapm_adj": 0.9242670355567909,
-        "r_spm_rapm": 0.4533599889134396,
-        "r_rapm_yoy": 0.452147892073103,
-        "r_darko_fwd": 0.4439057891322626,
-        "n_fwd": 396
+        "r_rapm_adj": 0.9219884584775673,
+        "r_spm_rapm": 0.4616124106899138,
+        "r_rapm_yoy": 0.446436088689702,
+        "r_darko_fwd": 0.4440623631523374,
+        "n_fwd": 396,
+        "immature": false
       },
       "2016": {
         "rs_rows": 476,
-        "r_rapm_adj": 0.8069268994609676,
-        "r_spm_rapm": 0.4460330018093354,
-        "r_rapm_yoy": 0.41480304628395825,
-        "r_darko_fwd": 0.40630742463328345,
-        "n_fwd": 386
+        "r_rapm_adj": 0.9002951584958242,
+        "r_spm_rapm": 0.45279002075153907,
+        "r_rapm_yoy": 0.4004687739216425,
+        "r_darko_fwd": 0.38883740766115954,
+        "n_fwd": 386,
+        "immature": false
       },
       "2017": {
         "rs_rows": 486,
-        "r_rapm_adj": 0.914456545173192,
-        "r_spm_rapm": 0.4300434223248407,
-        "r_rapm_yoy": 0.32353863335055744,
-        "r_darko_fwd": 0.3258537863610888,
-        "n_fwd": 392
+        "r_rapm_adj": 0.9027965273619256,
+        "r_spm_rapm": 0.4343600709189099,
+        "r_rapm_yoy": 0.34800076354593884,
+        "r_darko_fwd": 0.3494634680289755,
+        "n_fwd": 392,
+        "immature": false
       },
       "2018": {
         "rs_rows": 542,
-        "r_rapm_adj": 0.9268377896210792,
-        "r_spm_rapm": 0.3142248581714432,
-        "r_rapm_yoy": 0.43088270919840815,
-        "r_darko_fwd": 0.4198040477487471,
-        "n_fwd": 412
+        "r_rapm_adj": 0.8889564646633817,
+        "r_spm_rapm": 0.31316189723033916,
+        "r_rapm_yoy": 0.4148664406490131,
+        "r_darko_fwd": 0.4103320197534504,
+        "n_fwd": 412,
+        "immature": false
       },
       "2019": {
         "rs_rows": 530,
-        "r_rapm_adj": 0.8353520637337382,
-        "r_spm_rapm": 0.3522508831960745,
-        "r_rapm_yoy": 0.3637598413231204,
-        "r_darko_fwd": 0.35616489387267614,
-        "n_fwd": 400
+        "r_rapm_adj": 0.9311954381597509,
+        "r_spm_rapm": 0.35671870367974823,
+        "r_rapm_yoy": 0.32170356654810817,
+        "r_darko_fwd": 0.3139732965049275,
+        "n_fwd": 400,
+        "immature": false
       },
       "2020": {
         "rs_rows": 529,
-        "r_rapm_adj": 0.8199126755871244,
-        "r_spm_rapm": 0.3420233173688612,
-        "r_rapm_yoy": 0.2902153581571023,
-        "r_darko_fwd": 0.24308914393113062,
-        "n_fwd": 435
+        "r_rapm_adj": 0.9024631790620613,
+        "r_spm_rapm": 0.3502047057645176,
+        "r_rapm_yoy": 0.259270013050755,
+        "r_darko_fwd": 0.22562604339046238,
+        "n_fwd": 435,
+        "immature": false
       },
       "2021": {
         "rs_rows": 540,
-        "r_rapm_adj": 0.8167038368956822,
-        "r_spm_rapm": 0.376232459151299,
-        "r_rapm_yoy": 0.3735479078955039,
-        "r_darko_fwd": 0.3755553523468598,
-        "n_fwd": 450
+        "r_rapm_adj": 0.916396915907194,
+        "r_spm_rapm": 0.3890632620951372,
+        "r_rapm_yoy": 0.35334748684164163,
+        "r_darko_fwd": 0.35077929024973786,
+        "n_fwd": 450,
+        "immature": false
       },
       "2022": {
         "rs_rows": 605,
-        "r_rapm_adj": 0.8255980932350968,
-        "r_spm_rapm": 0.31389475502474046,
-        "r_rapm_yoy": 0.3921570573901098,
-        "r_darko_fwd": 0.37472866181124975,
-        "n_fwd": 433
+        "r_rapm_adj": 0.9184195159334277,
+        "r_spm_rapm": 0.3324748181251066,
+        "r_rapm_yoy": 0.3781888002313084,
+        "r_darko_fwd": 0.36716975829453297,
+        "n_fwd": 433,
+        "immature": false
       },
       "2023": {
         "rs_rows": 539,
-        "r_rapm_adj": 0.8419939484394597,
-        "r_spm_rapm": 0.35887145322950376,
-        "r_rapm_yoy": 0.4098459755187801,
-        "r_darko_fwd": 0.3909987717515801,
-        "n_fwd": 450
+        "r_rapm_adj": 0.9382953313887962,
+        "r_spm_rapm": 0.3671174440107372,
+        "r_rapm_yoy": 0.36379913268001274,
+        "r_darko_fwd": 0.3525497341167065,
+        "n_fwd": 450,
+        "immature": false
       },
       "2024": {
         "rs_rows": 572,
-        "r_rapm_adj": 0.8133238986040765,
-        "r_spm_rapm": 0.36532720620316556,
-        "r_rapm_yoy": 0.406818910142057,
-        "r_darko_fwd": 0.3979654828063522,
-        "n_fwd": 447
+        "r_rapm_adj": 0.8954225517099542,
+        "r_spm_rapm": 0.3782758527357152,
+        "r_rapm_yoy": 0.36070824785308153,
+        "r_darko_fwd": 0.3557239453316321,
+        "n_fwd": 447,
+        "immature": false
       },
       "2025": {
         "rs_rows": 569,
-        "r_rapm_adj": 0.8220144354912506,
-        "r_spm_rapm": 0.34789532675939916,
-        "r_rapm_yoy": 0.3446709977306338,
-        "r_darko_fwd": 0.33163956474467365,
-        "n_fwd": 464
+        "r_rapm_adj": 0.911352687389576,
+        "r_spm_rapm": 0.3568347754345325,
+        "r_rapm_yoy": 0.34738736871914644,
+        "r_darko_fwd": 0.3344677169216899,
+        "n_fwd": 464,
+        "immature": false
       },
       "2026": {
         "rs_rows": 582,
-        "r_rapm_adj": 0.9130147061866539,
-        "r_spm_rapm": 0.43719187953619226,
+        "r_rapm_adj": 0.9082156514671733,
+        "r_spm_rapm": 0.4308392068884255,
         "r_rapm_yoy": null,
         "r_darko_fwd": null,
-        "n_fwd": 0
+        "n_fwd": 0,
+        "immature": false
       },
       "2027": {
-        "rs_rows": 458,
-        "r_rapm_adj": 0.8769129191709644,
-        "r_spm_rapm": 0.30319728885988717,
+        "rs_rows": 460,
+        "r_rapm_adj": 0.9979531341217002,
+        "r_spm_rapm": 0.3108697773270637,
         "r_rapm_yoy": null,
         "r_darko_fwd": null,
         "n_fwd": 0,
@@ -845,7 +744,7 @@
       {
         "season": 1997,
         "gate": "mean_rapm",
-        "observed": 0.10440790711463054,
+        "observed": 0.11412415414924439,
         "band": [
           -1.0,
           1.0
@@ -855,7 +754,7 @@
       {
         "season": 1997,
         "gate": "sd_rapm",
-        "observed": 2.0308851613966463,
+        "observed": 1.8069647171590884,
         "band": [
           0.5,
           3.5
@@ -865,7 +764,7 @@
       {
         "season": 1997,
         "gate": "mean_adj_rapm",
-        "observed": 0.546398557116557,
+        "observed": 0.24029660637497896,
         "band": [
           -3.0,
           3.0
@@ -875,57 +774,17 @@
       {
         "season": 1997,
         "gate": "sd_adj_rapm",
-        "observed": 4.749040121678535,
+        "observed": 1.6930664488179257,
         "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 1998,
-        "gate": "mean_rapm",
-        "observed": 0.10435270319163868,
-        "band": [
-          -1.0,
-          1.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 1998,
-        "gate": "sd_rapm",
-        "observed": 1.998098625700353,
-        "band": [
-          0.5,
-          3.5
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 1998,
-        "gate": "mean_adj_rapm",
-        "observed": 0.7662755587859655,
-        "band": [
-          -3.0,
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 1998,
-        "gate": "sd_adj_rapm",
-        "observed": 4.691589306024532,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 1999,
         "gate": "mean_rapm",
-        "observed": 0.12487006586865591,
+        "observed": 0.11772553498138892,
         "band": [
           -1.0,
           1.0
@@ -933,9 +792,9 @@
         "status": "PASS"
       },
       {
-        "season": 1999,
+        "season": 1998,
         "gate": "sd_rapm",
-        "observed": 1.8054251714986542,
+        "observed": 1.776254368310012,
         "band": [
           0.5,
           3.5
@@ -943,29 +802,29 @@
         "status": "PASS"
       },
       {
-        "season": 1999,
+        "season": 1998,
         "gate": "mean_adj_rapm",
-        "observed": 0.8554582658910472,
+        "observed": 0.5245677780823511,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 1998,
+        "gate": "sd_adj_rapm",
+        "observed": 1.9259811609148183,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 1999,
-        "gate": "sd_adj_rapm",
-        "observed": 4.822938986705978,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2000,
         "gate": "mean_rapm",
-        "observed": 0.09807897842627307,
+        "observed": 0.15398255611155823,
         "band": [
           -1.0,
           1.0
@@ -973,9 +832,9 @@
         "status": "PASS"
       },
       {
-        "season": 2000,
+        "season": 1999,
         "gate": "sd_rapm",
-        "observed": 2.0050021057314598,
+        "observed": 1.549252089403585,
         "band": [
           0.5,
           3.5
@@ -983,29 +842,29 @@
         "status": "PASS"
       },
       {
-        "season": 2000,
+        "season": 1999,
         "gate": "mean_adj_rapm",
-        "observed": 0.4379739865464506,
+        "observed": 0.37102204728797344,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 1999,
+        "gate": "sd_adj_rapm",
+        "observed": 1.643177122151427,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2000,
-        "gate": "sd_adj_rapm",
-        "observed": 4.695230700331408,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2001,
         "gate": "mean_rapm",
-        "observed": 0.14731158297817998,
+        "observed": 0.08326910390991293,
         "band": [
           -1.0,
           1.0
@@ -1013,9 +872,9 @@
         "status": "PASS"
       },
       {
-        "season": 2001,
+        "season": 2000,
         "gate": "sd_rapm",
-        "observed": 2.0700009952192,
+        "observed": 1.7497271468896853,
         "band": [
           0.5,
           3.5
@@ -1023,29 +882,29 @@
         "status": "PASS"
       },
       {
-        "season": 2001,
+        "season": 2000,
         "gate": "mean_adj_rapm",
-        "observed": 0.9196982967787324,
+        "observed": 0.288782745388762,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2000,
+        "gate": "sd_adj_rapm",
+        "observed": 1.6477125619391448,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2001,
-        "gate": "sd_adj_rapm",
-        "observed": 4.830694284337537,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2002,
         "gate": "mean_rapm",
-        "observed": 0.12323660455504667,
+        "observed": 0.14357636180875133,
         "band": [
           -1.0,
           1.0
@@ -1053,9 +912,9 @@
         "status": "PASS"
       },
       {
-        "season": 2002,
+        "season": 2001,
         "gate": "sd_rapm",
-        "observed": 1.9604185763538304,
+        "observed": 1.9614968532208923,
         "band": [
           0.5,
           3.5
@@ -1063,29 +922,29 @@
         "status": "PASS"
       },
       {
-        "season": 2002,
+        "season": 2001,
         "gate": "mean_adj_rapm",
-        "observed": 0.9287104341657868,
+        "observed": 0.49103943709835823,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2001,
+        "gate": "sd_adj_rapm",
+        "observed": 2.0147205196511773,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2002,
-        "gate": "sd_adj_rapm",
-        "observed": 4.843003384594304,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2003,
         "gate": "mean_rapm",
-        "observed": 0.16122121141876264,
+        "observed": 0.14717463748866455,
         "band": [
           -1.0,
           1.0
@@ -1093,9 +952,9 @@
         "status": "PASS"
       },
       {
-        "season": 2003,
+        "season": 2002,
         "gate": "sd_rapm",
-        "observed": 2.1048511940257715,
+        "observed": 1.7569285476727554,
         "band": [
           0.5,
           3.5
@@ -1103,29 +962,29 @@
         "status": "PASS"
       },
       {
-        "season": 2003,
+        "season": 2002,
         "gate": "mean_adj_rapm",
-        "observed": 0.9017908045146967,
+        "observed": 0.475422069968354,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2002,
+        "gate": "sd_adj_rapm",
+        "observed": 1.8984003694147802,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2003,
-        "gate": "sd_adj_rapm",
-        "observed": 5.089814638123514,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2004,
         "gate": "mean_rapm",
-        "observed": 0.1394126627463411,
+        "observed": 0.12717618215601845,
         "band": [
           -1.0,
           1.0
@@ -1133,9 +992,9 @@
         "status": "PASS"
       },
       {
-        "season": 2004,
+        "season": 2003,
         "gate": "sd_rapm",
-        "observed": 1.95110007483826,
+        "observed": 1.7867418032642965,
         "band": [
           0.5,
           3.5
@@ -1143,29 +1002,29 @@
         "status": "PASS"
       },
       {
-        "season": 2004,
+        "season": 2003,
         "gate": "mean_adj_rapm",
-        "observed": 0.7777459814516814,
+        "observed": 0.5009745572584277,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2003,
+        "gate": "sd_adj_rapm",
+        "observed": 2.032549499884903,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2004,
-        "gate": "sd_adj_rapm",
-        "observed": 4.647990574174966,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2005,
         "gate": "mean_rapm",
-        "observed": 0.19665094464484414,
+        "observed": 0.14433344362827588,
         "band": [
           -1.0,
           1.0
@@ -1173,9 +1032,9 @@
         "status": "PASS"
       },
       {
-        "season": 2005,
+        "season": 2004,
         "gate": "sd_rapm",
-        "observed": 2.049710868335836,
+        "observed": 1.684511422879224,
         "band": [
           0.5,
           3.5
@@ -1183,29 +1042,29 @@
         "status": "PASS"
       },
       {
-        "season": 2005,
+        "season": 2004,
         "gate": "mean_adj_rapm",
-        "observed": 0.9704630926806622,
+        "observed": 0.46318704730912846,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2004,
+        "gate": "sd_adj_rapm",
+        "observed": 1.8751694497980196,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2005,
-        "gate": "sd_adj_rapm",
-        "observed": 4.325304639063616,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2006,
         "gate": "mean_rapm",
-        "observed": 0.167953026818055,
+        "observed": 0.18037339974436029,
         "band": [
           -1.0,
           1.0
@@ -1213,9 +1072,9 @@
         "status": "PASS"
       },
       {
-        "season": 2006,
+        "season": 2005,
         "gate": "sd_rapm",
-        "observed": 2.043080526475505,
+        "observed": 1.7925917815459702,
         "band": [
           0.5,
           3.5
@@ -1223,29 +1082,29 @@
         "status": "PASS"
       },
       {
-        "season": 2006,
+        "season": 2005,
         "gate": "mean_adj_rapm",
-        "observed": 0.7159741696550419,
+        "observed": 0.4857647295533113,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2005,
+        "gate": "sd_adj_rapm",
+        "observed": 1.8694328029943392,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2006,
-        "gate": "sd_adj_rapm",
-        "observed": 4.545261149825079,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2007,
         "gate": "mean_rapm",
-        "observed": 0.16927679541374402,
+        "observed": 0.14339929786964453,
         "band": [
           -1.0,
           1.0
@@ -1253,9 +1112,9 @@
         "status": "PASS"
       },
       {
-        "season": 2007,
+        "season": 2006,
         "gate": "sd_rapm",
-        "observed": 1.9921744421839742,
+        "observed": 1.7334043807032664,
         "band": [
           0.5,
           3.5
@@ -1263,29 +1122,29 @@
         "status": "PASS"
       },
       {
-        "season": 2007,
+        "season": 2006,
         "gate": "mean_adj_rapm",
-        "observed": 1.0008053698508994,
+        "observed": 0.5013027191875048,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2006,
+        "gate": "sd_adj_rapm",
+        "observed": 2.004084099733419,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2007,
-        "gate": "sd_adj_rapm",
-        "observed": 4.769902201445151,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2008,
         "gate": "mean_rapm",
-        "observed": 0.1091971597079236,
+        "observed": 0.17038264205317102,
         "band": [
           -1.0,
           1.0
@@ -1293,9 +1152,9 @@
         "status": "PASS"
       },
       {
-        "season": 2008,
+        "season": 2007,
         "gate": "sd_rapm",
-        "observed": 1.9616591318648757,
+        "observed": 1.7473884440341603,
         "band": [
           0.5,
           3.5
@@ -1303,29 +1162,29 @@
         "status": "PASS"
       },
       {
-        "season": 2008,
+        "season": 2007,
         "gate": "mean_adj_rapm",
-        "observed": 0.5946153049493569,
+        "observed": 0.4794889733911336,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2007,
+        "gate": "sd_adj_rapm",
+        "observed": 1.9317329683352247,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2008,
-        "gate": "sd_adj_rapm",
-        "observed": 4.153123970073287,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2009,
         "gate": "mean_rapm",
-        "observed": 0.1297979955133169,
+        "observed": 0.13012514054921936,
         "band": [
           -1.0,
           1.0
@@ -1333,9 +1192,9 @@
         "status": "PASS"
       },
       {
-        "season": 2009,
+        "season": 2008,
         "gate": "sd_rapm",
-        "observed": 2.1129513660679224,
+        "observed": 1.741524860269899,
         "band": [
           0.5,
           3.5
@@ -1343,29 +1202,29 @@
         "status": "PASS"
       },
       {
-        "season": 2009,
+        "season": 2008,
         "gate": "mean_adj_rapm",
-        "observed": 0.6918575016224661,
+        "observed": 0.44646966763156953,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2008,
+        "gate": "sd_adj_rapm",
+        "observed": 1.9202346017783871,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2009,
-        "gate": "sd_adj_rapm",
-        "observed": 4.732130203350808,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2010,
         "gate": "mean_rapm",
-        "observed": 0.07144792116976695,
+        "observed": 0.14560677129866104,
         "band": [
           -1.0,
           1.0
@@ -1373,9 +1232,9 @@
         "status": "PASS"
       },
       {
-        "season": 2010,
+        "season": 2009,
         "gate": "sd_rapm",
-        "observed": 1.1587558735780796,
+        "observed": 1.8724373910583043,
         "band": [
           0.5,
           3.5
@@ -1383,29 +1242,29 @@
         "status": "PASS"
       },
       {
-        "season": 2010,
+        "season": 2009,
         "gate": "mean_adj_rapm",
-        "observed": 0.7045037422999838,
+        "observed": 0.4285961012214516,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2009,
+        "gate": "sd_adj_rapm",
+        "observed": 2.0099562254896535,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2010,
-        "gate": "sd_adj_rapm",
-        "observed": 4.5049913492679545,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2011,
         "gate": "mean_rapm",
-        "observed": 0.10086479280480065,
+        "observed": 0.11915141406641874,
         "band": [
           -1.0,
           1.0
@@ -1413,9 +1272,9 @@
         "status": "PASS"
       },
       {
-        "season": 2011,
+        "season": 2010,
         "gate": "sd_rapm",
-        "observed": 2.058395835175664,
+        "observed": 1.6791535001495905,
         "band": [
           0.5,
           3.5
@@ -1423,29 +1282,29 @@
         "status": "PASS"
       },
       {
-        "season": 2011,
+        "season": 2010,
         "gate": "mean_adj_rapm",
-        "observed": 0.5038014326598598,
+        "observed": 0.4136715358251746,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2010,
+        "gate": "sd_adj_rapm",
+        "observed": 1.9273326378830888,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2011,
-        "gate": "sd_adj_rapm",
-        "observed": 4.906034001847041,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2012,
         "gate": "mean_rapm",
-        "observed": 0.20994452901121569,
+        "observed": 0.10757925365000728,
         "band": [
           -1.0,
           1.0
@@ -1453,9 +1312,9 @@
         "status": "PASS"
       },
       {
-        "season": 2012,
+        "season": 2011,
         "gate": "sd_rapm",
-        "observed": 2.007216352526615,
+        "observed": 1.7854998345460187,
         "band": [
           0.5,
           3.5
@@ -1463,29 +1322,29 @@
         "status": "PASS"
       },
       {
-        "season": 2012,
+        "season": 2011,
         "gate": "mean_adj_rapm",
-        "observed": 0.8418821061940063,
+        "observed": 0.4002200078041114,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2011,
+        "gate": "sd_adj_rapm",
+        "observed": 1.8903587129345163,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2012,
-        "gate": "sd_adj_rapm",
-        "observed": 4.990504516655445,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2013,
         "gate": "mean_rapm",
-        "observed": 0.11930366047446612,
+        "observed": 0.17231967562463027,
         "band": [
           -1.0,
           1.0
@@ -1493,9 +1352,9 @@
         "status": "PASS"
       },
       {
-        "season": 2013,
+        "season": 2012,
         "gate": "sd_rapm",
-        "observed": 1.2353315557647868,
+        "observed": 1.7512157907353965,
         "band": [
           0.5,
           3.5
@@ -1503,29 +1362,29 @@
         "status": "PASS"
       },
       {
-        "season": 2013,
+        "season": 2012,
         "gate": "mean_adj_rapm",
-        "observed": 0.744409897631654,
+        "observed": 0.4540974392710688,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2012,
+        "gate": "sd_adj_rapm",
+        "observed": 1.941685733496018,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2013,
-        "gate": "sd_adj_rapm",
-        "observed": 4.600831325025838,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2014,
         "gate": "mean_rapm",
-        "observed": 0.10581204321058868,
+        "observed": 0.1439445336995647,
         "band": [
           -1.0,
           1.0
@@ -1533,9 +1392,9 @@
         "status": "PASS"
       },
       {
-        "season": 2014,
+        "season": 2013,
         "gate": "sd_rapm",
-        "observed": 2.087958209535378,
+        "observed": 1.7074009334292422,
         "band": [
           0.5,
           3.5
@@ -1543,29 +1402,29 @@
         "status": "PASS"
       },
       {
-        "season": 2014,
+        "season": 2013,
         "gate": "mean_adj_rapm",
-        "observed": 0.601689609571676,
+        "observed": 0.446232410373746,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2013,
+        "gate": "sd_adj_rapm",
+        "observed": 1.7462740033518085,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2014,
-        "gate": "sd_adj_rapm",
-        "observed": 5.387692939546543,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2015,
         "gate": "mean_rapm",
-        "observed": 0.1149946916628964,
+        "observed": 0.10559438213857014,
         "band": [
           -1.0,
           1.0
@@ -1573,9 +1432,9 @@
         "status": "PASS"
       },
       {
-        "season": 2015,
+        "season": 2014,
         "gate": "sd_rapm",
-        "observed": 2.177501979807338,
+        "observed": 1.8386324543262929,
         "band": [
           0.5,
           3.5
@@ -1583,29 +1442,29 @@
         "status": "PASS"
       },
       {
-        "season": 2015,
+        "season": 2014,
         "gate": "mean_adj_rapm",
-        "observed": 0.6478912920087506,
+        "observed": 0.4544804741028734,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2014,
+        "gate": "sd_adj_rapm",
+        "observed": 1.867014338647228,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2015,
-        "gate": "sd_adj_rapm",
-        "observed": 5.036191255152046,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2016,
         "gate": "mean_rapm",
-        "observed": 0.12264368943541783,
+        "observed": 0.11991448355033059,
         "band": [
           -1.0,
           1.0
@@ -1613,9 +1472,9 @@
         "status": "PASS"
       },
       {
-        "season": 2016,
+        "season": 2015,
         "gate": "sd_rapm",
-        "observed": 1.353140814131094,
+        "observed": 1.912488387391863,
         "band": [
           0.5,
           3.5
@@ -1623,29 +1482,29 @@
         "status": "PASS"
       },
       {
-        "season": 2016,
+        "season": 2015,
         "gate": "mean_adj_rapm",
-        "observed": 0.7069429349651513,
+        "observed": 0.3873723067483047,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2015,
+        "gate": "sd_adj_rapm",
+        "observed": 2.0102553297521073,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2016,
-        "gate": "sd_adj_rapm",
-        "observed": 4.766157514444234,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2017,
         "gate": "mean_rapm",
-        "observed": 0.19666585431285025,
+        "observed": 0.12829878161346062,
         "band": [
           -1.0,
           1.0
@@ -1653,9 +1512,9 @@
         "status": "PASS"
       },
       {
-        "season": 2017,
+        "season": 2016,
         "gate": "sd_rapm",
-        "observed": 2.164618566721892,
+        "observed": 1.8234832884193666,
         "band": [
           0.5,
           3.5
@@ -1663,29 +1522,29 @@
         "status": "PASS"
       },
       {
-        "season": 2017,
+        "season": 2016,
         "gate": "mean_adj_rapm",
-        "observed": 0.7422807654929899,
+        "observed": 0.44146104177172785,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2016,
+        "gate": "sd_adj_rapm",
+        "observed": 2.0560307012921633,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2017,
-        "gate": "sd_adj_rapm",
-        "observed": 4.754938820171252,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2018,
         "gate": "mean_rapm",
-        "observed": 0.1342351150320103,
+        "observed": 0.15594373289995364,
         "band": [
           -1.0,
           1.0
@@ -1693,9 +1552,9 @@
         "status": "PASS"
       },
       {
-        "season": 2018,
+        "season": 2017,
         "gate": "sd_rapm",
-        "observed": 2.167806756845887,
+        "observed": 1.876193752793441,
         "band": [
           0.5,
           3.5
@@ -1703,29 +1562,29 @@
         "status": "PASS"
       },
       {
-        "season": 2018,
+        "season": 2017,
         "gate": "mean_adj_rapm",
-        "observed": 0.7951206538543315,
+        "observed": 0.48196746334435187,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2017,
+        "gate": "sd_adj_rapm",
+        "observed": 2.0313193800076195,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2018,
-        "gate": "sd_adj_rapm",
-        "observed": 4.979271977177275,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2019,
         "gate": "mean_rapm",
-        "observed": 0.15443279635314294,
+        "observed": 0.1327036991055714,
         "band": [
           -1.0,
           1.0
@@ -1733,9 +1592,9 @@
         "status": "PASS"
       },
       {
-        "season": 2019,
+        "season": 2018,
         "gate": "sd_rapm",
-        "observed": 1.4009665864899203,
+        "observed": 1.8605011768199264,
         "band": [
           0.5,
           3.5
@@ -1743,29 +1602,29 @@
         "status": "PASS"
       },
       {
-        "season": 2019,
+        "season": 2018,
         "gate": "mean_adj_rapm",
-        "observed": 0.6743276144025327,
+        "observed": 0.39759996152016874,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2018,
+        "gate": "sd_adj_rapm",
+        "observed": 1.9302485027221425,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2019,
-        "gate": "sd_adj_rapm",
-        "observed": 5.197627884521511,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2020,
         "gate": "mean_rapm",
-        "observed": 0.05553302680548143,
+        "observed": 0.16600797687358662,
         "band": [
           -1.0,
           1.0
@@ -1773,9 +1632,9 @@
         "status": "PASS"
       },
       {
-        "season": 2020,
+        "season": 2019,
         "gate": "sd_rapm",
-        "observed": 1.1503877514447847,
+        "observed": 1.8904651043888019,
         "band": [
           0.5,
           3.5
@@ -1783,29 +1642,29 @@
         "status": "PASS"
       },
       {
-        "season": 2020,
+        "season": 2019,
         "gate": "mean_adj_rapm",
-        "observed": 0.31363158667118535,
+        "observed": 0.397006066010803,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2019,
+        "gate": "sd_adj_rapm",
+        "observed": 1.8790090914858517,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2020,
-        "gate": "sd_adj_rapm",
-        "observed": 4.979905511921054,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2021,
         "gate": "mean_rapm",
-        "observed": 0.14396900245802435,
+        "observed": 0.0873858876845165,
         "band": [
           -1.0,
           1.0
@@ -1813,9 +1672,9 @@
         "status": "PASS"
       },
       {
-        "season": 2021,
+        "season": 2020,
         "gate": "sd_rapm",
-        "observed": 1.3153822069426286,
+        "observed": 1.6803161549801535,
         "band": [
           0.5,
           3.5
@@ -1823,29 +1682,29 @@
         "status": "PASS"
       },
       {
-        "season": 2021,
+        "season": 2020,
         "gate": "mean_adj_rapm",
-        "observed": 0.8437431942703769,
+        "observed": 0.3135465318189201,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2020,
+        "gate": "sd_adj_rapm",
+        "observed": 1.7454761556695304,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2021,
-        "gate": "sd_adj_rapm",
-        "observed": 5.008540418743448,
-        "band": [
-          3.0,
-          8.0
-        ],
-        "status": "PASS"
-      },
-      {
-        "season": 2022,
         "gate": "mean_rapm",
-        "observed": 0.11746481007113806,
+        "observed": 0.15206599136699667,
         "band": [
           -1.0,
           1.0
@@ -1853,9 +1712,9 @@
         "status": "PASS"
       },
       {
-        "season": 2022,
+        "season": 2021,
         "gate": "sd_rapm",
-        "observed": 1.294389572354159,
+        "observed": 1.7624272561530319,
         "band": [
           0.5,
           3.5
@@ -1863,29 +1722,69 @@
         "status": "PASS"
       },
       {
-        "season": 2022,
+        "season": 2021,
         "gate": "mean_adj_rapm",
-        "observed": 0.8582730637178035,
+        "observed": 0.41761109694755816,
         "band": [
           -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2021,
+        "gate": "sd_adj_rapm",
+        "observed": 1.7960939683694404,
+        "band": [
+          1.0,
           3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2022,
-        "gate": "sd_adj_rapm",
-        "observed": 4.976304014015549,
+        "gate": "mean_rapm",
+        "observed": 0.19133870303557182,
         "band": [
-          3.0,
-          8.0
+          -1.0,
+          1.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2022,
+        "gate": "sd_rapm",
+        "observed": 1.8667726529842825,
+        "band": [
+          0.5,
+          3.5
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2022,
+        "gate": "mean_adj_rapm",
+        "observed": 0.44373832122589907,
+        "band": [
+          -3.0,
+          3.0
+        ],
+        "status": "PASS"
+      },
+      {
+        "season": 2022,
+        "gate": "sd_adj_rapm",
+        "observed": 1.8964841093936613,
+        "band": [
+          1.0,
+          3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2023,
         "gate": "mean_rapm",
-        "observed": 0.04597582255393104,
+        "observed": 0.11910126964707969,
         "band": [
           -1.0,
           1.0
@@ -1895,7 +1794,7 @@
       {
         "season": 2023,
         "gate": "sd_rapm",
-        "observed": 1.2403667379372554,
+        "observed": 1.8433236887252236,
         "band": [
           0.5,
           3.5
@@ -1905,7 +1804,7 @@
       {
         "season": 2023,
         "gate": "mean_adj_rapm",
-        "observed": 0.5693144578302554,
+        "observed": 0.44409997559183223,
         "band": [
           -3.0,
           3.0
@@ -1915,17 +1814,17 @@
       {
         "season": 2023,
         "gate": "sd_adj_rapm",
-        "observed": 4.763094633907968,
+        "observed": 1.8241098922896917,
         "band": [
-          3.0,
-          8.0
+          1.0,
+          3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2024,
         "gate": "mean_rapm",
-        "observed": 0.08633468711804426,
+        "observed": 0.1447804802510011,
         "band": [
           -1.0,
           1.0
@@ -1935,7 +1834,7 @@
       {
         "season": 2024,
         "gate": "sd_rapm",
-        "observed": 1.344322330339884,
+        "observed": 1.909583309576729,
         "band": [
           0.5,
           3.5
@@ -1945,7 +1844,7 @@
       {
         "season": 2024,
         "gate": "mean_adj_rapm",
-        "observed": 0.6977798606134884,
+        "observed": 0.37744166223913983,
         "band": [
           -3.0,
           3.0
@@ -1955,17 +1854,17 @@
       {
         "season": 2024,
         "gate": "sd_adj_rapm",
-        "observed": 4.961749707852325,
+        "observed": 1.9521650543426956,
         "band": [
-          3.0,
-          8.0
+          1.0,
+          3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2025,
         "gate": "mean_rapm",
-        "observed": 0.0711875266061634,
+        "observed": 0.11470900296737142,
         "band": [
           -1.0,
           1.0
@@ -1975,7 +1874,7 @@
       {
         "season": 2025,
         "gate": "sd_rapm",
-        "observed": 1.3364052285936832,
+        "observed": 1.8955804816207449,
         "band": [
           0.5,
           3.5
@@ -1985,7 +1884,7 @@
       {
         "season": 2025,
         "gate": "mean_adj_rapm",
-        "observed": 0.5377965763143108,
+        "observed": 0.3922062832157221,
         "band": [
           -3.0,
           3.0
@@ -1995,17 +1894,17 @@
       {
         "season": 2025,
         "gate": "sd_adj_rapm",
-        "observed": 4.970720382155835,
+        "observed": 1.8925527204875594,
         "band": [
-          3.0,
-          8.0
+          1.0,
+          3.0
         ],
         "status": "PASS"
       },
       {
         "season": 2026,
         "gate": "mean_rapm",
-        "observed": 0.18771841567692124,
+        "observed": 0.16805881202857675,
         "band": [
           -1.0,
           1.0
@@ -2015,7 +1914,7 @@
       {
         "season": 2026,
         "gate": "sd_rapm",
-        "observed": 2.269609969230048,
+        "observed": 1.978499199855318,
         "band": [
           0.5,
           3.5
@@ -2025,7 +1924,7 @@
       {
         "season": 2026,
         "gate": "mean_adj_rapm",
-        "observed": 0.7391667245749522,
+        "observed": 0.3876061387857037,
         "band": [
           -3.0,
           3.0
@@ -2035,10 +1934,10 @@
       {
         "season": 2026,
         "gate": "sd_adj_rapm",
-        "observed": 4.896523902853836,
+        "observed": 1.9863429708035731,
         "band": [
-          3.0,
-          8.0
+          1.0,
+          3.0
         ],
         "status": "PASS"
       },
@@ -2046,7 +1945,7 @@
         "season": 2027,
         "gate": "scale",
         "status": "SKIPPED",
-        "reason": "season immature: 108 qualified players < 250"
+        "reason": "season immature: 118 qualified players < 250"
       }
     ]
   }
