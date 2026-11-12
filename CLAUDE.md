@@ -41,6 +41,8 @@ python -m nba_data_build.hustle_cli --seasons 2024 2025           # hustle, BUIL
 bash scripts/run_impact_backfill.sh        # nba_player_impact full-history backfill, BUILD-ONLY
 bash scripts/run_impact_backfill.sh 2025 --publish   # ...and upload to the release (deliberate)
 bash scripts/nightly_nba_impact.sh --dry-run         # current season, plan only, no commit
+python -m nba_model_publish current-impact --seasons 2007:2026 --out out/ci --raw-store-dir <raw>/nba_stats/json   # BB-D39 weekly current rating, BUILD-ONLY (--publish uploads nba_current_impact)
+python -m nba_model_publish d38-append --seasons 1997:2026 --built out/impact --out out/d38   # BB-D38 columns onto the published seasons (--publish)
 bash scripts/nightly_nba_impact.sh 2026 --publish    # ...publish AND commit the artifacts
 bash scripts/run_v3_backfill.sh -s 1997 -e 2026   # Program V v3 backfill (resumable)
 bash scripts/run_v3_cutover.sh -s 1997 -e 2026    # D26d cutover -- DRY RUN by default
