@@ -177,5 +177,6 @@ def test_append_d38_keeps_every_published_column(tmp_path):
     assert out.select(pub.columns).equals(pub)
     assert out.columns == [*pub.columns, *P.D38_COLUMNS]
     assert out["reml_rapm"].to_list() == [2.0, 1.0, None]
+    assert P.append_d38(out, built).equals(out)  # a re-run replaces, never duplicates
     with pytest.raises(ValueError, match="players differ"):
         P.append_d38(pub, built.head(2))

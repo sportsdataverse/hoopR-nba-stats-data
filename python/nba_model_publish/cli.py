@@ -316,8 +316,8 @@ def build_parser() -> argparse.ArgumentParser:
     ci.add_argument("--cache-dir", default=None, help="Possession per-game parquet cache directory.")
     ci.add_argument(
         "--raw-store-dir",
-        default=os.environ.get("SDV_PY_NBA_RAW_JSON_DIR"),
-        required=os.environ.get("SDV_PY_NBA_RAW_JSON_DIR") is None,
+        default=os.environ.get("SDV_PY_NBA_RAW_JSON_DIR") or None,
+        required=not os.environ.get("SDV_PY_NBA_RAW_JSON_DIR"),
         help="Committed hoopR-nba-stats-raw JSON (local dir or http(s) base). Offline only: "
         "a capture missing from the store fails the run (no proxy path).",
     )
@@ -530,14 +530,15 @@ def main(argv=None) -> int:
         out = Path(args.out)
         out.mkdir(parents=True, exist_ok=True)
         for s in args.seasons:
-            url = f"https://github.com/{args.repo}/releases/download/{args.tag}/{args.tag}_{s}.parquet"
+            name = f"nba_player_impact_{s}"  # the dataset's file name, whatever --tag says
+            url = f"https://github.com/{args.repo}/releases/download/{args.tag}/{name}.parquet"
             r = requests.get(url, timeout=120)
             r.raise_for_status()
-            built = pl.read_parquet(Path(args.built) / f"{args.tag}_{s}.parquet")
+            built = pl.read_parquet(Path(args.built) / f"{name}.parquet")
             f = append_d38(pl.read_parquet(io.BytesIO(r.content)), built)
-            f.write_parquet(out / f"{args.tag}_{s}.parquet")
-            f.write_csv(out / f"{args.tag}_{s}.csv")
-            write_rds(f, out / f"{args.tag}_{s}.rds", cls=list(RDS_CLASS))
+            f.write_parquet(out / f"{name}.parquet")
+            f.write_csv(out / f"{name}.csv")
+            write_rds(f, out / f"{name}.rds", cls=list(RDS_CLASS))
             print(f"d38-append: season={s} rows={f.height} -> {out}")
         if not (args.publish or args.dry_run):
             print("publish: skipped (pass --publish or --dry-run)")
@@ -565,6 +566,8 @@ def main(argv=None) -> int:
         from .prior_informed import build_nba_current_impact
 
         raw = args.raw_store_dir
+        if not raw:  # an empty value would make every fetch live and unproxied
+            raise SystemExit("current-impact: --raw-store-dir is empty")
 
         def store(endpoint, fn):
             return _store_backed(endpoint, fn, None, raw, False)

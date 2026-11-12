@@ -66,6 +66,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dest", type=Path, default=MODELS_PATH)
     a = ap.parse_args(argv)
     recs = [_npz_model(f) for f in sorted(a.out.glob("model_*.npz"))]
+    if not recs:
+        raise SystemExit(f"no model_*.npz under {a.out}; {a.dest} left as it is")
     if a.next is not None:
         fitted = [r["season"] for r in recs]
         train = box_prior_training_seasons(a.next, fitted)

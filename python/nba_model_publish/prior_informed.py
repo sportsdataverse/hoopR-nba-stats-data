@@ -145,8 +145,10 @@ def append_d38(published: pl.DataFrame, built: pl.DataFrame) -> pl.DataFrame:
 
     Every published column keeps its values and place (a rebuild alone moves floats by ~1e-14 and can
     flip a tied rank). The rebuild must rate exactly the published players, season type by season type.
+    A season that already carries the columns gets them replaced (a re-run is idempotent).
     """
     keys = ["player_id", "season_type"]
+    published = published.drop(D38_COLUMNS, strict=False)
     if not published.select(keys).sort(keys).equals(built.select(keys).sort(keys)):
         raise ValueError("the rebuild's players differ from the published season's")
     out = published.join(
@@ -227,6 +229,8 @@ def build_nba_current_impact(
             nba_player_ages(s_str, fetch=biostats), playerindex(season=s_str, league_id="00")
         )
         cat = [pl.concat([a, b], how="diagonal_relaxed") for a, b in zip(prev, (poss, lp, lt))]
+        if poss.height == 0:
+            raise ValueError(f"season {s} has no regular-season possessions")
         dates[s] = eval_dates(poss["game_date"])
         for d in dates[s]:
             priors.append(current_impact_prior(cat[1], cat[2], cat[0], bio, models[s], d))
