@@ -19,7 +19,8 @@
     "spm": "sportsdataverse.nba.train_spm + nba_spm. Coefficients are trained ONCE per season, on the Regular Season box features + RAPM target, and reused for the Playoffs pass -- re-fitting on a ~15-game playoff sample would train noise on noise. Playoff figures are therefore on the same scale as regular-season ones but rest on far fewer possessions; treat them as directional.",
     "bpm": "sportsdataverse.nba.nba_bpm (BPM 2.0, season granularity)",
     "war": "sportsdataverse.nba.nba_war on the RAPM rating; pts_per_win calibrated ONCE per season from Regular Season team game logs (OLS wins ~ total margin) and reused for the Playoffs pass; replacement_level = -2.0 per 100 (basketball-reference VORP convention)",
-    "darko": "sportsdataverse.nba.nba_darko on a SEASON-GRANULAR panel: one row per player-season whose rating is the possession-weighted blend of Regular Season + Playoffs (DARKO's aging curve and process variance are per-season quantities, so playoffs enter as a blend, not a second time step). DARKO projects the NEXT season, so both season_type rows carry the same projection; boban_* (renamed from darko_*) columns are null until the panel spans >= 2 seasons"
+    "darko": "sportsdataverse.nba.nba_darko on a SEASON-GRANULAR panel: one row per player-season whose rating is the possession-weighted blend of Regular Season + Playoffs (DARKO's aging curve and process variance are per-season quantities, so playoffs enter as a blend, not a second time step). DARKO projects the NEXT season, so both season_type rows carry the same projection; boban_* (renamed from darko_*) columns are null until the panel spans >= 2 seasons",
+    "box_prior_v2": "BB-D38, Regular Season rows only (null on Playoffs rows): o_box_prior / d_box_prior / box_prior = sportsdataverse.nba.nba_box_prior.apply_box_prior with the season's walk-forward model (models/box_prior_v2.json, fitted by sportsdataverse-py tools/fit_box_prior_v2.py on earlier seasons only; leave-one-season-out through 2005); o_reml_rapm / d_reml_rapm / reml_rapm = sportsdataverse.nba.nba_reml_rapm(penalty='fixed'): RAPM shrunk toward that prior at the adjusted-RAPM penalty. Per 100, d positive = good defense."
   },
   "possession_pipeline_version": 7,
   "lineup_source": "auto",
@@ -361,11 +362,11 @@
       "season_types": [
         "Regular Season"
       ],
-      "generated_at": "2026-11-11T09:00:22+00:00",
+      "generated_at": "2026-11-12T09:00:37+00:00",
       "rows": 461
     }
   ],
-  "generated_at": "2026-11-11T09:00:22+00:00",
+  "generated_at": "2026-11-12T09:00:37+00:00",
   "publish_gates": {
     "seasons_gated": [
       1997,
@@ -732,8 +733,8 @@
       },
       "2027": {
         "rs_rows": 461,
-        "r_rapm_adj": 0.9978871122318415,
-        "r_spm_rapm": 0.2803289338901095,
+        "r_rapm_adj": 0.9978904236130746,
+        "r_spm_rapm": 0.3109173019476824,
         "r_rapm_yoy": null,
         "r_darko_fwd": null,
         "n_fwd": 0,
@@ -1945,7 +1946,7 @@
         "season": 2027,
         "gate": "scale",
         "status": "SKIPPED",
-        "reason": "season immature: 141 qualified players < 250"
+        "reason": "season immature: 151 qualified players < 250"
       }
     ]
   }
