@@ -74,6 +74,8 @@ from sportsdataverse.nba.nba_stats import (
     nba_stats_playerindex,
 )
 
+from .prior_informed import D38_COLUMNS, box_prior_columns, load_box_prior_models, season_bio
+
 #: Zero-arg callable yielding a proxy URL (``RoundRobin.next`` matches this).
 ProxyProvider = Callable[[], Optional[str]]
 
@@ -228,6 +230,15 @@ def _write_model_card(
                 "as a blend, not a second time step). DARKO projects the NEXT "
                 "season, so both season_type rows carry the same projection; "
                 "boban_* (renamed from darko_*) columns are null until the panel spans >= 2 seasons"
+            ),
+            "box_prior_v2": (
+                "BB-D38, Regular Season rows only (null on Playoffs rows): o_box_prior / "
+                "d_box_prior / box_prior = sportsdataverse.nba.nba_box_prior.apply_box_prior "
+                "with the season's walk-forward model (models/box_prior_v2.json, fitted by "
+                "sportsdataverse-py tools/fit_box_prior_v2.py on earlier seasons only; "
+                "leave-one-season-out through 2005); o_reml_rapm / d_reml_rapm / reml_rapm = "
+                "sportsdataverse.nba.nba_reml_rapm(penalty='fixed'): RAPM shrunk toward that "
+                "prior at the adjusted-RAPM penalty. Per 100, d positive = good defense."
             ),
         },
         "possession_pipeline_version": PIPELINE_VERSION,
@@ -663,6 +674,7 @@ def build_nba_player_impact(
     proxy_provider: Optional[ProxyProvider] = None,
     raw_store_dir: Optional[str] = None,
     allow_live: bool = True,
+    box_prior_models: Optional[dict] = None,
 ) -> list[dict]:
     """Build per-season consolidated player-impact tables and write parquet.
 
@@ -719,6 +731,10 @@ def build_nba_player_impact(
         allow_live: When False, a season-level store miss raises instead of
             falling through to stats.nba.com. The CLI sets it False when no proxy
             is configured and ``--no-proxy`` was not passed.
+        box_prior_models: ``{season END year: BoxPriorModel}`` for the BB-D38
+            columns (``prior_informed.D38_COLUMNS``, Regular Season rows only);
+            default the committed ``models/box_prior_v2.json``. A season without
+            a model gets the columns null.
 
     Returns:
         List of ``{"season": int, "rows": int, "path": str}`` dicts, one per
@@ -745,6 +761,7 @@ def build_nba_player_impact(
     # delay_s=7) before hitting `assert coef is not None` deep in the loop
     # below. Mirrors cli.py's ``_parse_season_types``.
     season_types = [t for t in ("Regular Season", "Playoffs") if t in season_types]
+    models = load_box_prior_models() if box_prior_models is None else box_prior_models
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -798,6 +815,8 @@ def build_nba_player_impact(
         # identical request only once against the shared ~250 req/10min
         # stats.nba.com budget.
         positions: Optional[pl.DataFrame] = None
+        poss_rs: Optional[pl.DataFrame] = None
+        logs_rs: Optional[dict] = None
 
         for stype in season_types:
             # compile_nba_season is a FETCH, not a write site, but the SDK
@@ -910,6 +929,7 @@ def build_nba_player_impact(
 
             if stype == "Regular Season":
                 rapm_rs, spm_rs = rapm, spm
+                poss_rs, logs_rs = poss, logs
             else:
                 rapm_po, spm_po = rapm, spm
 
@@ -989,11 +1009,8 @@ def build_nba_player_impact(
                 pl.lit(season, dtype=pl.Int64).alias("season")
             )
         )
-        age_frames.append(
-            nba_player_ages(s_str, fetch=_biostats).with_columns(
-                pl.lit(season, dtype=pl.Int64).alias("season")
-            )
-        )
+        ages_s = nba_player_ages(s_str, fetch=_biostats)
+        age_frames.append(ages_s.with_columns(pl.lit(season, dtype=pl.Int64).alias("season")))
         panel = pl.concat(panel_frames)
         if panel["season"].n_unique() >= 2:
             darko = nba_darko(panel, pl.concat(age_frames))
@@ -1019,6 +1036,22 @@ def build_nba_player_impact(
         impact = pl.concat(out_frames, how="vertical")
         # <metric>_n / _rank / _pct per (season, season_type), gated on each metric's sample.
         impact = nba_player_impact_context(impact, league_id="00")
+        # BB-D38: box prior v2 + the season rating shrunk toward it (fixed penalty), Regular
+        # Season rows only, appended last so every earlier column keeps its place and bytes.
+        model = models.get(season_end)
+        if model is not None and poss_rs is not None:
+            bio = season_bio(ages_s, _playerindex(season=s_str, league_id="00"))
+            d38 = box_prior_columns(poss_rs, logs_rs["player"], logs_rs["team"], bio, model)
+            d38 = d38.with_columns(pl.lit("Regular Season").alias("season_type"))
+        else:
+            print(f"impact: season={season_end} no box prior model -- BB-D38 columns null")
+            d38 = pl.DataFrame(
+                schema={"player_id": pl.Int64, "season_type": pl.Utf8}
+                | {c: pl.Float64 for c in D38_COLUMNS}
+            )
+        joined = impact.join(d38, on=["player_id", "season_type"], how="left")
+        assert joined.height == impact.height, "BB-D38 join changed the row count"
+        impact = joined
 
         # Track what was ACTUALLY built (not merely requested) for the model
         # card: a season with no playoffs must not have the card claim a

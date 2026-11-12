@@ -56,6 +56,15 @@ _IMPACT_RELEASE_NOTES = (
 )
 
 
+_CURRENT_RELEASE_NOTES = (
+    "NBA current impact (BB-D39): each player's expected offense / defense impact per 100 "
+    "possessions as of opening night and every 7 days after, from the games before the date "
+    "only (box prior v2 plus a Kalman-filtered deviation; sportsdataverse nba_current_impact). "
+    "One parquet per season, one row per player per as-of date; Python-built by "
+    "hoopR-nba-stats-data/python/nba_model_publish."
+)
+
+
 def _parse_seasons(spec: str) -> list[int]:
     """Parse a ``"start:end"`` (inclusive) or single ``"year"`` season spec.
 
@@ -284,6 +293,38 @@ def build_parser() -> argparse.ArgumentParser:
     cm.add_argument("--tag", default="nba_player_impact", help="GitHub release tag.")
     cm.add_argument("--repo", default=_REPO_DEFAULT, help="GitHub repo owning the release.")
 
+    da = sub.add_parser(
+        "d38-append",
+        help="Append a rebuild's BB-D38 columns to the PUBLISHED nba_player_impact seasons (other columns untouched).",
+    )
+    da.add_argument("--seasons", required=True, type=_parse_seasons, help="END years.")
+    da.add_argument("--built", required=True, help="An `impact` build directory of those seasons.")
+    da.add_argument("--out", required=True, help="Output directory.")
+    da.add_argument("--tag", default="nba_player_impact", help="GitHub release tag.")
+    da.add_argument("--publish", action="store_true", help="Upload parquet + rds + csv to --tag.")
+    _add_repo_dry(da)
+
+    ci = sub.add_parser(
+        "current-impact",
+        help="Build (+ upload) the weekly BB-D39 current rating, nba_current_impact_{season}.parquet.",
+    )
+    ci.add_argument(
+        "--seasons", required=True, type=_parse_seasons, help="END years to write, 2007 or later."
+    )
+    ci.add_argument("--out", required=True, help="Output directory.")
+    ci.add_argument("--lineup-source", default="auto", help="Passed to compile_nba_season.")
+    ci.add_argument("--cache-dir", default=None, help="Possession per-game parquet cache directory.")
+    ci.add_argument(
+        "--raw-store-dir",
+        default=os.environ.get("SDV_PY_NBA_RAW_JSON_DIR") or None,
+        required=not os.environ.get("SDV_PY_NBA_RAW_JSON_DIR"),
+        help="Committed hoopR-nba-stats-raw JSON (local dir or http(s) base). Offline only: "
+        "a capture missing from the store fails the run (no proxy path).",
+    )
+    ci.add_argument("--tag", default="nba_current_impact", help="GitHub release tag.")
+    ci.add_argument("--publish", action="store_true", help="Upload the built seasons to --tag.")
+    _add_repo_dry(ci)
+
     up = sub.add_parser(
         "upload",
         help="Upload an already-built artifact directory to a release (no recompute; --dry-run is fully network-free).",
@@ -476,6 +517,91 @@ def main(argv=None) -> int:
         merge_model_card(
             Path(args.dir), _parse_seasons(args.seasons), published_model_card(args.repo, args.tag)
         )
+    elif args.cmd == "d38-append":
+        import io
+
+        import polars as pl
+        import requests
+        from nba_data_build.reshape.io import RDS_CLASS
+        from sportsdataverse._rds import write_rds
+
+        from .prior_informed import append_d38
+
+        out = Path(args.out)
+        out.mkdir(parents=True, exist_ok=True)
+        for s in args.seasons:
+            name = f"nba_player_impact_{s}"  # the dataset's file name, whatever --tag says
+            url = f"https://github.com/{args.repo}/releases/download/{args.tag}/{name}.parquet"
+            r = requests.get(url, timeout=120)
+            r.raise_for_status()
+            built = pl.read_parquet(Path(args.built) / f"{name}.parquet")
+            f = append_d38(pl.read_parquet(io.BytesIO(r.content)), built)
+            f.write_parquet(out / f"{name}.parquet")
+            f.write_csv(out / f"{name}.csv")
+            write_rds(f, out / f"{name}.rds", cls=list(RDS_CLASS))
+            print(f"d38-append: season={s} rows={f.height} -> {out}")
+        if not (args.publish or args.dry_run):
+            print("publish: skipped (pass --publish or --dry-run)")
+            return 0
+        res = upload_artifacts(
+            out,
+            args.tag,
+            args.repo,
+            seasons=args.seasons,
+            exts=("parquet", "rds", "csv"),
+            notes=_IMPACT_RELEASE_NOTES,
+            dry_run=args.dry_run,
+        )
+        _print_result(res, args.repo, args.tag, args.dry_run)
+        return 1 if res.get("failed") else 0
+    elif args.cmd == "current-impact":
+        from sportsdataverse.nba import compile_nba_season
+        from sportsdataverse.nba.nba_stats import (
+            nba_stats_leaguedashplayerbiostats,
+            nba_stats_leaguegamelog,
+            nba_stats_playerindex,
+        )
+
+        from .builders import _store_backed
+        from .prior_informed import build_nba_current_impact
+
+        raw = args.raw_store_dir
+        if not raw:  # an empty value would make every fetch live and unproxied
+            raise SystemExit("current-impact: --raw-store-dir is empty")
+
+        def store(endpoint, fn):
+            return _store_backed(endpoint, fn, None, raw, False)
+
+        built = build_nba_current_impact(
+            args.seasons,
+            args.out,
+            compile_season=lambda s: compile_nba_season(
+                s,
+                season_type="Regular Season",
+                lineup_source=args.lineup_source,
+                cache_dir=args.cache_dir,
+                delay_s=0.0,
+                raw_store_dir=raw,
+                raw_store_readonly=True,
+            ),
+            leaguegamelog=store("leaguegamelog", nba_stats_leaguegamelog),
+            playerindex=store("playerindex", nba_stats_playerindex),
+            biostats=store("leaguedashplayerbiostats", nba_stats_leaguedashplayerbiostats),
+        )
+        if not (args.publish or args.dry_run):
+            print(f"publish: skipped seasons={len(built)} -> {args.out} (pass --publish or --dry-run)")
+            return 0
+        res = upload_artifacts(
+            args.out,
+            args.tag,
+            args.repo,
+            seasons=[b["season"] for b in built],
+            exts=("parquet", "rds", "csv"),
+            notes=_CURRENT_RELEASE_NOTES,
+            dry_run=args.dry_run,
+        )
+        _print_result(res, args.repo, args.tag, args.dry_run)
+        return 1 if res.get("failed") else 0
     elif args.cmd == "upload":
         res = upload_artifacts(
             args.artifacts_dir,

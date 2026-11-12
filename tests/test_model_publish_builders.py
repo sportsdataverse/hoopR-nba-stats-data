@@ -13,6 +13,7 @@ import json
 import nba_model_publish.builders as B
 import polars as pl
 import pytest
+from nba_model_publish.prior_informed import D38_COLUMNS
 from sportsdataverse._common.league_context import LEAGUE_AVERAGES_SCHEMA
 from sportsdataverse.nba.nba_player_impact import IMPACT_RANKED
 
@@ -169,6 +170,8 @@ def stubbed(monkeypatch):
         )
 
     monkeypatch.setattr(B, "nba_darko", fake_darko)
+    # No box prior models: the BB-D38 columns stay null (tests/test_prior_informed.py covers them).
+    monkeypatch.setattr(B, "load_box_prior_models", lambda *a, **kw: {})
     return seen
 
 
@@ -203,7 +206,7 @@ EXPECTED_COLS = {
     "boban_filtered_skill",
     "boban_projected_rating",
     "boban_projected_sd",
-} | {f"{m}_{suffix}" for m in IMPACT_RANKED for suffix in ("n", "rank", "pct")}
+} | {f"{m}_{suffix}" for m in IMPACT_RANKED for suffix in ("n", "rank", "pct")} | set(D38_COLUMNS)
 
 
 def test_impact_schema_and_outputs(stubbed, tmp_path):
