@@ -2,15 +2,17 @@
 
 NBA Stats Player Game Logs from hoopR data repository — `leaguegamelog` (season-level).
 
+Player game logs from stats.nba.com `leaguegamelog` (PlayerOrTeam=P): one row per player per game he appeared in, regular season and playoffs (`season_type`), with his box line (`min` through `plus_minus`, `fantasy_pts`) and the game's team, matchup and result. Until 2026-11-13 this tag held TEAM rows; those moved to `nba_stats_team_game_logs`. Span 1997-present (END-year seasons: 1997 = 1996-97).
+
 | | |
 |---|---|
 | **Builder** | [`python/nba_stats_09_player_game_logs_creation.py`](../../python/nba_stats_09_player_game_logs_creation.py) |
 | **Release tag** | [`nba_stats_player_game_logs`](https://github.com/sportsdataverse/sportsdataverse-data/releases/tag/nba_stats_player_game_logs) |
 | **File stem** | `player_game_logs_{season}.{parquet,csv,rds}` |
 | **Seasons built** | — |
-| **Last published** | 2026-08-13 (newest release asset) |
+| **Last published** | 2026-11-12 (newest release asset) |
 | **Tag created** | 2026-07-24 |
-| **Release assets** | 90 |
+| **Release assets** | 97 |
 
 ## Automation
 
@@ -21,6 +23,8 @@ NBA Stats Player Game Logs from hoopR data repository — `leaguegamelog` (seaso
 | col_name | type | description |
 |---|---|---|
 | `season_id` | String | stats.nba.com composite season id: season-type digit + start year ("22023" = 2023-24 regular season). |
+| `player_id` | Int64 | stats.nba.com person id of the player (Int64); joins rosters, boxscores, game logs and pbp (`person_id`). |
+| `player_name` | String | Player display name as the stats API ships it ("LeBron James"). |
 | `team_id` | Int64 | stats.nba.com team id (e.g. 1610612737 = Atlanta Hawks). |
 | `team_abbreviation` | String | Three-letter team code ("ATL"). |
 | `team_name` | String | Team nickname or full name as the source endpoint ships it. |
@@ -48,6 +52,7 @@ NBA Stats Player Game Logs from hoopR data repository — `leaguegamelog` (seaso
 | `pf` | Int64 | Personal fouls. |
 | `pts` | Int64 | Points. |
 | `plus_minus` | Int64 | Point differential while on the floor (player rows) or final margin (team rows). |
+| `fantasy_pts` | Float64 |  |
 | `video_available` | Int64 | 1 when the feed links video for the action/game row. |
 | `season` | Int64 | Season the row belongs to, as the season's ENDING year Int (2024 = the 2023-24 season), matching the asset filename -- on the reshaped RELEASE assets (the 2026-08-13 republish moved every `nba_stats_*` asset onto END-year names) and on the stage-99 master artifacts committed to `nba_stats/` (`schedule_master`, `games_in_data_repo`; the span STRING "1996-97" they carried until 2026-09-30 is gone). `draft` and `draft_combine` are an Int in a second sense: the four-digit draft year (2003 = the June 2003 draft, which precedes the 2003-04 season). |
 | `season_type` | String | Season type the capture was made under ("Regular Season", "Playoffs", ...). |

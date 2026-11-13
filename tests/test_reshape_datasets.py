@@ -6,16 +6,17 @@ from nba_data_build.reshape import datasets
 from nba_data_build.reshape.datasets import BY_KEY, DATASETS, RELEASE_TAGS
 
 
-def test_exactly_seventeen_datasets() -> None:
+def test_exactly_eighteen_datasets() -> None:
     # 15 through the v3 reshape spec + game_matchups (2026-09-02), minus the
     # legacy pbp + schedules reshapes retired 2026-09-30, plus metric_curves
     # (stage 18, 2026-10-01) and rolling_windows (stage 17, F3b-T2), both derived
     # from the committed shots, plus injury_report (stage 19), read from the raw
-    # store's own per-date format.
-    assert len(DATASETS) == 17
+    # store's own per-date format, plus team_game_logs (stage 20, 2026-11-13), split
+    # from player_game_logs: the team leaguegamelog capture.
+    assert len(DATASETS) == 18
     assert "pbp" not in BY_KEY and "schedules" not in BY_KEY
-    assert DATASETS[-2].key == "metric_curves" and BY_KEY["metric_curves"].level == "derived"
-    assert DATASETS[-1].key == "injury_report" and BY_KEY["injury_report"].level == "derived"
+    assert DATASETS[-3].key == "metric_curves" and BY_KEY["metric_curves"].level == "derived"
+    assert DATASETS[-2].key == "injury_report" and BY_KEY["injury_report"].level == "derived"
 
 
 def test_release_tags_are_nba_stats_and_unique() -> None:
@@ -61,3 +62,25 @@ def test_by_key_covers_every_dataset() -> None:
 
 def test_dataset_has_season_floor_field() -> None:
     assert "season_floor" in datasets.Dataset._fields
+
+
+def test_game_logs_split_player_and_team_captures(tmp_path) -> None:
+    import json
+
+    from nba_data_build.reshape.build import build_season_dataset
+
+    def env(headers, rows):
+        return {"resultSets": [{"name": "LeagueGameLog", "headers": headers, "rowSet": rows}]}
+
+    d = tmp_path / "leaguegamelog" / "2005"
+    d.mkdir(parents=True)
+    team = env(["TEAM_ID", "GAME_ID", "PTS"], [[1, "0020400001", 100]])
+    player = env(["PLAYER_ID", "TEAM_ID", "GAME_ID", "PTS"], [[7, 1, "0020400001", 60], [8, 1, "0020400001", 40]])
+    (d / "regular-season.json").write_text(json.dumps(team))
+    (d / "regular-season_p.json").write_text(json.dumps(player))
+
+    p = build_season_dataset(tmp_path, BY_KEY["player_game_logs"], 2005)
+    t = build_season_dataset(tmp_path, BY_KEY["team_game_logs"], 2005)
+    assert p.height == 2 and p["player_id"].null_count() == 0
+    assert p["season_type"].unique().to_list() == ["regular-season"] and "measure_type" not in p.columns
+    assert t.height == 1 and "player_id" not in t.columns

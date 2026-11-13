@@ -45,6 +45,7 @@ create_release "nba_stats_rosters"             "NBA Team Rosters Data (from stat
 create_release "nba_stats_coaches"             "NBA Coaches Data (from stats.nba.com)"
 create_release "nba_stats_draft"               "NBA Draft Data (from stats.nba.com)"
 create_release "nba_stats_player_game_logs"    "NBA Player Game Logs Data (from stats.nba.com)"
+create_release "nba_stats_team_game_logs"      "NBA Team Game Logs Data (from stats.nba.com)"
 create_release "nba_stats_game_rosters"        "NBA Game Rosters Data (from stats.nba.com)"
 create_release "nba_stats_officials"           "NBA Officials Data (from stats.nba.com)"
 create_release "nba_stats_shots"               "NBA Shots Data (from stats.nba.com)"

@@ -783,7 +783,46 @@ class Draft(NbaStatsDataset):
 
 
 class PlayerGameLogs(NbaStatsDataset):
-    """`player_game_logs` — declared from the latest published/committed parquet."""
+    """`player_game_logs` -- one row per player-game (leaguegamelog PlayerOrTeam=P)."""
+
+    season_id: Optional[str] = None
+    player_id: Optional[int] = None
+    player_name: Optional[str] = None
+    team_id: Optional[int] = None
+    team_abbreviation: Optional[str] = None
+    team_name: Optional[str] = None
+    game_id: Optional[str] = None
+    game_date: Optional[str] = None
+    matchup: Optional[str] = None
+    wl: Optional[str] = None
+    min: Optional[int] = None
+    fgm: Optional[int] = None
+    fga: Optional[int] = None
+    fg_pct: Optional[float] = None
+    fg3m: Optional[int] = None
+    fg3a: Optional[int] = None
+    fg3_pct: Optional[float] = None
+    ftm: Optional[int] = None
+    fta: Optional[int] = None
+    ft_pct: Optional[float] = None
+    oreb: Optional[int] = None
+    dreb: Optional[int] = None
+    reb: Optional[int] = None
+    ast: Optional[int] = None
+    stl: Optional[int] = None
+    blk: Optional[int] = None
+    tov: Optional[int] = None
+    pf: Optional[int] = None
+    pts: Optional[int] = None
+    plus_minus: Optional[int] = None
+    fantasy_pts: Optional[float] = None
+    video_available: Optional[int] = None
+    season: Optional[int] = None
+    season_type: Optional[str] = None
+
+
+class TeamGameLogs(NbaStatsDataset):
+    """`team_game_logs` -- one row per team-game (leaguegamelog PlayerOrTeam=T)."""
 
     season_id: Optional[str] = None
     team_id: Optional[int] = None
@@ -1217,6 +1256,7 @@ MODELS: dict[str, type[NbaStatsDataset]] = {
     "coaches": Coaches,
     "draft": Draft,
     "player_game_logs": PlayerGameLogs,
+    "team_game_logs": TeamGameLogs,
     "game_rosters": GameRosters,
     "officials": Officials,
     "player_boxscores": PlayerBoxscores,

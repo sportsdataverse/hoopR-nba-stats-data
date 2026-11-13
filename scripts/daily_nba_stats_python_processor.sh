@@ -8,6 +8,8 @@
 # to the nba_stats_* releases (creating any missing tag).
 #
 #   bash scripts/daily_nba_stats_python_processor.sh -s 2026 -e 2026   # END years: 2026 = 2025-26
+#   DATASETS="player_game_logs team_game_logs" bash scripts/daily_nba_stats_python_processor.sh -s 1997 -e 2027
+#                                       # a subset of dataset keys (default: all)
 #
 # DROPLET-SAFE: unlike the R scrape, this makes NO stats.nba.com calls -- it only
 # reads local JSON and talks to `gh`. That is why it can run on the droplet where
@@ -81,6 +83,7 @@ for i in $(seq "${START_YEAR}" "${END_YEAR}"); do
             --root "${RAW_ROOT}" \
             --seasons "${i}" \
             --out "${OUT_DIR}" \
+            ${DATASETS:+--datasets ${DATASETS}} \
             --publish
         py_rc=$?
         echo "EXIT=${py_rc}"

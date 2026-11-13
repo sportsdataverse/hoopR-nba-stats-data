@@ -150,7 +150,7 @@ def test_stage_19_is_registered_everywhere() -> None:
         None,
         2019,
     )
-    assert datasets.DATASETS[-1] is ds, "stage numbers follow registry order"
+    assert datasets.DATASETS[-2] is ds, "stage numbers follow registry order (team_game_logs, 20, is last)"
     notes = datasets.RELEASE_NOTES["nba_stats_injury_report"]
     for phrase in ("report_datetime", "NOT YET SUBMITTED", "match_method", "2018-12-17"):
         assert phrase in notes

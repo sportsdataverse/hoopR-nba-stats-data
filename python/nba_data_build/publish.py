@@ -74,6 +74,7 @@ PKG_FUNCTION: dict[str, str] = {
     "nba_stats_player_boxscores": "sportsdataverse.nba.load_nba_stats_player_boxscores()",
     "nba_stats_player_game_logs": "sportsdataverse.nba.load_nba_stats_player_game_logs()",
     "nba_stats_player_season_stats": "sportsdataverse.nba.load_nba_stats_player_season_stats()",
+    "nba_stats_team_game_logs": "sportsdataverse.nba.load_nba_stats_team_game_logs()",
     "nba_stats_possessions": "sportsdataverse.nba.load_nba_stats_possessions()",
     "nba_stats_rosters": "sportsdataverse.nba.load_nba_stats_rosters()",
     "nba_stats_schedules": "hoopR::load_nba_schedule()",

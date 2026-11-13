@@ -103,6 +103,10 @@ def build_season_dataset(root: str | Path, dataset: Dataset, season: int) -> pl.
         variants.append((None, single))
     else:
         for stem in raw.list_variants(root, dataset.endpoint, season):
+            # leaguegamelog keeps the player capture beside the team one as
+            # {season_type}_p; binding both stacks team rows into player logs.
+            if dataset.player_or_team and stem.endswith("_p") != (dataset.player_or_team == "P"):
+                continue
             payload = raw.read_season(root, dataset.endpoint, season, stem)
             if payload is not None:
                 variants.append((stem, payload))
@@ -111,6 +115,8 @@ def build_season_dataset(root: str | Path, dataset: Dataset, season: int) -> pl.
         headers, rows = raw.result_set(payload, dataset.result_set)
         if not headers:
             continue
+        if variant and dataset.player_or_team == "P":
+            variant = variant.removesuffix("_p")
         extra = {"season": season, **_variant_columns(variant)}
         frames.append(frame_from_result_set(headers, rows, extra))
 

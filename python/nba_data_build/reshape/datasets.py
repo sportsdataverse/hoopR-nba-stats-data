@@ -46,6 +46,9 @@ class Dataset(NamedTuple):
     level: str = "season"
     #: First END-year season with real data; None means the full history (1997).
     season_floor: int | None = None
+    #: ``leaguegamelog`` only: "P" reads the player captures (``{season_type}_p.json``),
+    #: "T" the team captures (``{season_type}.json``). None reads every variant.
+    player_or_team: str | None = None
 
 
 _R = "from hoopR data repository"
@@ -115,6 +118,9 @@ DATASETS: tuple[Dataset, ...] = (
         "player_game_logs",
         "nba_stats_player_game_logs",
         f"NBA Stats Player Game Logs {_R}",
+        # Team rows until 2026-11-13: the build read only the team capture, then (once
+        # the player top-up landed beside it) stacked both. One row per player-game now.
+        player_or_team="P",
     ),
     # -- per-game, bound into one frame per season --------------------------------
     Dataset(
@@ -224,6 +230,16 @@ DATASETS: tuple[Dataset, ...] = (
         # The league's report archive starts 2018-12-17, inside the 2018-19 season.
         season_floor=2019,
     ),
+    # -- split from player_game_logs (stage 20, 2026-11-13) --------------------------
+    Dataset(
+        "team_game_logs",
+        "leaguegamelog",
+        None,
+        "team_game_logs",
+        "nba_stats_team_game_logs",
+        f"NBA Stats Team Game Logs {_R}",
+        player_or_team="T",
+    ),
 )
 
 #: Reader-facing description per release tag: the body a tag is created with
@@ -262,6 +278,21 @@ RELEASE_NOTES: dict[str, str] = {
         "(END-year seasons: 1997 = 1996-97)."
     ),
 }
+
+RELEASE_NOTES["nba_stats_player_game_logs"] = (
+    "Player game logs from stats.nba.com `leaguegamelog` (PlayerOrTeam=P): one row per player "
+    "per game he appeared in, regular season and playoffs (`season_type`), with his box line "
+    "(`min` through `plus_minus`, `fantasy_pts`) and the game's team, matchup and result. Until "
+    "2026-11-13 this tag held TEAM rows; those moved to `nba_stats_team_game_logs`. Span "
+    "1997-present (END-year seasons: 1997 = 1996-97)."
+)
+
+RELEASE_NOTES["nba_stats_team_game_logs"] = (
+    "Team game logs from stats.nba.com `leaguegamelog` (PlayerOrTeam=T): one row per team per "
+    "game, regular season and playoffs (`season_type`), with the team's box line, matchup and "
+    "result. These rows were published as `nba_stats_player_game_logs` until 2026-11-13. Span "
+    "1997-present (END-year seasons: 1997 = 1996-97)."
+)
 
 RELEASE_NOTES["nba_stats_injury_report"] = (
     "The NBA's official injury report -- every published version, one row per listing. "
