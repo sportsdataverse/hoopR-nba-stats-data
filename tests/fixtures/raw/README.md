@@ -48,3 +48,17 @@ Exercised by `tests/test_v3_backfill.py::test_schedule_from_gamelog_neutral_site
   fallback path; it is NOT asserted for period-scoped lineup accuracy. Replace
   with real per-period captures once upstream ships the quarter-box function
   and re-validate `test_process_uses_quarter_box_source` accordingly.
+
+## `0022500175` -- a game with a `gamerotation` capture
+
+NYK vs MIN, 2025-26 regular season. Verbatim copies, in the shared store layout, of the
+hoopR-nba-stats-raw captures (copied 2026-11-14):
+
+- `playbyplayv3/2026/0022500175.json`
+- `boxscoretraditionalv3/2026/0022500175.json`
+- `boxscoretraditionalv3_period/2026/0022500175.json`
+- `gamerotation/2026/0022500175.json` (captured 2026-07-22)
+
+Used by `tests/test_process_from_raw.py` for the rotation-first lineup source: with the rotation
+present `process_game` stamps `lineup_source="rotation"`; without it, or with a degraded one, it
+falls back to `quarter_box`.

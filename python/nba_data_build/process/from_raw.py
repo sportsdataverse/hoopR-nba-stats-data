@@ -1,4 +1,4 @@
-"""From-raw processor: enhanced pbp -> quarter-box lineups -> possessions.
+"""From-raw processor: enhanced pbp -> lineups (rotation, else quarter-box) -> possessions.
 
 Rebuilds one game's compiled surface entirely from the verbatim raw store
 (:mod:`~nba_data_build.scrape.raw_store`) -- **no network, no ``V3Client``**.
@@ -161,6 +161,60 @@ def _quarter_box_oncourt(
     return oc, "quarter_box"
 
 
+#: Rows of the rotation on-court frame allowed a null player slot before the capture is
+#: treated as degraded (sdv-py ``nba_possessions._ROTATION_NULL_TOLERANCE``).
+_ROTATION_NULL_TOLERANCE = 0.02
+
+
+def _rotation_oncourt(
+    root: Union[str, Path],
+    game_id: str,
+    enh: pl.DataFrame,
+    *,
+    home_team_id: int,
+    away_team_id: int,
+) -> "pl.DataFrame | None":
+    """The on-court 10 from the captured ``gamerotation``, or ``None`` to fall back.
+
+    The rotation (each player's in/out time) is the most direct record of who was on
+    the floor; ``quarter_box`` infers it from per-period box starters plus pbp
+    substitutions. On 6 rotation-captured 2025-26 games, lineup minutes vs the box
+    score: 0.22 min mean error / 95% within a minute from the rotation, 0.50 / 87% from
+    ``quarter_box`` (ClaudeCowork notes/2026-11-13-open-backfills-sweep.md). sdv-py's
+    ``nba_possessions`` "auto" chain tries the rotation first for the same reason.
+
+    ``None`` when the game has no rotation capture, or the capture is rejected the way
+    sdv-py rejects it: an empty frame (``players_on_court_from_rotation`` empties a
+    rotation whose stints are off five players' game time) or more than
+    ``_ROTATION_NULL_TOLERANCE`` of rows with a null player slot.
+    """
+    from sportsdataverse.nba.nba_lineups import (
+        parse_rotation_resultsets,
+        players_on_court_from_rotation,
+    )
+
+    try:
+        raw_rotation = _load_raw_json(root, "rotation", game_id)
+    except FileNotFoundError:
+        return None
+    oc = players_on_court_from_rotation(
+        enh,
+        parse_rotation_resultsets(raw_rotation),
+        home_team_id=home_team_id,
+        away_team_id=away_team_id,
+        league_id=str(game_id).zfill(10)[:2],
+    )
+    if oc.is_empty():
+        return None
+    slots = [f"{s}_player_{i}" for s in ("home", "away") for i in range(1, 6)]
+    null_frac = oc.select(
+        (pl.sum_horizontal([pl.col(c).is_null() for c in slots]) > 0).mean()
+    ).item()
+    if null_frac is not None and null_frac > _ROTATION_NULL_TOLERANCE:
+        return None
+    return oc
+
+
 def _attach_running_possession(enh: pl.DataFrame, poss: pl.DataFrame) -> pl.DataFrame:
     """Attach each possession's ``possession_number`` + on-court 10 to its events.
 
@@ -273,7 +327,12 @@ def process_game(root: Union[str, Path], game_id: str) -> ProcessedGame:
 
     enh = enhanced_pbp_from_payload(pbpv3)
     home, away = boxscore_home_away(boxv3)
-    oc, used = _quarter_box_oncourt(enh, periods, boxv3, home_team_id=home, away_team_id=away)
+    oc = _rotation_oncourt(root, game_id, enh, home_team_id=home, away_team_id=away)
+    used = "rotation"
+    if oc is None:
+        oc, used = _quarter_box_oncourt(
+            enh, periods, boxv3, home_team_id=home, away_team_id=away
+        )
 
     poss = attach_possession_lineups(
         build_possessions(enh), oc, enh, home_team_id=home

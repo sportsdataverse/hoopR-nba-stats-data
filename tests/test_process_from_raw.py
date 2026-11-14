@@ -141,3 +141,91 @@ def test_pbp_action_count_rejects_malformed_payload():
     for bad in ({}, {"game": {}}, {"game": None}, None, {"game": {"actions": None}}):
         with pytest.raises(ValueError):
             from_raw.pbp_action_count(bad, "0019600001")
+
+
+_ROTATION_GAME = "0022500175"
+
+
+def _box_minutes(root):
+    import json
+    import re
+    from pathlib import Path
+
+    box = json.loads(
+        (Path(root) / "nba_stats/json/boxscoretraditionalv3/2026" / f"{_ROTATION_GAME}.json").read_text()
+    )["boxScoreTraditional"]
+    out = {}
+    for side in ("homeTeam", "awayTeam"):
+        for p in box[side]["players"]:
+            m = re.match(r"(\d+):(\d+)", (p.get("statistics") or {}).get("minutes") or "")
+            if m and (int(m.group(1)) or int(m.group(2))):
+                out[p["personId"]] = int(m.group(1)) + int(m.group(2)) / 60
+    return out
+
+
+def _lineup_minutes(pg):
+    import re
+
+    clk = re.compile(r"PT(\d+)M([\d.]+)S")
+
+    def elapsed(period, clock):
+        m = clk.match(clock or "")
+        left = (int(m.group(1)) * 60 + float(m.group(2))) if m else 0.0
+        return ((period - 1) * 720 + 720 - left) if period <= 4 else (2880 + (period - 5) * 300 + 300 - left)
+
+    slots = [f"{s}_player_{i}" for s in ("home", "away") for i in range(1, 6)]
+    x = pg.lineups.join(
+        pg.enriched_pbp.select("action_number", "period", "clock"), on=["action_number", "period"], how="left"
+    ).drop_nulls("clock")
+    t = [elapsed(p, c) for p, c in zip(x["period"].to_list(), x["clock"].to_list())]
+    order = sorted(range(len(t)), key=lambda k: (t[k], k))
+    rows = x.select(slots).rows()
+    secs = {}
+    for a, b in zip(order, order[1:]):
+        if t[b] > t[a]:
+            for pid in rows[a]:
+                if pid is not None:
+                    secs[pid] = secs.get(pid, 0) + t[b] - t[a]
+    return {pid: s / 60 for pid, s in secs.items()}
+
+
+def test_a_captured_rotation_is_the_lineup_source():
+    pg = process_game(_ROOT, _ROTATION_GAME)
+    assert pg.possessions["lineup_source"].unique().to_list() == ["rotation"]
+    # Every player's on-court minutes from the lineups agree with the box score within a
+    # minute (measured: 100% within a minute here; quarter_box on rotation games, 87%).
+    box, mins = _box_minutes(_ROOT), _lineup_minutes(pg)
+    worst = max(abs(mins.get(pid, 0) - m) for pid, m in box.items())
+    assert worst < 1.0, worst
+
+
+def _copy_game(tmp_path, *, rotation):
+    import shutil
+    from pathlib import Path
+
+    for ep in ("playbyplayv3", "boxscoretraditionalv3", "boxscoretraditionalv3_period"):
+        dst = tmp_path / "nba_stats/json" / ep / "2026"
+        dst.mkdir(parents=True)
+        shutil.copy(Path(_ROOT) / "nba_stats/json" / ep / "2026" / f"{_ROTATION_GAME}.json", dst)
+    if rotation is not None:
+        import json
+
+        dst = tmp_path / "nba_stats/json/gamerotation/2026"
+        dst.mkdir(parents=True)
+        (dst / f"{_ROTATION_GAME}.json").write_text(json.dumps(rotation))
+    return tmp_path
+
+
+def test_no_rotation_capture_falls_back_to_quarter_box(tmp_path):
+    pg = process_game(_copy_game(tmp_path, rotation=None), _ROTATION_GAME)
+    assert pg.possessions["lineup_source"].unique().to_list() == ["quarter_box"]
+
+
+def test_a_degraded_rotation_falls_back_to_quarter_box(tmp_path):
+    import json
+    from pathlib import Path
+
+    rot = json.loads((Path(_ROOT) / "nba_stats/json/gamerotation/2026" / f"{_ROTATION_GAME}.json").read_text())
+    rot["resultSets"] = rot["resultSets"][:1]  # one team's stints only
+    pg = process_game(_copy_game(tmp_path, rotation=rot), _ROTATION_GAME)
+    assert pg.possessions["lineup_source"].unique().to_list() == ["quarter_box"]

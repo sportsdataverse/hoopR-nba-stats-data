@@ -39,6 +39,8 @@ _ENDPOINT = {
     "pbpv3": "playbyplayv3",
     "boxv3": "boxscoretraditionalv3",
     "boxv3_periods": "boxscoretraditionalv3_period",
+    # Optional (not in _KINDS, so has_raw never requires it): about half the games have one.
+    "rotation": "gamerotation",
 }
 
 
