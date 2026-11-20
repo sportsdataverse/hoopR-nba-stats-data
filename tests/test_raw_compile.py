@@ -13,6 +13,7 @@ import json
 from pathlib import Path
 
 import polars as pl
+import pytest
 from nba_data_build import combine_cli, matchups_cli
 
 _HEADERS = ["SEASON_ID", "OFF_PLAYER_ID", "DEF_PLAYER_ID", "MATCHUP_MIN"]
@@ -178,7 +179,9 @@ def test_a_stale_asset_is_cleared_so_publishing_cannot_ship_it(tmp_path: Path) -
     raw, out = tmp_path / "raw", tmp_path / "out"
     _season_file(raw, "leagueseasonmatchups", 2024, "regular-season_totals", [["22024", 1, 2, 3.0]])
     matchups_cli.build([2024], out, raw=raw)
-    assert (out / "nba_stats_matchups" / "leagueseasonmatchups_regular-season_totals_2024.parquet").exists()
+    assert (
+        out / "nba_stats_matchups" / "leagueseasonmatchups_regular-season_totals_2024.parquet"
+    ).exists()
 
     # the capture is re-swept and now comes back empty
     _season_file(raw, "leagueseasonmatchups", 2024, "regular-season_totals", [])
@@ -227,3 +230,54 @@ def test_clearing_leaves_other_seasons_alone(tmp_path: Path) -> None:
         "matchupsrollup_playoffs_totals_2023.parquet",
         "matchupsrollup_playoffs_totals_2024.parquet",
     ]
+
+
+# ------------------------------------------------------------- derived playoffs
+
+_FIXTURE_GAME = (
+    Path(__file__).resolve().parent
+    / "fixtures/raw/nba_stats/json/boxscorematchupsv3/2024/0022300001.json"
+)
+
+
+def _playoff_games(raw: Path, game_ids: list[str]) -> None:
+    d = raw / "boxscorematchupsv3" / "2024"
+    d.mkdir(parents=True, exist_ok=True)
+    for gid in game_ids:
+        (d / f"{gid}.json").write_text(_FIXTURE_GAME.read_text(encoding="utf-8"), encoding="utf-8")
+
+
+def test_empty_playoffs_payload_is_derived_from_playoff_boxscores(tmp_path: Path) -> None:
+    """stats.nba.com serves no playoff leagueseasonmatchups rows; the games carry them."""
+    raw, out = tmp_path / "raw", tmp_path / "out"
+    _season_file(raw, "leagueseasonmatchups", 2024, "playoffs_totals", [])
+    _season_file(raw, "leagueseasonmatchups", 2024, "playoffs_pergame", [])
+    # the same game twice as two playoff ids, plus a regular-season id that must be ignored
+    _playoff_games(raw, ["0042300101", "0042300102", "0022300001"])
+    one = matchups_cli.build_matchups(raw, 2024, ["0022300001"])
+
+    written = matchups_cli.build([2024], out, raw=raw)
+
+    d = out / "nba_stats_matchups"
+    tot = pl.read_parquet(d / "leagueseasonmatchups_playoffs_totals_2024.parquet")
+    pg = pl.read_parquet(d / "leagueseasonmatchups_playoffs_pergame_2024.parquet")
+    pairs = one.select("off_person_id", "def_person_id").unique().height
+    assert written["nba_stats_matchups/leagueseasonmatchups_playoffs_totals"] == pairs
+    assert tot["gp"].unique().to_list() == [2]
+    assert tot["player_pts"].sum() == 2 * one["player_points"].sum()
+    assert pg["player_pts"].sum() == pytest.approx(one["player_points"].sum(), abs=0.05 * pairs)
+    assert tot["season_id"].unique().to_list() == ["42023"]
+    assert tot["season_type"].unique().to_list() == ["playoffs"]
+    assert pg["per_mode"].unique().to_list() == ["pergame"]
+
+
+def test_a_real_playoffs_payload_is_never_replaced(tmp_path: Path) -> None:
+    raw, out = tmp_path / "raw", tmp_path / "out"
+    _season_file(raw, "leagueseasonmatchups", 2024, "playoffs_totals", [["42023", 1, 2, 3.0]])
+    _playoff_games(raw, ["0042300101"])
+
+    written = matchups_cli.build([2024], out, raw=raw)
+
+    assert written["nba_stats_matchups/leagueseasonmatchups_playoffs_totals"] == 1
+    # pergame had no payload at all, so it is derived
+    assert "nba_stats_matchups/leagueseasonmatchups_playoffs_pergame" in written
