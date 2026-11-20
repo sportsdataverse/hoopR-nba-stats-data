@@ -80,7 +80,13 @@ twin (no `sportsdataverse_save()` -- publishing stays on the Python path).
 **`matchups_cli` and `combine_cli` are the same compile on the other two layouts.**
 `nba_stats_matchups` carries BOTH `leagueseasonmatchups` and `matchupsrollup`,
 so asset names are endpoint-prefixed -- the two use identical stems and would
-otherwise overwrite each other. `nba_stats_draft_combine` is the five
+otherwise overwrite each other. **Its `leagueseasonmatchups_playoffs_*` assets
+are DERIVED** from the season's playoff `boxscorematchupsv3` games (`004…`):
+stats.nba.com returns no playoff rows for that endpoint (0 rows, HTTP 500 for any
+`PORound`), and the per-game sum reproduces the official regular-season pair
+table exactly (2024-25 and 2025-26). A real non-empty playoffs payload always
+wins. Do not "fix" this with `matchupsrollup`: it has no offensive player, and
+from 2025-26 it no longer agrees with the pair table. `nba_stats_draft_combine` is the five
 `draftcombine*` endpoints, flat `{year}.json`, and is distinct from
 `nba_stats_draft`, which is draft HISTORY and carries no measurements. Measured
 default ranges (END years = dir = asset year): matchups 2018-2026, combine 2001-2027
