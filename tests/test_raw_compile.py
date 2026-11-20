@@ -281,3 +281,25 @@ def test_a_real_playoffs_payload_is_never_replaced(tmp_path: Path) -> None:
     assert written["nba_stats_matchups/leagueseasonmatchups_playoffs_totals"] == 1
     # pergame had no payload at all, so it is derived
     assert "nba_stats_matchups/leagueseasonmatchups_playoffs_pergame" in written
+
+
+def test_derived_playoffs_take_the_regular_season_columns_and_dtypes(tmp_path: Path) -> None:
+    """The derived frames select and cast to the regular-season schema so the two concat."""
+    raw, out = tmp_path / "raw", tmp_path / "out"
+    _season_file(
+        raw, "leagueseasonmatchups", 2024, "regular-season_totals", [["22023", 1, 2, "12:34"]]
+    )
+    _season_file(
+        raw, "leagueseasonmatchups", 2024, "regular-season_pergame", [["22023", 1, 2, 4.2]]
+    )
+    _playoff_games(raw, ["0042300101"])
+
+    matchups_cli.build([2024], out, raw=raw)
+
+    d = out / "nba_stats_matchups"
+    for per_mode in ("totals", "pergame"):
+        reg = pl.read_parquet(d / f"leagueseasonmatchups_regular-season_{per_mode}_2024.parquet")
+        po = pl.read_parquet(d / f"leagueseasonmatchups_playoffs_{per_mode}_2024.parquet")
+        assert po.schema == reg.schema
+        assert po.height > 0
+        pl.concat([reg, po])  # the stated contract
