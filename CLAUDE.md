@@ -39,6 +39,7 @@ python -m nba_data_build.combine_cli                              # draft combin
 python -m nba_data_build.hustle_cli --seasons 2024 2025           # hustle, BUILD-ONLY
 # ^ the current season of these four is published nightly by scripts/nightly_nba_season_refresh.sh (cron)
 bash scripts/run_impact_backfill.sh        # nba_player_impact full-history backfill, BUILD-ONLY
+#   (reads the committed raw store + a FULL possession cache: set SDV_PY_NBA_CACHE_DIR; the script warns if either is missing)
 bash scripts/run_impact_backfill.sh 2025 --publish   # ...and upload to the release (deliberate)
 bash scripts/nightly_nba_impact.sh --dry-run         # current season, plan only, no commit
 python -m nba_model_publish current-impact --seasons 2007:2026 --out out/ci --raw-store-dir <raw>/nba_stats/json   # BB-D39 weekly current rating, BUILD-ONLY (--publish uploads nba_current_impact)
