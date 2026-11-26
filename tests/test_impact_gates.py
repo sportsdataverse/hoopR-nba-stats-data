@@ -42,6 +42,8 @@ def _season(season: int, *, noise: float = 0.25, seed: int = 0) -> pl.DataFrame:
             "spm": jit(noise),
             "boban_projected_rating": jit(noise),
             "min": rng.uniform(200, 2500, n),
+            "off_poss": rng.integers(300, 5000, n),
+            "def_poss": rng.integers(300, 5000, n),
         }
     )
 
@@ -411,3 +413,32 @@ def test_a_blank_off_poss_column_does_not_make_a_season_immature():
     report = G.gate_report(frames)
     assert report["immature_seasons"] == []
     assert _status(report, "r_rapm_adj_min") == "FAIL"
+
+
+def test_the_spm_gate_weights_players_by_possessions():
+    """Low-possession rows with unrelated SPM (half as many as the real ones) barely move the weighted gate."""
+    base = _season(2024)
+    rng = np.random.default_rng(5)
+    n = base.height // 2
+    noise = pl.DataFrame(
+        {
+            "player_id": pl.Series(np.arange(10_001, 10_001 + n), dtype=pl.Int64),
+            "season": pl.Series([2024] * n, dtype=pl.Int64),
+            "season_type": ["Regular Season"] * n,
+            "rapm": rng.normal(0, 6, n),
+            "adj_rapm": rng.normal(0, 1, n),
+            "spm": rng.normal(0, 6, n),
+            "boban_projected_rating": rng.normal(0, 1, n),
+            "min": rng.uniform(1, 20, n),
+            "off_poss": rng.integers(1, 20, n),
+            "def_poss": rng.integers(1, 20, n),
+        }
+    )
+    frame = pl.concat([base, noise.select(base.columns)])
+    weighted = G._poss_weighted_pearson(frame, "spm", "rapm")
+    clean = G._poss_weighted_pearson(base, "spm", "rapm")
+    assert clean - weighted < 0.03 and G._pearson(frame, "spm", "rapm") < clean - 0.2, (clean, weighted)
+    assert G.internal_metrics({2024: frame})["2024"]["r_spm_rapm"] == weighted
+    # equal possessions: the weighted statistic is the plain Pearson
+    flat = base.with_columns(pl.lit(100).alias("off_poss"), pl.lit(100).alias("def_poss"))
+    assert abs(G._poss_weighted_pearson(flat, "spm", "rapm") - G._pearson(flat, "spm", "rapm")) < 1e-12

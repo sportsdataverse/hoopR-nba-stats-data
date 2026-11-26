@@ -51,7 +51,13 @@ FLOORS: dict[str, Optional[float]] = {
     # player rows six days in, and a full-season floor blocked it.
     "rs_rows_min": 350,
     "r_rapm_adj_min": 0.75,  # observed min 0.806 (2013); 0.913 in 2026
-    "r_spm_rapm_min": 0.22,  # observed min 0.264 (1999); median ~0.43
+    # Possession-weighted (off_poss + def_poss) since 2026-11-25 (owner): the SPM is fit minute-weighted
+    # (sportsdataverse-py #1309), so an unweighted Pearson over every rostered player measures how it
+    # fits 50-minute players it no longer tries to (weighted build: unweighted min 0.196). Re-derived on
+    # the release it replaces, weighted: observed min 0.422 (2018), median 0.534 (unweighted min there:
+    # 0.263, 1999, the old floor's 0.264); the floor keeps the old floor/min ratio (0.22 / 0.264). The
+    # weighted refit reads min 0.531 (2020), median 0.593.
+    "r_spm_rapm_min": 0.35,
     "r_rapm_yoy_min": 0.24,  # observed min 0.289 (2020->2021, the bubble pair)
     "r_darko_fwd_min": 0.20,  # observed min 0.242 (2020); n-weighted mean 0.362
     "oracle_rapm_r_min": 0.90,  # observed min 0.948 (2014) over 14 oracle seasons 2010-2023
@@ -76,6 +82,25 @@ def _pearson(df: pl.DataFrame, a: str, b: str) -> Optional[float]:
     return None if r is None or math.isnan(r) else float(r)
 
 
+def _poss_weighted_pearson(df: pl.DataFrame, a: str, b: str) -> Optional[float]:
+    """``_pearson`` with each row weighted by its on-court possessions (``off_poss + def_poss``).
+
+    A player's ``spm`` and ``rapm`` are both noisiest when he played little, and the SPM is fit
+    with that weighting, so the gate scores it the same way. ``None`` / NaN as in ``_pearson``.
+    """
+    sub = df.select(a, b, (pl.col("off_poss") + pl.col("def_poss")).cast(pl.Float64).alias("_w")).drop_nulls()
+    sub = sub.filter(pl.col("_w") > 0)
+    if sub.height < 3:
+        return None
+    w = pl.col("_w") / pl.col("_w").sum()
+    ma, mb = (pl.col(a) * w).sum(), (pl.col(b) * w).sum()
+    cov = (w * (pl.col(a) - ma) * (pl.col(b) - mb)).sum()
+    va, vb = (w * (pl.col(a) - ma) ** 2).sum(), (w * (pl.col(b) - mb) ** 2).sum()
+    va_, vb_, cov_ = sub.select(va.alias("va"), vb.alias("vb"), cov.alias("cov")).row(0)
+    r = None if not (va_ > 0 and vb_ > 0) else cov_ / math.sqrt(va_ * vb_)
+    return None if r is None or math.isnan(r) else float(r)
+
+
 def _rs(frame: pl.DataFrame) -> pl.DataFrame:
     return frame.filter(pl.col("season_type") == "Regular Season")
 
@@ -94,7 +119,7 @@ def internal_metrics(frames: dict[int, pl.DataFrame]) -> dict[str, dict]:
         row = {
             "rs_rows": rs.height,
             "r_rapm_adj": _pearson(rs, "rapm", "adj_rapm"),
-            "r_spm_rapm": _pearson(rs, "spm", "rapm"),
+            "r_spm_rapm": _poss_weighted_pearson(rs, "spm", "rapm"),
             "r_rapm_yoy": None,
             "r_darko_fwd": None,
             "n_fwd": 0,
