@@ -3,6 +3,7 @@ name = "hoopr-nba-stats-data-build"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
+    # uv.lock holds this at d192fe2: do not re-lock past it until the SPM decision is revisited (CLAUDE.md, 2026-11-26)
     "sportsdataverse @ git+https://github.com/sportsdataverse/sportsdataverse-py@main",
     "polars>=1.29",  # Expr.round(mode=) -- 1.28 raises TypeError
     "pyarrow>=15.0",
