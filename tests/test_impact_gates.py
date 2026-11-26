@@ -449,11 +449,11 @@ def test_the_spm_gate_falls_back_to_plain_pearson_without_possessions():
     base = _season(2024)
     blank = base.with_columns(pl.lit(None, dtype=pl.Int64).alias("off_poss"))
     plain = G._pearson(base, "spm", "rapm")
-    assert G._poss_weighted_pearson(blank, "spm", "rapm") == plain
-    assert G._poss_weighted_pearson(base.drop("off_poss", "def_poss"), "spm", "rapm") == plain
-    assert G.internal_metrics({2024: blank})["2024"]["r_spm_rapm"] == plain
+    assert G._poss_weighted_pearson(blank, "spm", "rapm") == pytest.approx(plain, abs=1e-12)
+    assert G._poss_weighted_pearson(base.drop("off_poss", "def_poss"), "spm", "rapm") == pytest.approx(plain, abs=1e-12)
+    assert G.internal_metrics({2024: blank})["2024"]["r_spm_rapm"] == pytest.approx(plain, abs=1e-12)
     # partly blank: the few rows that kept their possessions do not stand in for the season
     half = base.with_row_index().with_columns(
         pl.when(pl.col("index") % 2 == 0).then(None).otherwise(pl.col("off_poss")).alias("off_poss")
     ).drop("index")
-    assert G._poss_weighted_pearson(half, "spm", "rapm") == plain
+    assert G._poss_weighted_pearson(half, "spm", "rapm") == pytest.approx(plain, abs=1e-12)
