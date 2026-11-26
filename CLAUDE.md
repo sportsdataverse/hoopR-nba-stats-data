@@ -18,17 +18,16 @@ Authors: Saiem Gilani (cre); Jason Lee, Billy Fryer, Ross Drucker (ctb).
 > and `scripts/daily_nba_stats_scraper.sh` were all deleted at the Python
 > cutover; this file listed them under a heading reading "Commands (verified)".
 
-## sportsdataverse pin: hold at d192fe2 (SPM decision, 2026-11-26)
+## sportsdataverse SPM default (2026-11-26)
 
-`uv.lock` pins `sportsdataverse` (git `main`) to commit `d192fe2`. **Do not move the lock past d192fe2**
-(`uv lock --upgrade-package sportsdataverse`, or any `uv lock` that re-resolves it) until the owner revisits the
-SPM decision. sdv-py main from #1309 (`7515943`) trains a minute-weighted SPM (prior scale 1.5) that is merged
-but unshipped: rebuilt on it, the NBA history fails the `r_rapm_adj_min` publish floor (0.75) in 11 seasons
-(minimum 0.477, 2019). The owner chose to keep the published equal-weight SPM, to republish neither league, and not
-to lower the floor after a failed check. A lock bump would make the nightly publish the current season on the new
-SPM over old history. Record and evidence: ClaudeCowork `notes/2026-11-25-spm-retrain.md` (ACC-2026-0001). To
-take a later sdv-py fix, revisit the decision first, then bump and republish every season
-together.
+`train_spm`'s default is the published equal-weight fit (`SPM_ALPHA` 100, adjusted-RAPM prior scale 2). From
+sportsdataverse-py #1331 (`eb8cf71`) on, a rebuild on any later lock reproduces the published `spm` / `adj_rapm`.
+Rebuilding NBA and WNBA 2024-2025 from the raw store matched the release to 1e-13. The normal lock bumps can move
+past `d192fe2` again. The minute-weighted SPM (#1309) is opt-in only:
+`train_spm(..., weight="min", alpha=SPM_ALPHA_WEIGHTED)` with `ADJ_RAPM_PRIOR_SCALE_WEIGHTED`. It is not
+published, because it fails the NBA `r_rapm_adj_min` publish floor. Do not switch the producers to it without an
+owner decision and a full republish of every season. Record: ClaudeCowork `notes/2026-11-25-spm-retrain.md`
+(ACC-2026-0001).
 
 ## Commands
 
