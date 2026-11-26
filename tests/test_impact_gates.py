@@ -452,3 +452,8 @@ def test_the_spm_gate_falls_back_to_plain_pearson_without_possessions():
     assert G._poss_weighted_pearson(blank, "spm", "rapm") == plain
     assert G._poss_weighted_pearson(base.drop("off_poss", "def_poss"), "spm", "rapm") == plain
     assert G.internal_metrics({2024: blank})["2024"]["r_spm_rapm"] == plain
+    # partly blank: the few rows that kept their possessions do not stand in for the season
+    half = base.with_row_index().with_columns(
+        pl.when(pl.col("index") % 2 == 0).then(None).otherwise(pl.col("off_poss")).alias("off_poss")
+    ).drop("index")
+    assert G._poss_weighted_pearson(half, "spm", "rapm") == plain

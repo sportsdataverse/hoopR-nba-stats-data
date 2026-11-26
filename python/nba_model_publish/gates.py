@@ -87,14 +87,18 @@ def _poss_weighted_pearson(df: pl.DataFrame, a: str, b: str) -> Optional[float]:
 
     A player's ``spm`` and ``rapm`` are both noisiest when he played little, and the SPM is fit
     with that weighting, so the gate scores it the same way. ``None`` / NaN as in ``_pearson``.
-    A frame whose possessions are missing or blank falls back to the plain Pearson (lower on these
-    rows, so stricter at this floor) rather than dropping the season out of the gate.
+    Every scored row must carry a positive weight (all do on the published releases, 2026-11-26). A
+    frame with any missing, blank or zero possessions is scored by the plain Pearson instead, so the
+    season stays gated. That number is not the one the floor was drawn from and sits below it on a
+    minute-weighted build, so such a build fails here: read the failure as lost possessions, not a
+    degraded SPM.
     """
     if not {"off_poss", "def_poss"} <= set(df.columns):
         return _pearson(df, a, b)
-    sub = df.select(a, b, (pl.col("off_poss") + pl.col("def_poss")).cast(pl.Float64).alias("_w")).drop_nulls()
-    sub = sub.filter(pl.col("_w") > 0)
-    if sub.height < 3:
+    sub = df.select(
+        a, b, (pl.col("off_poss") + pl.col("def_poss")).cast(pl.Float64).alias("_w")
+    ).drop_nulls([a, b])
+    if sub.height < 3 or not (sub["_w"].fill_null(0.0) > 0).all():
         return _pearson(df, a, b)
     w = pl.col("_w") / pl.col("_w").sum()
     ma, mb = (pl.col(a) * w).sum(), (pl.col(b) * w).sum()
