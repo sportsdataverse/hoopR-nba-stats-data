@@ -41,7 +41,7 @@ observation beside the constant.
 |---|---:|---:|---|
 | `rs_rows_min` | 350 (400 until 2026-10-26: blocked the in-progress season at 397) | 428 (2003) | a season that silently lost its population |
 | `r_rapm_adj_min` | 0.75 | 0.806 (2013) | the SPM prior overwriting RAPM instead of shrinking it |
-| `r_spm_rapm_min` | 0.22 | 0.264 (1999) | SPM no longer fitting the target it was trained on |
+| `r_spm_rapm_min` | 0.35 (possession-weighted Pearson, `off_poss + def_poss`, since 2026-11-25; 0.22 unweighted before) | 0.422 weighted (2018) on the release it replaced; 0.264 (1999) unweighted | SPM no longer fitting the target it was trained on |
 | `r_rapm_yoy_min` | 0.24 | 0.289 (2020→2021) | the panel losing player-level persistence |
 | `r_darko_fwd_min` | 0.20 | 0.242 (2020) | the projection decoupling from next-season RAPM |
 | `oracle_rapm_r_min` | 0.90 | 0.948 (2014) | concurrent validity vs published Ryan Davis RAPM |

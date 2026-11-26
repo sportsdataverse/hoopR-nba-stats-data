@@ -442,3 +442,13 @@ def test_the_spm_gate_weights_players_by_possessions():
     # equal possessions: the weighted statistic is the plain Pearson
     flat = base.with_columns(pl.lit(100).alias("off_poss"), pl.lit(100).alias("def_poss"))
     assert abs(G._poss_weighted_pearson(flat, "spm", "rapm") - G._pearson(flat, "spm", "rapm")) < 1e-12
+
+
+def test_the_spm_gate_falls_back_to_plain_pearson_without_possessions():
+    """A blanked or dropped possession column keeps the season in the SPM gate, scored unweighted."""
+    base = _season(2024)
+    blank = base.with_columns(pl.lit(None, dtype=pl.Int64).alias("off_poss"))
+    plain = G._pearson(base, "spm", "rapm")
+    assert G._poss_weighted_pearson(blank, "spm", "rapm") == plain
+    assert G._poss_weighted_pearson(base.drop("off_poss", "def_poss"), "spm", "rapm") == plain
+    assert G.internal_metrics({2024: blank})["2024"]["r_spm_rapm"] == plain

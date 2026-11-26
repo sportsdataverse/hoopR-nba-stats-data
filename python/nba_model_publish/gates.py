@@ -87,11 +87,15 @@ def _poss_weighted_pearson(df: pl.DataFrame, a: str, b: str) -> Optional[float]:
 
     A player's ``spm`` and ``rapm`` are both noisiest when he played little, and the SPM is fit
     with that weighting, so the gate scores it the same way. ``None`` / NaN as in ``_pearson``.
+    A frame whose possessions are missing or blank falls back to the plain Pearson (lower on these
+    rows, so stricter at this floor) rather than dropping the season out of the gate.
     """
+    if not {"off_poss", "def_poss"} <= set(df.columns):
+        return _pearson(df, a, b)
     sub = df.select(a, b, (pl.col("off_poss") + pl.col("def_poss")).cast(pl.Float64).alias("_w")).drop_nulls()
     sub = sub.filter(pl.col("_w") > 0)
     if sub.height < 3:
-        return None
+        return _pearson(df, a, b)
     w = pl.col("_w") / pl.col("_w").sum()
     ma, mb = (pl.col(a) * w).sum(), (pl.col(b) * w).sum()
     cov = (w * (pl.col(a) - ma) * (pl.col(b) - mb)).sum()
