@@ -61,20 +61,27 @@ _FRAME_OF = {
 
 
 def with_possession_flags(poss: pl.DataFrame, pbp: pl.DataFrame) -> pl.DataFrame:
-    """BB-D7's ``seconds_to_first_shot`` / ``is_transition`` / ``is_garbage_time`` on the possessions.
+    """BB-D7's ``seconds_to_first_shot`` / ``is_transition`` / ``is_garbage_time`` and BB-D44's 2-for-1 columns.
 
     sportsdataverse-py's :func:`~sportsdataverse.nba.nba_possession_flags.add_possession_flags`,
     over the season's possessions and the play-by-play they came from. Flags already on the
     frame are recomputed, so a rebuilt season carries the installed window.
+    The 2-for-1 columns (sportsdataverse-py's
+    :func:`~sportsdataverse.nba.nba_possession_flags.add_two_for_one_flags`) follow, null outside
+    the end-of-period window and for a game played in halves.
     """
     from sportsdataverse.nba.nba_possession_flags import (
         POSSESSION_FLAGS_SCHEMA,
+        TWO_FOR_ONE_SCHEMA,
         add_possession_flags,
+        add_two_for_one_flags,
     )
 
     if "possession_start_type" not in poss.columns:  # the empty-season placeholder frame
         return poss
-    return add_possession_flags(poss.drop(*POSSESSION_FLAGS_SCHEMA, strict=False), pbp)
+    bare = poss.drop(*POSSESSION_FLAGS_SCHEMA, *TWO_FOR_ONE_SCHEMA, strict=False)
+    # BB-D44 after BB-D7: two_for_one_summary reads is_garbage_time beside the 2-for-1 columns
+    return add_two_for_one_flags(add_possession_flags(bare, pbp), pbp)
 
 
 #: The only two season types ``leaguegamelog`` was ever captured at. Everything
